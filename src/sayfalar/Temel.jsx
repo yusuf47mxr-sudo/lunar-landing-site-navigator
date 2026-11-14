@@ -36,7 +36,8 @@ export default function Temel() {
         <AlanListesi yerlesim="yatay" />
 
         <section aria-label="Gökyüzü">
-          <GokyuzuKutusu className="h-[380px]" />
+          {/* Temel'de varsayılan 3B sahne (sunumun ana görseli); düğmeyle panorama/kubbe */}
+          <GokyuzuKutusu gecisli varsayilan="3b" className="h-[460px]" />
         </section>
 
         <div className="flex flex-col gap-5">

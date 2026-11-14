@@ -92,15 +92,19 @@ function KucukSayim({ simge, simgeEtiket, satir, className = '' }) {
   )
 }
 
-/** @param {string} [props.enFazla] iç genişlik sınırı (sayfanın sütun genişliğiyle aynı olmalı) */
-export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px]' }) {
+/**
+ * @param {string} [props.enFazla] iç genişlik sınırı (sayfanın sütun genişliğiyle aynı olmalı)
+ * @param {boolean} [props.surucu] oynatma döngüsünü bu örnek çalıştırır. Sayfada ikinci
+ *        bir çubuk varsa (3B tam ekran katmanı) o false verir; yoksa t iki kat hızlanır.
+ */
+export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px]', surucu = true }) {
   const anlik = useAnlikDurum()
   const { alan } = anlik
   const n = alan?.n ?? 0
   const { oynatiliyor, tAyarla, oynatDegistir } = useDurum(
     useShallow((s) => ({ oynatiliyor: s.oynatiliyor, tAyarla: s.tAyarla, oynatDegistir: s.oynatDegistir })),
   )
-  useOynatma(n)
+  useOynatma(surucu ? n : 0)
 
   const oynat = () => {
     // Sondayken oynat'a basılırsa baştan başla
