@@ -1,0 +1,1 @@
+// JSON yükleme ve önbellekleme

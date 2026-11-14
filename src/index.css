@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --zemin: #070B14;
+  --yuzey: #0E1524;
+  --yuzey-acik: #16203A;
+  --cizgi: #1F2B45;
+  --metin: #E6EDF7;
+  --metin-solgun: #8A97AC;
+  --gunes: #F5A524;
+  --gunes-soluk: #6B4A12;
+  --iletisim: #22D3EE;
+  --iletisim-soluk: #0E4A55;
+  --uyari: #EF4444;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  font-feature-settings: 'tnum' 1; /* sayılar tabular */
+}
