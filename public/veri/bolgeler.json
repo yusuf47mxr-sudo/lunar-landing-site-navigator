@@ -1,56 +1,194 @@
 [
   {
     "site": "Peak near Cabeus B",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi",
     "lat": -82.2,
     "lon": 326,
     "file": "peak_near_cabeus_b.json"
   },
   {
     "site": "Haworth",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi",
     "lat": -87.5,
     "lon": 355,
     "file": "haworth.json"
   },
   {
     "site": "Malapert Massif",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi",
     "lat": -86,
     "lon": 2.7,
     "file": "malapert_massif.json"
   },
   {
     "site": "Mons Mouton",
-    "lat": -84.3,
-    "lon": 160,
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi",
+    "lat": -84.6,
+    "lon": 31,
     "file": "mons_mouton.json"
   },
   {
     "site": "Mons Mouton Plateau",
-    "lat": -84.6,
-    "lon": 161,
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi",
+    "lat": -84.3,
+    "lon": 28,
     "file": "mons_mouton_plateau.json"
   },
   {
     "site": "Nobile Rim 1",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi",
     "lat": -85.4,
-    "lon": 32,
+    "lon": 38,
     "file": "nobile_rim_1.json"
   },
   {
     "site": "Nobile Rim 2",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi",
     "lat": -84.8,
-    "lon": 50,
+    "lon": 60,
     "file": "nobile_rim_2.json"
   },
   {
     "site": "de Gerlache Rim 2",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi",
     "lat": -88.5,
     "lon": 290,
     "file": "de_gerlache_rim_2.json"
   },
   {
     "site": "Slater Plain",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi",
     "lat": -88.1,
-    "lon": 5,
+    "lon": 105,
     "file": "slater_plain.json"
+  },
+  {
+    "site": "Apollo 11",
+    "kategori": "apollo",
+    "aciklama": "İlk insanlı iniş, 1969",
+    "lat": 0.674,
+    "lon": 23.473,
+    "file": "apollo_11.json"
+  },
+  {
+    "site": "Apollo 12",
+    "kategori": "apollo",
+    "aciklama": "Oceanus Procellarum, 1969",
+    "lat": -3.012,
+    "lon": 336.578,
+    "file": "apollo_12.json"
+  },
+  {
+    "site": "Apollo 14",
+    "kategori": "apollo",
+    "aciklama": "Fra Mauro, 1971",
+    "lat": -3.645,
+    "lon": 342.529,
+    "file": "apollo_14.json"
+  },
+  {
+    "site": "Apollo 15",
+    "kategori": "apollo",
+    "aciklama": "Hadley-Apennine, 1971",
+    "lat": 26.132,
+    "lon": 3.634,
+    "file": "apollo_15.json"
+  },
+  {
+    "site": "Apollo 16",
+    "kategori": "apollo",
+    "aciklama": "Descartes, 1972",
+    "lat": -8.973,
+    "lon": 15.5,
+    "file": "apollo_16.json"
+  },
+  {
+    "site": "Apollo 17",
+    "kategori": "apollo",
+    "aciklama": "Taurus-Littrow, 1972",
+    "lat": 20.191,
+    "lon": 30.772,
+    "file": "apollo_17.json"
+  },
+  {
+    "site": "IM-1 Odysseus",
+    "kategori": "clps",
+    "aciklama": "Malapert A yakını, 2024",
+    "lat": -80.13,
+    "lon": 1.44,
+    "file": "im_1_odysseus.json"
+  },
+  {
+    "site": "IM-2 Athena",
+    "kategori": "clps",
+    "aciklama": "Mons Mouton, 2025",
+    "lat": -84.8,
+    "lon": 29.2,
+    "file": "im_2_athena.json"
+  },
+  {
+    "site": "Blue Ghost 1",
+    "kategori": "clps",
+    "aciklama": "Mare Crisium, 2025",
+    "lat": 18.56,
+    "lon": 61.81,
+    "file": "blue_ghost_1.json"
+  },
+  {
+    "site": "Chang'e 3",
+    "kategori": "uluslararasi",
+    "aciklama": "Mare Imbrium, Çin, 2013",
+    "lat": 44.12,
+    "lon": 340.49,
+    "file": "change_3.json"
+  },
+  {
+    "site": "Chang'e 4",
+    "kategori": "uluslararasi",
+    "aciklama": "Uzak yüz, Çin, 2019",
+    "lat": -45.44,
+    "lon": 177.6,
+    "file": "change_4.json"
+  },
+  {
+    "site": "Chang'e 5",
+    "kategori": "uluslararasi",
+    "aciklama": "Mons Rümker yakını, Çin, 2020",
+    "lat": 43.06,
+    "lon": 308.08,
+    "file": "change_5.json"
+  },
+  {
+    "site": "Chang'e 6",
+    "kategori": "uluslararasi",
+    "aciklama": "Uzak yüz, Çin, 2024",
+    "lat": -41.63,
+    "lon": 206.01,
+    "file": "change_6.json"
+  },
+  {
+    "site": "Chandrayaan-3",
+    "kategori": "uluslararasi",
+    "aciklama": "Güney kutbu yakını, Hindistan, 2023",
+    "lat": -69.37,
+    "lon": 32.32,
+    "file": "chandrayaan_3.json"
+  },
+  {
+    "site": "SLIM",
+    "kategori": "uluslararasi",
+    "aciklama": "Shioli krateri, Japonya, 2024",
+    "lat": -13.3,
+    "lon": 25.25,
+    "file": "slim.json"
   }
 ]
