@@ -165,3 +165,21 @@ export function olcutler(f, c, P, tL, D, dt, w1 = 1, w2 = 1, w3 = 1) {
     puan: w1 * fBar + w2 * cBar - w3 * (tauMax / (D * 24)),
   }
 }
+
+// --- Süre biçimleme -------------------------------------------------------
+
+/**
+ * Saat cinsinden süreyi okunur metne çevirir.
+ *   79 → "3 g 7 sa",  72 → "3 g",  11 → "11 sa",  11.5 → "11 sa 30 dk",  0.75 → "45 dk"
+ * null / geçersiz değer → null (arayüz "veri aralığında değişmiyor" gösterir).
+ */
+export function saatBicimle(saat) {
+  if (saat === null || saat === undefined || !Number.isFinite(saat) || saat < 0) return null
+  const dakika = Math.round(saat * 60)
+  if (dakika < 60) return `${dakika} dk`
+  const gun = Math.floor(dakika / 1440)
+  const sa = Math.floor((dakika % 1440) / 60)
+  const dk = dakika % 60
+  if (gun > 0) return sa > 0 ? `${gun} g ${sa} sa` : `${gun} g`
+  return dk > 0 ? `${sa} sa ${dk} dk` : `${sa} sa`
+}

@@ -5,7 +5,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { create } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
-import { alanOnbellekte, alanYukle } from '../core/veri.js'
+import { alanOnbellekte, alanYukle, efemerisOnbellekte, efemerisYukle } from '../core/veri.js'
+import { ozelNoktaOlustur } from '../core/ozelNokta.js'
 import { geriSayim, guc, gunesOrani, iletisimDurumu, olcutler } from '../core/hesap.js'
 
 export const MODLAR = ['temel', 'orta', 'ileri']
@@ -65,36 +66,88 @@ export const useDurum = create((set) => ({
   hizAyarla: (hiz) => set({ hiz }),
 }))
 
-// --- Veri kancası ----------------------------------------------------------
+// --- Veri kancaları ---------------------------------------------------------
 
-/** Alan verisini veri.js önbelleğinden okur; yoksa yükler. */
-export function useAlanVerisi(site) {
-  const [durum, setDurum] = useState(() => ({ site, alan: alanOnbellekte(site) ?? null, hata: null }))
+/**
+ * veri.js'teki önbellekli bir yükleyiciyi React durumuna bağlar.
+ * anahtar null ise hiçbir şey yüklenmez.
+ */
+function useYuklenen(anahtar, yukle, onbellekte) {
+  const [durum, setDurum] = useState(() => ({
+    anahtar,
+    veri: anahtar === null ? null : (onbellekte(anahtar) ?? null),
+    hata: null,
+  }))
 
   useEffect(() => {
-    let iptal = false
-    const onbellek = alanOnbellekte(site)
-    if (onbellek) {
-      setDurum({ site, alan: onbellek, hata: null })
+    if (anahtar === null) {
+      setDurum({ anahtar, veri: null, hata: null })
       return
     }
-    setDurum({ site, alan: null, hata: null })
-    alanYukle(site).then(
-      (alan) => !iptal && setDurum({ site, alan, hata: null }),
-      (hata) => !iptal && setDurum({ site, alan: null, hata }),
+    let iptal = false
+    const onbellek = onbellekte(anahtar)
+    if (onbellek) {
+      setDurum({ anahtar, veri: onbellek, hata: null })
+      return
+    }
+    setDurum({ anahtar, veri: null, hata: null })
+    yukle(anahtar).then(
+      (veri) => !iptal && setDurum({ anahtar, veri, hata: null }),
+      (hata) => !iptal && setDurum({ anahtar, veri: null, hata }),
     )
     return () => {
       iptal = true
     }
-  }, [site])
+  }, [anahtar]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Alan değiştiği render'da eski alanın verisi dönmesin
-  const gecerli = durum.site === site
-  return {
-    alan: gecerli ? durum.alan : null,
-    hata: gecerli ? durum.hata : null,
-    yukleniyor: !gecerli || (!durum.alan && !durum.hata),
-  }
+  // Anahtar değiştiği render'da eski veri dönmesin
+  const gecerli = durum.anahtar === anahtar
+  const veri = gecerli ? durum.veri : null
+  const hata = gecerli ? durum.hata : null
+  return { veri, hata, yukleniyor: anahtar !== null && !veri && !hata }
+}
+
+/** Listedeki bir alanın verisini yükler (site null ise boş döner). */
+export function useAlanVerisi(site) {
+  const { veri, hata, yukleniyor } = useYuklenen(site, alanYukle, alanOnbellekte)
+  return { alan: veri, hata, yukleniyor }
+}
+
+/** Ortak efemeris (etkin değilse yüklenmez). */
+export function useEfemeris(etkin = true) {
+  const { veri, hata, yukleniyor } = useYuklenen(
+    etkin ? 'efemeris' : null,
+    () => efemerisYukle(),
+    () => efemerisOnbellekte(),
+  )
+  return { efemeris: veri, hata, yukleniyor }
+}
+
+/**
+ * Seçili alanın verisi. ozelNokta doluysa seçili alan yerine efemeris ve
+ * ozelNoktaOlustur() ile yaklaşık bir alan üretir (alan.yaklasik === true).
+ */
+export function useSeciliAlanVerisi() {
+  const { seciliAlan, ozelNokta } = useDurum(
+    useShallow((s) => ({ seciliAlan: s.seciliAlan, ozelNokta: s.ozelNokta })),
+  )
+  const ozel = ozelNokta !== null
+  const liste = useAlanVerisi(ozel ? null : seciliAlan)
+  const { efemeris, hata: efHata, yukleniyor: efYukleniyor } = useEfemeris(ozel)
+
+  const lat = ozelNokta?.lat
+  const lon = ozelNokta?.lon
+  const ozelSonuc = useMemo(() => {
+    if (!ozel || !efemeris) return { alan: null, hata: null }
+    try {
+      return { alan: ozelNoktaOlustur(lat, lon, efemeris), hata: null }
+    } catch (hata) {
+      return { alan: null, hata }
+    }
+  }, [ozel, efemeris, lat, lon])
+
+  if (!ozel) return liste
+  return { alan: ozelSonuc.alan, hata: efHata ?? ozelSonuc.hata, yukleniyor: efYukleniyor }
 }
 
 // --- Ölçüt kancası ---------------------------------------------------------
@@ -103,13 +156,11 @@ export function useAlanVerisi(site) {
  * Seçili alanın verisini ve depodaki parametreleri okuyup hesap.js'i çağırır.
  * Hesaplar katmanlıdır; sadece bağımlı olduğu parametre değişen katman
  * yeniden çalışır (ör. t değişince f/c/P yeniden hesaplanmaz).
- *
- * Not: ozelNokta henüz bağlı değil (ozelNokta.js yazılınca eklenecek).
+ * ozelNokta doluysa onun yaklaşık verisi kullanılır (alan.yaklasik).
  */
 export function useOlcutler() {
   const p = useDurum(
     useShallow((s) => ({
-      seciliAlan: s.seciliAlan,
       t: s.t,
       tL: s.tL,
       D: s.D,
@@ -124,7 +175,7 @@ export function useOlcutler() {
     })),
   )
 
-  const { alan, yukleniyor, hata } = useAlanVerisi(p.seciliAlan)
+  const { alan, yukleniyor, hata } = useSeciliAlanVerisi()
   const horizon = alan?.horizon[String(p.hm)] ?? null
   const dt = alan?.dt_hours ?? 1
 

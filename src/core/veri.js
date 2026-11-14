@@ -110,3 +110,7 @@ export function alanOnbellekte(site) {
 export function bolgelerOnbellekte() {
   return hazir.get('bolgeler')
 }
+
+export function efemerisOnbellekte() {
+  return hazir.get('efemeris')
+}
