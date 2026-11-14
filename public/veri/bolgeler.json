@@ -1,0 +1,56 @@
+[
+  {
+    "site": "Peak near Cabeus B",
+    "lat": -82.2,
+    "lon": 326,
+    "file": "peak_near_cabeus_b.json"
+  },
+  {
+    "site": "Haworth",
+    "lat": -87.5,
+    "lon": 355,
+    "file": "haworth.json"
+  },
+  {
+    "site": "Malapert Massif",
+    "lat": -86,
+    "lon": 2.7,
+    "file": "malapert_massif.json"
+  },
+  {
+    "site": "Mons Mouton",
+    "lat": -84.3,
+    "lon": 160,
+    "file": "mons_mouton.json"
+  },
+  {
+    "site": "Mons Mouton Plateau",
+    "lat": -84.6,
+    "lon": 161,
+    "file": "mons_mouton_plateau.json"
+  },
+  {
+    "site": "Nobile Rim 1",
+    "lat": -85.4,
+    "lon": 32,
+    "file": "nobile_rim_1.json"
+  },
+  {
+    "site": "Nobile Rim 2",
+    "lat": -84.8,
+    "lon": 50,
+    "file": "nobile_rim_2.json"
+  },
+  {
+    "site": "de Gerlache Rim 2",
+    "lat": -88.5,
+    "lon": 290,
+    "file": "de_gerlache_rim_2.json"
+  },
+  {
+    "site": "Slater Plain",
+    "lat": -88.1,
+    "lon": 5,
+    "file": "slater_plain.json"
+  }
+]
