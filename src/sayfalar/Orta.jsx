@@ -1,6 +1,7 @@
 // Orta mod — iki sütun (sol 380px sabit, sağ esnek); 1024px altında tek sütun.
 // Sol: alan listesi, kutup haritası, özel koordinat, görev ayarları, sayısal özet.
-// Sağ: rozetler, gökyüzü görünümü, zaman çizelgesi. Altta tam genişlik ısı haritası.
+// Sağ: rozetler, gökyüzü görünümü, zaman çizelgesi. Altta tam genişlik ısı haritası
+// ve yan yana karşılaştırma (en fazla 2 sütun).
 // Zaman kaydırıcısı altta yapışıktır ve akışın içindedir: sayfanın sonunda kendi
 // yüksekliği kadar yer tutar, en alttaki içerik onun arkasında kalmaz.
 
@@ -11,6 +12,7 @@ import DurumGostergesi from '../bilesenler/DurumGostergesi.jsx'
 import IsiHaritasi from '../bilesenler/IsiHaritasi.jsx'
 import GokyuzuKutusu from '../bilesenler/GokyuzuKutusu.jsx'
 import { kubbeMi } from '../bilesenler/GokyuzuGorunumu.jsx'
+import Karsilastirma from '../bilesenler/Karsilastirma.jsx'
 import KutupHaritasi from '../bilesenler/KutupHaritasi.jsx'
 import ModDegistirici from '../bilesenler/ModDegistirici.jsx'
 import OzelKoordinat from '../bilesenler/OzelKoordinat.jsx'
@@ -34,14 +36,6 @@ function Kutu({ baslik, children, className = '' }) {
       <h2 className={`mb-3 ${BASLIK}`}>{baslik}</h2>
       {children}
     </section>
-  )
-}
-
-function BosKutu({ children }) {
-  return (
-    <div className="grid h-40 place-items-center rounded-2xl border border-dashed border-cizgi text-sm tracking-wide text-metin-solgun">
-      {children}
-    </div>
   )
 }
 
@@ -136,10 +130,12 @@ export default function Orta() {
         </div>
 
         <section aria-label="Isı haritası" className="rounded-2xl border border-cizgi bg-yuzey p-4">
-          <IsiHaritasi />
+          <IsiHaritasi karsilastirmaMaks={2} />
         </section>
 
-        <BosKutu>Karşılaştırma — Adım 9</BosKutu>
+        <section aria-label="Karşılaştırma" className="rounded-2xl border border-cizgi bg-yuzey p-4">
+          <Karsilastirma maks={2} />
+        </section>
       </main>
 
       <ZamanKaydirici enFazla="max-w-[1400px]" />

@@ -7,10 +7,10 @@ import { OZEL_NOKTA_UYARISI } from '../core/ozelNokta.js'
 import { useAnlikDurum } from '../durum/store.js'
 import GokyuzuGorunumu from './GokyuzuGorunumu.jsx'
 
-const IZ_SAAT = 48
+export const IZ_SAAT = 48
 
 /** Son `saat` saatin [az, alt] çiftleri, eskiden yeniye (t dahil). */
-function izKes(azDizi, altDizi, t, saat, dt) {
+export function izKes(azDizi, altDizi, t, saat, dt) {
   const bas = Math.max(0, t - Math.round(saat / dt))
   const iz = []
   for (let k = bas; k <= t; k++) iz.push([azDizi[k], altDizi[k]])

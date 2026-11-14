@@ -4,7 +4,8 @@
 //   puan = w1·f_bar + w2·c_bar − w3·(tau_max_h / (D·24))        (bölüm 5.6)
 // Renk ölçeği o anki hm, D ve ağırlıklarda BÜTÜN alanların en düşük–en yüksek
 // puanıdır; kategori filtresi ölçeği değiştirmez, alanlar kıyaslanabilir kalır.
-// Hücreye tıklamak alanı ve iniş tarihini birlikte seçer (t = tL olur).
+// Hücreye tıklamak alanı ve iniş tarihini birlikte seçer (t = tL olur);
+// Shift+tıklama o satırın alanını karşılaştırmaya ekler.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -46,11 +47,12 @@ function tara(ctx, x, y, w, h, renk) {
   ctx.restore()
 }
 
-export default function IsiHaritasi({ className = '' }) {
+/** @param {number} [props.karsilastirmaMaks] karşılaştırmadaki toplam sütun sınırı (Orta 2, İleri 3) */
+export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
   const { ozet, hata } = useOzet()
   const { bolgeler } = useBolgeler()
   const { alan } = useSeciliAlanVerisi()
-  const { seciliAlan, ozelNokta, tL, D, hm, epsilon, w1, w2, w3, alanSec, inisSec } = useDurum(
+  const { seciliAlan, ozelNokta, tL, D, hm, epsilon, w1, w2, w3, alanSec, inisSec, karsilastirmaEkle } = useDurum(
     useShallow((s) => ({
       seciliAlan: s.seciliAlan,
       ozelNokta: s.ozelNokta,
@@ -63,6 +65,7 @@ export default function IsiHaritasi({ className = '' }) {
       w3: s.w3,
       alanSec: s.alanSec,
       inisSec: s.inisSec,
+      karsilastirmaEkle: s.karsilastirmaEkle,
     })),
   )
   const [filtre, setFiltre] = useState(VARSAYILAN_FILTRE)
@@ -298,6 +301,8 @@ export default function IsiHaritasi({ className = '' }) {
   const tiklandi = (e) => {
     const h = hucreBul(e)
     if (!h) return
+    // Shift+tıklama: seçimi değiştirmeden o satırın alanını karşılaştırmaya ekler
+    if (e.shiftKey) return karsilastirmaEkle(satirlar[h.satir].site, karsilastirmaMaks - 1)
     alanSec(satirlar[h.satir].site)
     inisSec(Math.round((h.sutun * adimSaat) / dt))
   }
@@ -411,6 +416,7 @@ export default function IsiHaritasi({ className = '' }) {
                     <dd className="text-right text-metin">{puanBicimle(ipucu.puan)}</dd>
                   </dl>
                 )}
+                <p className="mt-1.5 text-[10px] text-metin-solgun/70">Shift+tıklama: karşılaştırmaya ekle</p>
               </div>
             )}
           </>

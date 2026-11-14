@@ -33,6 +33,10 @@ export const DIREK_YUKSEKLIKLERI = [0, 2, 10]
 export const YONELIMLER = ['izleyen', 'dikey', 'yatay']
 export const KARSILASTIRMA_EN_FAZLA = 3
 
+/** Karşılaştırmada seçili alanın yanında gösterilen alanlar (seçili alanın kendisi hariç). */
+export const karsilastirmaSutunlari = (s) =>
+  s.ozelNokta ? s.karsilastirma : s.karsilastirma.filter((x) => x !== s.seciliAlan)
+
 const izinli = (deger, liste, eski) => (liste.includes(deger) ? deger : eski)
 
 export const useDurum = create((set) => ({
@@ -73,6 +77,18 @@ export const useDurum = create((set) => ({
       if (s.karsilastirma.length >= KARSILASTIRMA_EN_FAZLA) return {}
       return { karsilastirma: [...s.karsilastirma, site] }
     }),
+  /**
+   * Karşılaştırmaya alan ekler (yer varsa). Seçili alan zaten ilk sütundur,
+   * eklenmez. enFazla: seçili alan dışındaki sütun sayısı (Orta 1, İleri 2).
+   */
+  karsilastirmaEkle: (site, enFazla = KARSILASTIRMA_EN_FAZLA - 1) =>
+    set((s) => {
+      const mevcut = karsilastirmaSutunlari(s).slice(0, enFazla)
+      if ((!s.ozelNokta && site === s.seciliAlan) || mevcut.includes(site)) return {}
+      if (mevcut.length >= enFazla) return {}
+      return { karsilastirma: [...mevcut, site] }
+    }),
+  karsilastirmaCikar: (site) => set((s) => ({ karsilastirma: s.karsilastirma.filter((x) => x !== site) })),
   tAyarla: (t) => set({ t }),
   tLAyarla: (tL) => set({ tL }),
   /** İniş tarihi seçimi: görev başlangıcı değişir ve zaman oraya atlar. */

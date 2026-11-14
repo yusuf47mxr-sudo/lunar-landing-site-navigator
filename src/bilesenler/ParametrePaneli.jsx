@@ -12,6 +12,19 @@ import { gunBicimle } from './ZamanKaydirici.jsx'
 const SURE_SECENEKLERI = GOREV_SURELERI.map((d) => ({ deger: d, etiket: `${d} gün` }))
 const DIREK_SECENEKLERI = DIREK_YUKSEKLIKLERI.map((h) => ({ deger: h, etiket: `${h} m` }))
 
+/**
+ * Haftalık iniş tarihleri: t0'dan başlar, ozet.json'daki ızgarayla aynıdır.
+ * @returns {Array<{tL: number, etiket: string}>}  tL zaman dizisindeki indeks
+ */
+export function inisTarihleri(t0, dt = 1) {
+  if (!t0) return []
+  const t0ms = Date.parse(t0)
+  return Array.from({ length: INIS_SAYISI }, (_, k) => ({
+    tL: Math.round((k * INIS_ADIM_SAAT) / dt),
+    etiket: gunBicimle(new Date(t0ms + k * INIS_ADIM_SAAT * 3600e3)),
+  }))
+}
+
 function Satir({ etiket, children }) {
   return (
     <div>
@@ -34,17 +47,9 @@ export default function ParametrePaneli({ className = '' }) {
     })),
   )
 
-  // Haftalık iniş tarihleri: t0'dan başlar, ozet.json'daki ızgarayla aynıdır
   const t0 = alan?.t0
   const dt = alan?.dt_hours ?? 1
-  const tarihler = useMemo(() => {
-    if (!t0) return []
-    const t0ms = Date.parse(t0)
-    return Array.from({ length: INIS_SAYISI }, (_, k) => ({
-      tL: Math.round((k * INIS_ADIM_SAAT) / dt),
-      etiket: gunBicimle(new Date(t0ms + k * INIS_ADIM_SAAT * 3600e3)),
-    }))
-  }, [t0, dt])
+  const tarihler = useMemo(() => inisTarihleri(t0, dt), [t0, dt])
 
   return (
     <div className={`flex flex-col gap-4 ${className}`}>
