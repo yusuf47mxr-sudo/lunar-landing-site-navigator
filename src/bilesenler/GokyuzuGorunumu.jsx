@@ -3,15 +3,20 @@
 //
 // Eksen sınırları sadece `kutup` bayrağına bağlıdır; zaman ilerledikçe
 // oynamaz (CLAUDE.md bölüm 11).
+//
+// Çizim sırası (iki kipte de): ızgara → izler → Güneş → Dünya → arazi dolgusu
+// → iletişim eşiği → etiketler, oklar, lejant, rozet. Cisimler hep tam opak
+// çizilir; örtmeyi arazinin kendisi yapar: kısmen batan disk arazinin
+// siluetiyle kesilir, tamamen arkada kalan cisim arazinin arasından soluk görünür.
 
 import { useEffect, useRef } from 'react'
-import { GUNES_YARICAP, ufukOku } from '../core/hesap.js'
+import { ufukOku } from '../core/hesap.js'
 import { VARSAYILAN_RENK, YAZI, YAZI_KUCUK, renkleriOku, saydam, yuvarlakDikdortgen } from './tuval.js'
 
 const GECIS_MS = 150
 const GUNES_R = 10
 const DUNYA_R = 8
-const SOLUK = 0.25
+const ARAZI_OPAK = 0.8 // arkasındaki cisim %20 görünür
 const DERECE = Math.PI / 180
 
 // Kenar boşlukları (CSS pikseli): sol = yükseklik etiketleri, alt = yön etiketleri
@@ -155,57 +160,74 @@ export default function GokyuzuGorunumu({
     }
     ctx.stroke()
 
-    // 4. Ufuk profili H(A): aşağısı tamamen dolu
-    const hz = p.horizon
-    if (hz && hz.length === 360) {
+    // 3. Ufuk çizgisi (yükseklik 0). Burada gökyüzü kısmı için çizilir; arazinin
+    // önünde kalan kısmı 6. adımda dolgunun üstüne yeniden çizilir.
+    const ufukCizgisi = () => {
+      ctx.strokeStyle = saydam(R.metinSolgun, 0.55)
+      ctx.lineWidth = 1
       ctx.beginPath()
-      ctx.moveTo(x0, y1 + 2)
-      for (let sx = 0; sx <= 360; sx++) ctx.lineTo(gx(sx), yKirp(gy(ufukOku(hz, gercek(sx)))))
-      ctx.lineTo(x1, y1 + 2)
-      ctx.closePath()
-      ctx.fillStyle = R.yuzeyAcik
-      ctx.fill()
+      const ySifir = Math.round(gy(0)) + 0.5
+      ctx.moveTo(x0, ySifir)
+      ctx.lineTo(x1, ySifir)
+      ctx.stroke()
+    }
+    ufukCizgisi()
+
+    // 4. İzler
+    const izEkr = (iz) => (iz ? iz.map(([a, h]) => [ekr(a), h]) : iz)
+    izCiz(ctx, izEkr(p.sunTrail), R.gunes, gx, gy)
+    izCiz(ctx, izEkr(p.earthTrail), R.iletisim, gx, gy)
+
+    // 5. Cisimler — önce Güneş, sonra Dünya: Ay'dan bakınca Dünya önde durur
+    if (konum) {
+      cisimCiz(ctx, ekr(konum.sunAz), konum.sunAlt, GUNES_R, R.gunes, true, gx, gy)
+      cisimCiz(ctx, ekr(konum.earthAz), konum.earthAlt, DUNYA_R, R.iletisim, false, gx, gy)
     }
 
-    // 3. Ufuk çizgisi (yükseklik 0) — profilin üstünde de görünsün
-    ctx.strokeStyle = saydam(R.metinSolgun, 0.55)
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    const ySifir = Math.round(gy(0)) + 0.5
-    ctx.moveTo(x0, ySifir)
-    ctx.lineTo(x1, ySifir)
-    ctx.stroke()
+    const hz = p.horizon && p.horizon.length === 360 ? p.horizon : null
+    if (hz) {
+      // 6. Arazi: H(A)'nın altı dolu; cisimlerin ÜSTÜNE çizilir
+      const profil = (ek_ = 0) => {
+        for (let sx = 0; sx <= 360; sx++) {
+          const x = gx(sx)
+          const y = yKirp(gy(ufukOku(hz, gercek(sx)) + ek_))
+          sx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+        }
+      }
+      const araziYolu = () => {
+        ctx.beginPath()
+        profil()
+        ctx.lineTo(x1, y1 + 2)
+        ctx.lineTo(x0, y1 + 2)
+        ctx.closePath()
+      }
+      araziYolu()
+      ctx.fillStyle = saydam(R.yuzeyAcik, ARAZI_OPAK)
+      ctx.fill()
 
-    if (hz && hz.length === 360) {
+      // Yükseklik 0 çizgisi arazinin yüzünde de okunsun
+      ctx.save()
+      araziYolu()
+      ctx.clip()
+      ufukCizgisi()
+      ctx.restore()
+
       // Profilin üst kenarı
       ctx.strokeStyle = R.cizgi
       ctx.lineWidth = 1.5
       ctx.beginPath()
-      for (let sx = 0; sx <= 360; sx++) {
-        const x = gx(sx)
-        const y = yKirp(gy(ufukOku(hz, gercek(sx))))
-        sx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
-      }
+      profil()
       ctx.stroke()
 
-      // 5. İletişim eşiği H(A) + ε
+      // 7. İletişim eşiği H(A) + ε
       ctx.strokeStyle = saydam(R.iletisim, 0.7)
       ctx.lineWidth = 1
       ctx.setLineDash([4, 4])
       ctx.beginPath()
-      for (let sx = 0; sx <= 360; sx++) {
-        const x = gx(sx)
-        const y = yKirp(gy(ufukOku(hz, gercek(sx)) + p.epsilon))
-        sx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
-      }
+      profil(p.epsilon)
       ctx.stroke()
       ctx.setLineDash([])
     }
-
-    // 9. İzler
-    const izEkr = (iz) => (iz ? iz.map(([a, h]) => [ekr(a), h]) : iz)
-    izCiz(ctx, izEkr(p.sunTrail), R.gunes, gx, gy)
-    izCiz(ctx, izEkr(p.earthTrail), R.iletisim, gx, gy)
 
     // Fare: dikey kılavuz
     const fare = fareRef.current
@@ -218,15 +240,6 @@ export default function GokyuzuGorunumu({
       ctx.moveTo(Math.round(fare.x) + 0.5, y0)
       ctx.lineTo(Math.round(fare.x) + 0.5, y1)
       ctx.stroke()
-    }
-
-    // 6–7. Cisimler
-    // Önce Güneş, sonra Dünya: Ay'dan bakınca Dünya önde durur
-    if (konum && hz && hz.length === 360) {
-      const gunesGorunur = konum.sunAlt + GUNES_YARICAP > ufukOku(hz, konum.sunAz)
-      cisimCiz(ctx, ekr(konum.sunAz), konum.sunAlt, GUNES_R, R.gunes, gunesGorunur ? 1 : SOLUK, true, gx, gy)
-      const dunyaGorunur = konum.earthAlt > ufukOku(hz, konum.earthAz) + p.epsilon
-      cisimCiz(ctx, ekr(konum.earthAz), konum.earthAlt, DUNYA_R, R.iletisim, dunyaGorunur ? 1 : SOLUK, false, gx, gy)
     }
 
     ctx.restore() // kırpma bitti
@@ -267,14 +280,14 @@ export default function GokyuzuGorunumu({
       }
     }
 
-    // 10. Açıklama (sağ üst)
+    // 9. Açıklama (sağ üst)
     aciklamaCiz(ctx, R, x1, y0)
 
-    // 11. Yaklaşık veri uyarısı (sol üst)
+    // 10. Yaklaşık veri uyarısı (sol üst)
     if (p.yaklasik) rozetCiz(ctx, R, x0, y0)
 
     // Fare etiketi: o azimuttaki ufuk yüksekliği
-    if (fareAz !== null && hz && hz.length === 360) {
+    if (fareAz !== null && hz) {
       const H = ufukOku(hz, fareAz)
       const Hy = Math.round(H * 10) / 10 // "−0.0°" çıkmasın
       const metin = `Az ${Math.round(fareAz) % 360}° · ufuk ${Hy >= 0 ? '+' : '−'}${Math.abs(Hy).toFixed(1)}°`
@@ -448,13 +461,13 @@ function izCiz(ctx, iz, renk, gx, gy) {
   ctx.lineCap = 'butt'
 }
 
-function cisimCiz(ctx, az, alt, r, renk, opak, parlama, gx, gy) {
+function cisimCiz(ctx, az, alt, r, renk, parlama, gx, gy) {
   // 0°/360° kenarındaki cisim yarım görünmesin: karşı kenara da çiz
   const xler = [gx(az)]
   if (az < 3) xler.push(gx(az + 360))
   if (az > 357) xler.push(gx(az - 360))
   const y = gy(alt)
-  for (const x of xler) diskCiz(ctx, x, y, r, renk, opak, parlama)
+  for (const x of xler) diskCiz(ctx, x, y, r, renk, 1, parlama)
 }
 
 /** Dolu daire; parlama=true ise etrafında yumuşak ışık (Güneş). */
@@ -610,12 +623,24 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
   }
   ctx.stroke()
 
+  // İzler (ufkun altındaki parçalar çizilmez)
+  kubbeIzCiz(ctx, g, p.sunTrail, R.gunes)
+  kubbeIzCiz(ctx, g, p.earthTrail, R.iletisim)
+
+  // Ufkun üstündeki cisimler, kubbenin içinde (kenar çemberiyle kırpılır).
+  // Önce Güneş, sonra Dünya: Ay'dan bakınca Dünya önde durur
+  if (konum) {
+    if (konum.sunAlt >= 0) diskCiz(ctx, ...kubbeXY(g, konum.sunAz, konum.sunAlt), GUNES_R, R.gunes, 1, true)
+    if (konum.earthAlt >= 0) diskCiz(ctx, ...kubbeXY(g, konum.earthAz, konum.earthAlt), DUNYA_R, R.iletisim, 1, false)
+  }
+
   if (hz) {
-    // Ufuk profili: kenar ile r_H arası dolu halka (negatif H kenarda kalır)
+    // Arazi halkası: kenar ile r_H arası dolu (negatif H kenarda kalır);
+    // içerideki cisimlerin ÜSTÜNE çizilir
     ctx.beginPath()
     ctx.arc(cx, cy, Rk, 0, TAM)
     kapaliEgri(ctx, g, (az) => Math.max(hz[az], 0))
-    ctx.fillStyle = R.yuzeyAcik
+    ctx.fillStyle = saydam(R.yuzeyAcik, ARAZI_OPAK)
     ctx.fill('evenodd')
 
     ctx.strokeStyle = R.cizgi
@@ -633,10 +658,6 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
     ctx.stroke()
     ctx.setLineDash([])
   }
-
-  // İzler (ufkun altındaki parçalar çizilmez)
-  kubbeIzCiz(ctx, g, p.sunTrail, R.gunes)
-  kubbeIzCiz(ctx, g, p.earthTrail, R.iletisim)
 
   ctx.restore()
 
@@ -666,13 +687,10 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
     ctx.fillText(yon, x, y + 0.5)
   }
 
-  // Cisimler: ufkun üstündeyse içeride, altındaysa kenarın hemen dışında
-  // Önce Güneş, sonra Dünya: Ay'dan bakınca Dünya önde durur
-  if (konum && hz) {
-    const gunesGorunur = konum.sunAlt + GUNES_YARICAP > ufukOku(hz, konum.sunAz)
-    kubbeCisim(ctx, g, konum.sunAz, konum.sunAlt, GUNES_R, R.gunes, gunesGorunur ? 1 : SOLUK, true)
-    const dunyaGorunur = konum.earthAlt > ufukOku(hz, konum.earthAz) + p.epsilon
-    kubbeCisim(ctx, g, konum.earthAz, konum.earthAlt, DUNYA_R, R.iletisim, dunyaGorunur ? 1 : SOLUK, false)
+  // Ufkun altındaki cisimler: kenarın hemen dışında işaret + yükseklik etiketi
+  if (konum) {
+    if (konum.sunAlt < 0) kubbeDisIsaret(ctx, g, konum.sunAz, konum.sunAlt, R.gunes)
+    if (konum.earthAlt < 0) kubbeDisIsaret(ctx, g, konum.earthAz, konum.earthAlt, R.iletisim)
   }
 
   // Lejant ve yaklaşık uyarısı panoramadaki yerlerinde
@@ -707,13 +725,8 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
   }
 }
 
-function kubbeCisim(ctx, g, az, alt, r, renk, opak, parlama) {
-  if (alt >= 0) {
-    const [x, y] = kubbeXY(g, az, alt)
-    diskCiz(ctx, x, y, r, renk, opak, parlama)
-    return
-  }
-  // Ufkun altında: kenarın hemen dışında küçük soluk nokta + yükseklik etiketi
+/** Ufkun altındaki cisim: kenarın hemen dışında küçük soluk nokta + yükseklik etiketi. */
+function kubbeDisIsaret(ctx, g, az, alt, renk) {
   const [x, y] = kubbeKenarXY(g, az, g.Rk + 6 + KUBBE_DIS_R)
   diskCiz(ctx, x, y, KUBBE_DIS_R, renk, KUBBE_DIS_OPAK, false)
   ctx.font = '500 10px Inter, ui-sans-serif, system-ui, sans-serif'
