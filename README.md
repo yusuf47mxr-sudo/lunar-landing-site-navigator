@@ -1,5 +1,7 @@
 # Ay İniş Alanı Navigatörü
 
+**🌐 Canlı: <https://ay-inis-navigatoru.vercel.app>**
+
 **NASA Space Apps Challenge 2026 — "Landing Site Navigator"**
 
 > ⚠️ **Veri durumu: ŞU AN SAHTE VERİ.** Uygulamadaki bütün alan dosyaları

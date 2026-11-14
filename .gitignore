@@ -6,3 +6,5 @@ dist
 
 # Ekran görüntüleri (yerel kontrol, depoya girmez)
 goruntu/
+.vercel
+.env*
