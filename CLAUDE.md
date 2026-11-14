@@ -525,6 +525,12 @@ aralığında, doğu yönünde artan.
   **İstisna — yalnızca kubbe:** arazi halkası Güneş diskinden ince olduğu
   için f = 0 iken Güneş diski %25 opaklıkla çizilir. Dünya iki görünümde de
   c = 1 iken dolu disk, c = 0 iken içi boş halka (2px, `--iletisim`).
+- **Kubbe ölçeği.** Merkez tepe noktası (90°), dış kenar `altMin`: kutup
+  alanında `−15°` (panorama ekseniyle aynı), diğerlerinde `−5°`.
+  `r = R · (90 − alt) / (90 − altMin)`; alan içinde sabittir. 0° çemberi ince
+  bir çizgi ve "0°" etiketiyle ayrıca gösterilir. Arazi dış kenardan H(A)'ya
+  kadar halka, iletişim eşiği H(A)+ε kesikli çizgi. Kenar dışı işaret (nokta +
+  "−2.7°") yalnızca `alt < altMin` iken çizilir.
 - **Türkçe isimlendirme.** Bileşen ve değişken adları Türkçe; JSON alan
   adları İngilizce (veri sözleşmesi öyle kararlaştırıldı).
 - **Dosya boyutu.** Her alan ayrı JSON; sadece seçili alan yüklenir.
