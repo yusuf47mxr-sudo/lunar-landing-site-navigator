@@ -26,7 +26,7 @@ import {
   olcutler,
   panoramaMerkezi,
 } from '../core/hesap.js'
-import { KUTUP_SINIRI, VARSAYILAN } from '../core/sabitler.js'
+import { BASLANGIC_T, KUTUP_SINIRI, VARSAYILAN } from '../core/sabitler.js'
 
 export const MODLAR = ['temel', 'orta', 'ileri']
 export const GOREV_SURELERI = [7, 30, 90, 180]
@@ -48,7 +48,9 @@ export const useDurum = create((set) => ({
   seciliAlan: 'Malapert Massif',
   ozelNokta: null, // { lat, lon } veya null
   karsilastirma: [], // en fazla 3 alan adı
-  t: 0, // zaman dizisindeki indeks
+  // Zaman dizisindeki indeks. Alan değişince sıfırlanmaz (alanSec t'ye dokunmaz):
+  // kullanıcı aynı anda başka bir alana bakabilsin.
+  t: BASLANGIC_T,
 
   // Görev ve mühendislik parametreleri — varsayılanlar sabitler.js'te:
   // tL (iniş indeksi), D (7/30/90/180 gün), hm (0/2/10 m), epsilon (°),

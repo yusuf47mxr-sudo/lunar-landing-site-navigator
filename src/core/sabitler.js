@@ -11,8 +11,15 @@ export const INIS_SAYISI = 52
  * Görev ve mühendislik parametrelerinin varsayılanları (CLAUDE.md bölüm 6).
  * Depo bunlarla başlar; ParametrePaneli "Varsayılana dön" ve rozet sayımı için okur.
  */
+/**
+ * Açılıştaki an: 7. gün (t = 168, dt = 1 saat). t = 0'da Malapert gökyüzünde
+ * Güneş ve Dünya aynı noktada duruyor; 168'de aralarında ≈ 93° var ve ikisi de
+ * görünür. Haftalık iniş ızgarasının 2. haftasıdır (8 Ocak).
+ */
+export const BASLANGIC_T = 168
+
 export const VARSAYILAN = Object.freeze({
-  tL: 0, // iniş tarihi indeksi
+  tL: BASLANGIC_T, // iniş tarihi indeksi — açılıştaki anla aynı hafta
   D: 30, // görev süresi (gün)
   hm: 2, // direk yüksekliği (m)
   epsilon: 2, // iletişim güvenlik payı (derece)

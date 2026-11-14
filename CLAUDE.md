@@ -354,8 +354,8 @@ sadece diziler yeniden taranır.
   seciliAlan: 'Malapert Massif',
   ozelNokta: null,          // { lat, lon } veya null
   karsilastirma: [],        // en fazla 3 alan adı
-  t: 0,                     // zaman dizisindeki indeks
-  tL: 0,                    // iniş tarihi indeksi
+  t: 168,                   // zaman dizisindeki indeks (7. gün; alan değişince korunur)
+  tL: 168,                  // iniş tarihi indeksi (aynı hafta)
   D: 30,                    // görev süresi (gün) — sadece 7, 30, 90 veya 180
 
   // Mühendislik parametreleri
