@@ -1,12 +1,14 @@
 // Yan yana karşılaştırma — challenge'ın iki senaryosu:
 //   "Alanları karşılaştır": seçili alan + store.karsilastirma, aynı an ve aynı görev aralığı
 //   "Tarihleri karşılaştır": seçili alan, farklı iniş tarihleri, görevin aynı günü
-// Her sütun: başlık, küçük gökyüzü, iki satır geri sayım. Altta ölçüt tablosu,
-// en üstte tek cümlelik sonuç. Hesaplar hesap.js'ten (olcutler, geriSayim);
+// Her sütun: başlık, küçük gökyüzü, iki satır geri sayım ve onların devamı
+// olarak görev aralığı ölçütleri. Satır sırası ve yüksekliği bütün sütunlarda
+// aynıdır; değerler kendi gökyüzünün altında durur ve yan yana okunur.
+// En üstte tek cümlelik sonuç. Hesaplar hesap.js'ten (olcutler, geriSayim);
 // f/c dizileri depodaki önbellekten (fDizisi, cDizisi).
 //
 // Performans: bu bileşen t'ye abone DEĞİLDİR. Oynatırken yalnızca küçük
-// gökyüzleri ve geri sayımlar (SutunAni, GorevGunu) yeniden çizilir; tablo
+// gökyüzleri ve geri sayımlar (SutunAni, GorevGunu) yeniden çizilir; ölçütler
 // ve sonuç cümlesi t'ye bağlı olmadığı için yerinde kalır.
 
 import { memo, useMemo, useState } from 'react'
@@ -37,6 +39,8 @@ const SEKMELER = [
 ]
 const TARIH_ARALIGI_HAFTA = 13 // varsayılan ikinci tarih: bir çeyrek sonrası
 const BELIRGIN_FARK = 0.05 // puan farkı bunun altındaysa sonuç cümlesi taraf tutmaz
+// Geri sayım ve ölçüt satırları: bütün sütunlarda aynı yükseklik (yan yana okunur)
+const SATIR = 'flex h-7 items-center justify-between gap-3'
 const SUTUN_SINIFI = {
   1: 'min-[900px]:grid-cols-1',
   2: 'min-[900px]:grid-cols-2',
@@ -46,37 +50,63 @@ const SUTUN_SINIFI = {
 const puanBicimle = (p) => p.toFixed(2).replace('-', '−')
 const kisaTarih = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', timeZone: 'UTC' })
 
-// --- Türkçe yönelme eki ("Haworth'a", "Apollo 11'e", "%82'ye") -------------
+// --- Türkçe ekler ----------------------------------------------------------
+// Yönelme: "Haworth'a", "Apollo 11'e", "%82'ye". Bulunma: "Haworth'ta", "Apollo 11'de".
 
 const UNLU = /[aeıioöuü]/g
-const RAKAM_EKI = ['a', 'e', 'ye', 'e', 'e', 'e', 'ya', 'ye', 'e', 'a'] // sıfır, bir, iki, … dokuz
-const ONLUK_EKI = ['', 'a', 'ye', 'a', 'a', 'ye', 'a', 'e', 'e', 'a'] // on, yirmi, … doksan
-
-function sayiEki(n) {
-  const v = Math.abs(Math.round(n))
-  if (v === 0) return 'a'
-  if (v % 10) return RAKAM_EKI[v % 10]
-  const onluk = Math.floor(v / 10) % 10
-  return onluk ? ONLUK_EKI[onluk] : 'e' // yüz
+// Sayının okunuşuna göre ek: [sıfır … dokuz], [on … doksan], yüz
+const YONELME = {
+  rakam: ['a', 'e', 'ye', 'e', 'e', 'e', 'ya', 'ye', 'e', 'a'],
+  onluk: ['', 'a', 'ye', 'a', 'a', 'ye', 'a', 'e', 'e', 'a'],
+  yuz: 'e',
+}
+const BULUNMA = {
+  rakam: ['da', 'de', 'de', 'te', 'te', 'te', 'da', 'de', 'de', 'da'],
+  onluk: ['', 'da', 'de', 'da', 'ta', 'de', 'ta', 'te', 'de', 'da'],
+  yuz: 'de',
 }
 
-/** Adın son sözcüğüne göre yönelme eki: "Haworth" → "a", "Rim 2" → "ye". */
-function adEki(ad) {
+function sayiEki(n, ek = YONELME) {
+  const v = Math.abs(Math.round(n))
+  if (v % 10 || v === 0) return ek.rakam[v % 10]
+  const onluk = Math.floor(v / 10) % 10
+  return onluk ? ek.onluk[onluk] : ek.yuz
+}
+
+/** Adın son sözcüğü: sayıysa { sayi }, değilse ses bilgisi { kalin, unluSon, sertSon }. */
+function sonSozcuk(ad) {
   const son = ad.trim().split(/[\s-]+/).pop()
-  if (/^\d+$/.test(son)) return sayiEki(Number(son))
+  if (/^\d+$/.test(son)) return { sayi: Number(son) }
   const k = son.toLowerCase()
   const unluler = k.match(UNLU)
-  if (!unluler) return k.length === 1 ? 'ye' : 'e' // tek harf: "B" → "be'ye"
-  const kalin = 'aıou'.includes(unluler[unluler.length - 1])
-  const kaynastirma = 'aeıioöuü'.includes(k[k.length - 1]) ? 'y' : ''
-  return kaynastirma + (kalin ? 'a' : 'e')
+  if (!unluler) return { kalin: false, unluSon: k.length === 1, sertSon: false } // tek harf: "B" → "be"
+  return {
+    kalin: 'aıou'.includes(unluler[unluler.length - 1]),
+    unluSon: 'aeıioöuü'.includes(k[k.length - 1]),
+    sertSon: 'fstkçşhp'.includes(k[k.length - 1]),
+  }
+}
+
+/** Yönelme eki: "Haworth" → "a", "Rim 2" → "ye", "Athena" → "ya". */
+function adEki(ad) {
+  const s = sonSozcuk(ad)
+  if (s.sayi !== undefined) return sayiEki(s.sayi)
+  return (s.unluSon ? 'y' : '') + (s.kalin ? 'a' : 'e')
+}
+
+/** Bulunma eki: "Haworth" → "ta", "Malapert Massif" → "te", "Rim 2" → "de". */
+function bulunmaEki(ad) {
+  const s = sonSozcuk(ad)
+  if (s.sayi !== undefined) return sayiEki(s.sayi, BULUNMA)
+  return (s.sertSon ? 't' : 'd') + (s.kalin ? 'a' : 'e')
 }
 
 const yuzdeYonelme = (v) => `${yuzdeBicimle(v)}'${sayiEki(Math.round(v * 100))}`
+const basHarfBuyuk = (m) => m.charAt(0).toLocaleUpperCase('tr') + m.slice(1)
 
-// --- Sonuç cümlesi ve tablo ------------------------------------------------
+// --- Sonuç cümlesi ve ölçüt satırları --------------------------------------
 
-// Tablo satırları. yuvarla: gösterilen hassasiyet (kıyas buna göre yapılır,
+// Ölçüt satırları. yuvarla: gösterilen hassasiyet (kıyas buna göre yapılır,
 // ekranda aynı görünen iki değerden biri "en iyi" diye boyanmasın).
 const OLCUT_SATIRLARI = [
   { anahtar: 'fBar', etiket: 'Aydınlanma', bicim: yuzdeBicimle, yuvarla: (v) => Math.round(v * 100), yuksekIyi: true },
@@ -89,8 +119,8 @@ const OLCUT_SATIRLARI = [
 /**
  * Puanı en yüksek sütunu, sıradaki en iyi seçenekle kıyaslar ve puan farkına
  * en çok katkı yapan ölçütü tek cümleyle söyler.
- * @param sutunlar [{ ozne, tamlayan, olcut }]  ozne: "Malapert Massif" / "2 Temmuz inişi",
- *                 tamlayan: "Haworth'a" / "1 Ocak inişine"
+ * @param sutunlar [{ ozne, tamlayan, bulunma, olcut }]  ozne: "Malapert Massif" / "2 Temmuz inişi",
+ *                 tamlayan: "Haworth'a" / "1 Ocak inişine", bulunma: "Haworth'ta" / "1 Ocak inişinde"
  */
 function sonucCumlesi(sutunlar, D, { w1, w2, w3 }, kip) {
   if (sutunlar.length < 2) {
@@ -114,8 +144,15 @@ function sonucCumlesi(sutunlar, D, { w1, w2, w3 }, kip) {
   if (!(enBuyuk.deger > 0)) return 'Seçenekler arasında belirgin fark yok.'
 
   const gore = `${diger.tamlayan} göre`
+  // Kazananın değeri 0 ise "…saatten 0 saate indiriyor" yerine doğrudan söyle
+  const hicYok = (durum, olcutAdi, saat) =>
+    `${basHarfBuyuk(iyi.bulunma)} görev boyunca ${durum} (${diger.bulunma} en uzun ${olcutAdi} ${Math.round(saat)} saat).`
   if (enBuyuk.tur === 'karanlik') {
+    if (Math.round(a.tauMax) === 0) return hicYok('hiç karanlık yaşanmıyor', 'karanlık', b.tauMax)
     return `${iyi.ozne}, ${gore} en uzun karanlığı ${Math.round(b.tauMax)} saatten ${Math.round(a.tauMax)} saate indiriyor.`
+  }
+  if (enBuyuk.tur === 'iletisim' && Math.round(a.sigmaMax) === 0 && Math.round(b.sigmaMax) > 0) {
+    return hicYok('hiç iletişim kesintisi yok', 'iletişim kesintisi', b.sigmaMax)
   }
   const [x, y, fiil] =
     enBuyuk.tur === 'gunes' ? [a.fBar, b.fBar, 'daha fazla güneş alıyor'] : [a.cBar, b.cBar, 'daha fazla iletişim süresi sağlıyor']
@@ -172,16 +209,16 @@ const SutunAni = memo(function SutunAni({ alan, horizon, f, c, epsilon, kayma })
           merkezAz={merkezAz}
         />
       </div>
-      <dl className="mt-3 space-y-1 text-sm">
+      <dl className="mt-3 text-sm">
         {satirlar.map((s, k) => (
-          <div key={k} className="flex items-baseline justify-between gap-3">
-            <dt className="text-metin-solgun">
+          <div key={k} className={SATIR}>
+            <dt className="min-w-0 truncate text-metin-solgun">
               <span aria-hidden="true" className="mr-1.5">
                 {k === 0 ? '☀' : '📡'}
               </span>
               {s.onEk}
             </dt>
-            <dd className="whitespace-nowrap text-right text-metin">
+            <dd className="shrink-0 whitespace-nowrap text-right text-metin">
               {s.saat === null ? <span className="text-metin-solgun">{s.yoksa}</span> : <AkanSure saat={s.saat} tur={s.tur} />}
             </dd>
           </div>
@@ -299,17 +336,27 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
     const olcut = f && c ? olcutler(f, c, null, s.tL, p.D, alan.dt_hours, p.w1, p.w2, p.w3) : null
     let ozne
     let tamlayan
+    let bulunma
     if (kip === 'alan') {
       const ad = alan?.yaklasik ? 'Özel nokta' : (alan?.site ?? s.site ?? '')
       ozne = ad
-      tamlayan = alan?.yaklasik ? 'özel noktaya' : `${ad}'${adEki(ad || 'a')}` // cins ad: kesme işareti yok
+      // "özel nokta" cins ad: kesme işareti yok
+      tamlayan = alan?.yaklasik ? 'özel noktaya' : `${ad}'${adEki(ad || 'a')}`
+      bulunma = alan?.yaklasik ? 'özel noktada' : `${ad}'${bulunmaEki(ad || 'a')}`
     } else {
       const gun = alan ? kisaTarih.format(new Date(Date.parse(alan.t0) + s.tL * alan.dt_hours * 3600e3)) : ''
       ozne = `${gun} inişi`
       tamlayan = `${gun} inişine`
+      bulunma = `${gun} inişinde`
     }
-    return { ...s, alan, horizon, f, c, olcut, ozne, tamlayan, hazir: !!(alan && f && c) }
+    return { ...s, alan, horizon, f, c, olcut, ozne, tamlayan, bulunma, hazir: !!(alan && f && c) }
   })
+
+  // Ölçüt satırlarının sütunlar arası kıyası (en iyi / en kötü renklendirme)
+  const olcutSatirlari = OLCUT_SATIRLARI.map((satir) => ({
+    satir,
+    degerler: sutunlar.map((s) => (s.olcut ? s.olcut[satir.anahtar] : null)),
+  }))
 
   const hepsiHazir = sutunlar.every((s) => s.hazir)
   const cumle = hepsiHazir ? sonucCumlesi(sutunlar, p.D, p, kip) : ' '
@@ -342,7 +389,7 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
 
       {/* Sütunlar */}
       <div className={izgara}>
-        {sutunlar.map((s) => (
+        {sutunlar.map((s, i) => (
           <article key={s.anahtar} className="min-w-0">
             <header className="mb-2 flex min-h-[3.25rem] items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
@@ -400,61 +447,43 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
                 </button>
               )}
             </header>
-            {s.veri.hata ? (
-              <p className="grid h-[200px] place-items-center rounded-xl border border-cizgi text-sm text-uyari">
-                Veri yüklenemedi.
-              </p>
-            ) : s.hazir ? (
+            {s.hazir ? (
               <SutunAni alan={s.alan} horizon={s.horizon} f={s.f} c={s.c} epsilon={p.epsilon} kayma={s.tL - p.tL} />
             ) : (
-              <p className="grid h-[200px] place-items-center rounded-xl border border-cizgi text-sm text-metin-solgun">
-                Yükleniyor…
-              </p>
+              <>
+                <p
+                  className={`grid h-[200px] place-items-center rounded-xl border border-cizgi text-sm ${
+                    s.veri.hata ? 'text-uyari' : 'text-metin-solgun'
+                  }`}
+                >
+                  {s.veri.hata ? 'Veri yüklenemedi.' : 'Yükleniyor…'}
+                </p>
+                {/* Geri sayım satırlarının yeri: ölçütler öbür sütunlarla hizalı kalsın */}
+                <div className="mt-3 h-14" aria-hidden="true" />
+              </>
             )}
+
+            {/* Görev aralığı ölçütleri — geri sayım satırlarının devamı */}
+            <section aria-label={`${s.ozne}: ${p.D} günlük görev ölçütleri`} className="mt-1 border-t border-cizgi/60 pt-1 text-sm">
+              <h4 className="flex h-7 items-center text-xs font-normal text-metin-solgun/80">{p.D} günlük görev</h4>
+              <dl>
+                {olcutSatirlari.map(({ satir, degerler }) => (
+                  <div key={satir.anahtar} className={`${SATIR} border-t border-cizgi/40`}>
+                    <dt className="min-w-0 truncate text-metin-solgun" title={satir.etiket}>
+                      {satir.etiket}
+                    </dt>
+                    <dd className={`shrink-0 tabular-nums transition-colors duration-300 ${hucreSinifi(satir, degerler, i)}`}>
+                      {degerler[i] == null ? '—' : <AkanSayi deger={degerler[i]} bicim={satir.bicim} />}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           </article>
         ))}
         {eklenebilir && (
           <AlanEkle bolgeler={bolgeler} gizli={gizli} onEkle={(site) => p.karsilastirmaEkle(site, maks - 1)} />
         )}
-      </div>
-
-      {/* Ölçüt tablosu */}
-      <div className="mt-5 overflow-x-auto">
-        <table className="w-full min-w-[420px] table-fixed text-sm">
-          <caption className="sr-only">Görev aralığı ölçütleri</caption>
-          <thead>
-            <tr className="text-xs text-metin-solgun">
-              <th scope="col" className="w-[220px] py-1.5 text-left font-normal">
-                {p.D} günlük görev
-              </th>
-              {sutunlar.map((s) => (
-                <th key={s.anahtar} scope="col" className="truncate py-1.5 pl-4 text-right font-normal">
-                  {kip === 'alan' ? s.ozne : s.ozne.replace(' inişi', '')}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {OLCUT_SATIRLARI.map((satir) => {
-              const degerler = sutunlar.map((s) => (s.olcut ? s.olcut[satir.anahtar] : null))
-              return (
-                <tr key={satir.anahtar} className="border-t border-cizgi/60">
-                  <th scope="row" className="py-1.5 text-left font-normal text-metin-solgun">
-                    {satir.etiket}
-                  </th>
-                  {degerler.map((v, i) => (
-                    <td
-                      key={sutunlar[i].anahtar}
-                      className={`py-1.5 pl-4 text-right tabular-nums transition-colors duration-300 ${hucreSinifi(satir, degerler, i)}`}
-                    >
-                      {v == null ? '—' : <AkanSayi deger={v} bicim={satir.bicim} />}
-                    </td>
-                  ))}
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
       </div>
     </div>
   )
