@@ -1,9 +1,14 @@
 // Zaman kaydırıcısı — sayfanın altına yapışık; oynat/durdur, tarih ve
 // kalın kaydırıcı. Oynatma: saatte 1 adım, saniyede 30 adım; sonda durur.
+// Tarih satırının iki yanında kalıcı geri sayım (CLAUDE.md §8.2 "Zaman her
+// zaman görünür"): solda Güneş, sağda Dünya. Temel'deki büyük GeriSayim'in
+// özetidir; aynı satır içeriği (geriSayimSatirlari) ve renk kuralı (AkanSure).
+// 640px altında tarih üstte, iki geri sayım altında yan yana.
 
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useAnlikDurum, useDurum } from '../durum/store.js'
+import { useAnlikDurum, useDurum, useGeriSayim } from '../durum/store.js'
+import { AkanSure, geriSayimSatirlari } from './GeriSayim.jsx'
 
 const ADIM_SANIYEDE = 30
 
@@ -69,6 +74,24 @@ function OynatSimgesi({ oynatiliyor }) {
   )
 }
 
+/** Çubuktaki tek geri sayım: simge + ifade + süre (veya "Bu dönemde batmıyor"). */
+function KucukSayim({ simge, simgeEtiket, satir, className = '' }) {
+  return (
+    <p className={`min-w-0 truncate text-xs tracking-wide text-metin-solgun sm:text-sm ${className}`}>
+      <span role="img" aria-label={simgeEtiket} className="mr-1.5">
+        {simge}
+      </span>
+      {satir.saat === null ? (
+        satir.yoksa
+      ) : (
+        <>
+          {satir.onEk} <AkanSure saat={satir.saat} tur={satir.tur} />
+        </>
+      )}
+    </p>
+  )
+}
+
 /** @param {string} [props.enFazla] iç genişlik sınırı (sayfanın sütun genişliğiyle aynı olmalı) */
 export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px]' }) {
   const anlik = useAnlikDurum()
@@ -85,15 +108,33 @@ export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px
     oynatDegistir()
   }
   const dolu = n > 1 ? (anlik.t / (n - 1)) * 100 : 0
+  const sayim = useGeriSayim()
+  const [gunes, dunya] = sayim ? geriSayimSatirlari(sayim) : [null, null]
 
   return (
     <div
       className={`sticky bottom-0 z-20 border-t border-cizgi bg-zemin/85 backdrop-blur-md ${className}`}
     >
       <div className={`mx-auto ${enFazla} px-4 py-3 sm:px-6`}>
-        <p className="mb-2 text-center text-sm tracking-wide text-metin tabular-nums" aria-live="off">
-          {anlik.zaman ? tarihBicimle(anlik.zaman) : '—'}
-        </p>
+        <div className="mb-2 grid grid-cols-2 items-center gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+          <p
+            className="col-span-2 text-center text-sm tracking-wide text-metin tabular-nums sm:col-span-1 sm:col-start-2 sm:row-start-1"
+            aria-live="off"
+          >
+            {anlik.zaman ? tarihBicimle(anlik.zaman) : '—'}
+          </p>
+          {gunes && (
+            <KucukSayim simge="☀" simgeEtiket="Güneş" satir={gunes} className="sm:col-start-1 sm:row-start-1" />
+          )}
+          {dunya && (
+            <KucukSayim
+              simge="📡"
+              simgeEtiket="Dünya ile iletişim"
+              satir={dunya}
+              className="text-right sm:col-start-3 sm:row-start-1"
+            />
+          )}
+        </div>
         <div className="flex items-center gap-4">
           <button
             onClick={oynat}
