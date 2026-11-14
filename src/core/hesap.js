@@ -183,3 +183,34 @@ export function saatBicimle(saat) {
   if (gun > 0) return sa > 0 ? `${gun} g ${sa} sa` : `${gun} g`
   return dk > 0 ? `${sa} sa ${dk} dk` : `${sa} sa`
 }
+
+// --- Panorama merkezi -----------------------------------------------------
+
+/** Açıların döngüsel ortalaması: atan2(ortalama sin, ortalama cos), [0, 360). */
+export function donguselOrtalama(acilar) {
+  let s = 0
+  let c = 0
+  for (let k = 0; k < acilar.length; k++) {
+    s += Math.sin(acilar[k] * DERECE)
+    c += Math.cos(acilar[k] * DERECE)
+  }
+  const ort = Math.atan2(s, c) / DERECE
+  return ort < 0 ? ort + 360 : ort
+}
+
+/**
+ * Panoramanın ortalanacağı azimut: Dünya'nın döngüsel ortalama azimutu,
+ * en yakın 30°'ye yuvarlanmış. Dünya hiç ufkun üstüne çıkmıyorsa 0 (K).
+ * Alan başına bir kez hesaplanır; zamana bağlı değildir.
+ */
+export function panoramaMerkezi(earthAz, earthAlt) {
+  let gorunur = false
+  for (let k = 0; k < earthAlt.length; k++) {
+    if (earthAlt[k] > 0) {
+      gorunur = true
+      break
+    }
+  }
+  if (!gorunur) return 0
+  return (Math.round(donguselOrtalama(earthAz) / 30) * 30) % 360
+}

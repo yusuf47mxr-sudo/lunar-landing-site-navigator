@@ -83,6 +83,8 @@ const isaretli = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(Math.roun
  * @param {Array<[number, number]>} [props.earthTrail]
  * @param {boolean} [props.yaklasik]
  * @param {'otomatik'|'panorama'|'kubbe'} [props.gorunum]  otomatik: kutup → panorama, değilse kubbe
+ * @param {number} [props.merkezAz]  panoramanın ortasındaki azimut (derece). 180 → eksen 0…360.
+ *        Kesme (0/360 atlaması) bunun tam karşısındaki azimutta olur. Kubbeyi etkilemez.
  * @param {string} [props.className]
  */
 export default function GokyuzuGorunumu({
@@ -97,6 +99,7 @@ export default function GokyuzuGorunumu({
   earthTrail = null,
   yaklasik = false,
   gorunum = 'otomatik',
+  merkezAz = 180,
   className = '',
 }) {
   const kapRef = useRef(null)
@@ -104,7 +107,7 @@ export default function GokyuzuGorunumu({
 
   // Çizimin okuduğu her şey ref'te; böylece rAF döngüsü React render'ına bağlı kalmaz.
   const propsRef = useRef(null)
-  propsRef.current = { horizon, epsilon, kutup, sunTrail, earthTrail, yaklasik, gorunum }
+  propsRef.current = { horizon, epsilon, kutup, sunTrail, earthTrail, yaklasik, gorunum, merkezAz }
 
   const boyutRef = useRef({ w: 0, h: 0, dpr: 1 })
   const fareRef = useRef(null) // { x, y } CSS pikseli veya null
@@ -151,7 +154,14 @@ export default function GokyuzuGorunumu({
     const x1 = w - KENAR.sag
     const y0 = KENAR.ust
     const y1 = h - KENAR.alt
-    const gx = (az) => x0 + (az / 360) * (x1 - x0)
+    // Ekran azimutu s ∈ [0, 360]: sol kenar = merkezin tam karşısı. x, s'ye göre
+    // doğrusaldır; izlerdeki 0/360 kesmesi de s uzayında yapılır, yani kesme
+    // gerçekte merkezin karşısındaki azimuta düşer.
+    const sol = mod360((Number.isFinite(p.merkezAz) ? p.merkezAz : 180) - 180)
+    const ekr = (az) => mod360(az - sol)
+    const gercek = (sx) => mod360(sol + sx)
+    const ilkIzgara = (30 - (sol % 30)) % 30 // gerçek azimutu 30'un katı olan ilk s
+    const gx = (sx) => x0 + (sx / 360) * (x1 - x0)
     const gy = (alt) => y1 - ((alt - ek.min) / (ek.max - ek.min)) * (y1 - y0)
     const yKirp = (y) => Math.max(y0 - 2, Math.min(y1 + 2, y))
 
@@ -170,8 +180,8 @@ export default function GokyuzuGorunumu({
     ctx.strokeStyle = R.cizgi
     ctx.lineWidth = 1
     ctx.beginPath()
-    for (let az = 0; az <= 360; az += 30) {
-      const x = Math.round(gx(az)) + 0.5
+    for (let sx = ilkIzgara; sx <= 360; sx += 30) {
+      const x = Math.round(gx(sx)) + 0.5
       ctx.moveTo(x, y0)
       ctx.lineTo(x, y1)
     }
@@ -188,7 +198,7 @@ export default function GokyuzuGorunumu({
     if (hz && hz.length === 360) {
       ctx.beginPath()
       ctx.moveTo(x0, y1 + 2)
-      for (let az = 0; az <= 360; az++) ctx.lineTo(gx(az), yKirp(gy(hz[az % 360])))
+      for (let sx = 0; sx <= 360; sx++) ctx.lineTo(gx(sx), yKirp(gy(ufukOku(hz, gercek(sx)))))
       ctx.lineTo(x1, y1 + 2)
       ctx.closePath()
       ctx.fillStyle = R.yuzeyAcik
@@ -209,10 +219,10 @@ export default function GokyuzuGorunumu({
       ctx.strokeStyle = R.cizgi
       ctx.lineWidth = 1.5
       ctx.beginPath()
-      for (let az = 0; az <= 360; az++) {
-        const x = gx(az)
-        const y = yKirp(gy(hz[az % 360]))
-        az === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      for (let sx = 0; sx <= 360; sx++) {
+        const x = gx(sx)
+        const y = yKirp(gy(ufukOku(hz, gercek(sx))))
+        sx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
       }
       ctx.stroke()
 
@@ -221,25 +231,25 @@ export default function GokyuzuGorunumu({
       ctx.lineWidth = 1
       ctx.setLineDash([4, 4])
       ctx.beginPath()
-      for (let az = 0; az <= 360; az++) {
-        const x = gx(az)
-        const y = yKirp(gy(hz[az % 360] + p.epsilon))
-        az === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+      for (let sx = 0; sx <= 360; sx++) {
+        const x = gx(sx)
+        const y = yKirp(gy(ufukOku(hz, gercek(sx)) + p.epsilon))
+        sx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
       }
       ctx.stroke()
       ctx.setLineDash([])
     }
 
     // 9. İzler
-    izCiz(ctx, p.sunTrail, R.gunes, gx, gy)
-    izCiz(ctx, p.earthTrail, R.iletisim, gx, gy)
+    const izEkr = (iz) => (iz ? iz.map(([a, h]) => [ekr(a), h]) : iz)
+    izCiz(ctx, izEkr(p.sunTrail), R.gunes, gx, gy)
+    izCiz(ctx, izEkr(p.earthTrail), R.iletisim, gx, gy)
 
     // Fare: dikey kılavuz
     const fare = fareRef.current
     let fareAz = null
     if (fare && fare.x >= x0 && fare.x <= x1 && fare.y >= y0 && fare.y <= y1) {
-      fareAz = mod360(((fare.x - x0) / (x1 - x0)) * 360)
-      if (fare.x >= x1) fareAz = 360
+      fareAz = gercek(((fare.x - x0) / (x1 - x0)) * 360)
       ctx.strokeStyle = saydam(R.metin, 0.18)
       ctx.lineWidth = 1
       ctx.beginPath()
@@ -249,19 +259,20 @@ export default function GokyuzuGorunumu({
     }
 
     // 6–7. Cisimler
+    // Önce Güneş, sonra Dünya: Ay'dan bakınca Dünya önde durur
     if (konum && hz && hz.length === 360) {
-      const dunyaGorunur = konum.earthAlt > ufukOku(hz, konum.earthAz) + p.epsilon
-      cisimCiz(ctx, konum.earthAz, konum.earthAlt, DUNYA_R, R.iletisim, dunyaGorunur ? 1 : SOLUK, false, gx, gy)
       const gunesGorunur = konum.sunAlt + GUNES_YARICAP > ufukOku(hz, konum.sunAz)
-      cisimCiz(ctx, konum.sunAz, konum.sunAlt, GUNES_R, R.gunes, gunesGorunur ? 1 : SOLUK, true, gx, gy)
+      cisimCiz(ctx, ekr(konum.sunAz), konum.sunAlt, GUNES_R, R.gunes, gunesGorunur ? 1 : SOLUK, true, gx, gy)
+      const dunyaGorunur = konum.earthAlt > ufukOku(hz, konum.earthAz) + p.epsilon
+      cisimCiz(ctx, ekr(konum.earthAz), konum.earthAlt, DUNYA_R, R.iletisim, dunyaGorunur ? 1 : SOLUK, false, gx, gy)
     }
 
     ctx.restore() // kırpma bitti
 
     // 8. Eksen dışı cisimler: kenarda ok + etiket
     if (konum) {
-      tasmaCiz(ctx, konum.earthAz, konum.earthAlt, R.iletisim, ek, gx, y0, y1, x0, x1)
-      tasmaCiz(ctx, konum.sunAz, konum.sunAlt, R.gunes, ek, gx, y0, y1, x0, x1)
+      tasmaCiz(ctx, ekr(konum.sunAz), konum.sunAlt, R.gunes, ek, gx, y0, y1, x0, x1)
+      tasmaCiz(ctx, ekr(konum.earthAz), konum.earthAlt, R.iletisim, ek, gx, y0, y1, x0, x1)
     }
 
     // Çerçeve
@@ -279,17 +290,18 @@ export default function GokyuzuGorunumu({
     }
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
-    const yonler = { 0: 'K', 90: 'D', 180: 'G', 270: 'B', 360: 'K' }
-    for (let az = 0; az <= 360; az += 30) {
+    const yonler = { 0: 'K', 90: 'D', 180: 'G', 270: 'B' }
+    for (let sx = ilkIzgara; sx <= 360; sx += 30) {
+      const az = Math.round(gercek(sx)) % 360
       const yon = yonler[az]
       if (yon) {
         ctx.font = '500 11px Inter, ui-sans-serif, system-ui, sans-serif'
         ctx.fillStyle = R.metin
-        ctx.fillText(yon, gx(az), y1 + 7)
+        ctx.fillText(yon, gx(sx), y1 + 7)
       } else {
         ctx.font = YAZI_KUCUK
         ctx.fillStyle = saydam(R.metinSolgun, 0.7)
-        ctx.fillText(`${az}°`, gx(az), y1 + 8)
+        ctx.fillText(`${az}°`, gx(sx), y1 + 8)
       }
     }
 
@@ -303,7 +315,7 @@ export default function GokyuzuGorunumu({
     if (fareAz !== null && hz && hz.length === 360) {
       const H = ufukOku(hz, fareAz)
       const Hy = Math.round(H * 10) / 10 // "−0.0°" çıkmasın
-      const metin = `Az ${fareAz.toFixed(0)}° · ufuk ${Hy >= 0 ? '+' : '−'}${Math.abs(Hy).toFixed(1)}°`
+      const metin = `Az ${Math.round(fareAz) % 360}° · ufuk ${Hy >= 0 ? '+' : '−'}${Math.abs(Hy).toFixed(1)}°`
       ctx.font = YAZI
       const gen = ctx.measureText(metin).width + 14
       const hy = gy(H)
@@ -357,7 +369,7 @@ export default function GokyuzuGorunumu({
     const g = gecisRef.current
     if (g) gecisRef.current = { bas: g.hedef, hedef: g.hedef, baslangic: -Infinity }
     cizIsteRef.current()
-  }, [horizon, kutup, gorunum])
+  }, [horizon, kutup, gorunum, merkezAz])
 
   // Diğer görsel girdiler değişince yeniden çiz
   useEffect(() => {
@@ -703,11 +715,12 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
   }
 
   // Cisimler: ufkun üstündeyse içeride, altındaysa kenarın hemen dışında
+  // Önce Güneş, sonra Dünya: Ay'dan bakınca Dünya önde durur
   if (konum && hz) {
-    const dunyaGorunur = konum.earthAlt > ufukOku(hz, konum.earthAz) + p.epsilon
-    kubbeCisim(ctx, g, konum.earthAz, konum.earthAlt, DUNYA_R, R.iletisim, dunyaGorunur ? 1 : SOLUK, false)
     const gunesGorunur = konum.sunAlt + GUNES_YARICAP > ufukOku(hz, konum.sunAz)
     kubbeCisim(ctx, g, konum.sunAz, konum.sunAlt, GUNES_R, R.gunes, gunesGorunur ? 1 : SOLUK, true)
+    const dunyaGorunur = konum.earthAlt > ufukOku(hz, konum.earthAz) + p.epsilon
+    kubbeCisim(ctx, g, konum.earthAz, konum.earthAlt, DUNYA_R, R.iletisim, dunyaGorunur ? 1 : SOLUK, false)
   }
 
   // Lejant ve yaklaşık uyarısı panoramadaki yerlerinde

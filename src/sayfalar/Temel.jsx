@@ -68,6 +68,7 @@ export default function Temel() {
                 earthTrail={earthTrail}
                 yaklasik={anlik.yaklasik}
                 gorunum="otomatik"
+                merkezAz={anlik.merkezAz}
               />
             ) : (
               <p className="self-center justify-self-center text-metin-solgun">Yükleniyor…</p>

@@ -7,15 +7,21 @@ import { saatBicimle } from '../core/hesap.js'
 import { useDurum, useGeriSayim } from '../durum/store.js'
 
 const KRITIK_SAAT = 24
-const UYARI = 'rgba(239, 68, 68, 1)'
 const NORMAL = 'rgba(230, 237, 247, 1)'
+// 24 saatin altında: batışlar uyarı, doğuşlar kendi vurgu rengiyle
+const YAKIN_RENK = {
+  gunBatimi: 'rgba(239, 68, 68, 1)', // --uyari
+  dunyaBatisi: 'rgba(239, 68, 68, 1)', // --uyari
+  gunDogumu: 'rgba(245, 165, 36, 1)', // --gunes
+  dunyaDogusu: 'rgba(34, 211, 238, 1)', // --iletisim
+}
 
 /**
  * Süre değişince sayı zıplamaz, kısa sürede akar (elle atlamalarda).
  * Oynatırken adımlar zaten saniyede 30 kez gelir; ara değer eklemek sayıyı
  * gerçeğin gerisinde bırakır, bu yüzden doğrudan yazılır.
  */
-function AkanSure({ saat }) {
+function AkanSure({ saat, tur }) {
   const oynatiliyor = useDurum((s) => s.oynatiliyor)
   const deger = useMotionValue(saat)
   const metin = useTransform(deger, (v) => saatBicimle(Math.max(0, Math.round(v))))
@@ -31,7 +37,7 @@ function AkanSure({ saat }) {
     <motion.span
       className="tabular-nums font-normal"
       initial={false}
-      animate={{ color: saat < KRITIK_SAAT ? UYARI : NORMAL }}
+      animate={{ color: saat < KRITIK_SAAT ? YAKIN_RENK[tur] : NORMAL }}
       transition={{ duration: 0.3 }}
     >
       {metin}
@@ -62,7 +68,7 @@ function Satir({ simge, simgeEtiket, tur, onEk, saat, yoksa }) {
             <span className="text-metin-solgun">{yoksa}</span>
           ) : (
             <>
-              {onEk} <AkanSure saat={saat} />
+              {onEk} <AkanSure saat={saat} tur={tur} />
             </>
           )}
         </motion.p>

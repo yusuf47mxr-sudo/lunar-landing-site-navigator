@@ -14,7 +14,7 @@ import {
   efemerisYukle,
 } from '../core/veri.js'
 import { ozelNoktaOlustur } from '../core/ozelNokta.js'
-import { geriSayim, guc, gunesOrani, iletisimDurumu, olcutler } from '../core/hesap.js'
+import { geriSayim, guc, gunesOrani, iletisimDurumu, olcutler, panoramaMerkezi } from '../core/hesap.js'
 import { KUTUP_SINIRI } from '../core/sabitler.js'
 
 export const MODLAR = ['temel', 'orta', 'ileri']
@@ -233,12 +233,15 @@ export function useAnlikDurum() {
     useShallow((s) => ({ t: s.t, hm: s.hm, epsilon: s.epsilon })),
   )
   const { alan, yukleniyor, hata } = useSeciliAlanVerisi()
+  // Alan başına bir kez; zaman ilerleyince yeniden hesaplanmaz
+  const merkezAz = useMemo(() => (alan ? panoramaMerkezi(alan.earth_az, alan.earth_alt) : 0), [alan])
 
   return useMemo(() => {
     if (!alan) {
       return {
         alan: null, yukleniyor, hata, t: 0, zaman: null, horizon: null, epsilon,
         sunAlt: null, sunAz: null, earthAlt: null, earthAz: null, kutup: false, yaklasik: false,
+        merkezAz,
       }
     }
     const i = Math.min(Math.max(0, Math.round(t)), alan.n - 1)
@@ -256,8 +259,9 @@ export function useAnlikDurum() {
       earthAz: alan.earth_az[i],
       kutup: Math.abs(alan.lat) >= KUTUP_SINIRI,
       yaklasik: alan.yaklasik === true,
+      merkezAz, // panorama merkezi (Dünya'nın ortalama azimutu, 30°'ye yuvarlı)
     }
-  }, [alan, yukleniyor, hata, t, hm, epsilon])
+  }, [alan, yukleniyor, hata, t, hm, epsilon, merkezAz])
 }
 
 // --- Ölçüt kancası ---------------------------------------------------------
