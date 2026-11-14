@@ -60,6 +60,13 @@ body {
 .kaydirici:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.45); }
 .kaydirici:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.45); }
 
+/* İnce kaydırıcı (ParametrePaneli.jsx): aynı görünüm, parametreler için küçük */
+.kaydirici-ince { height: 4px; }
+.kaydirici-ince::-webkit-slider-thumb { width: 14px; height: 14px; border-width: 3px; box-shadow: none; }
+.kaydirici-ince::-moz-range-thumb { width: 8px; height: 8px; border-width: 3px; box-shadow: none; }
+.kaydirici-ince:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.45); }
+.kaydirici-ince:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.45); }
+
 /* --- Yatay kart şeridi (AlanListesi.jsx) --------------------------------- */
 .ince-kaydirma { scrollbar-width: thin; scrollbar-color: var(--cizgi) transparent; }
 .ince-kaydirma::-webkit-scrollbar { height: 6px; width: 6px; }

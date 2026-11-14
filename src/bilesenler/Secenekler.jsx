@@ -24,7 +24,7 @@ export default function Secenekler({ secenekler, deger, onSec, etiket, esnek = f
             type="button"
             aria-pressed={secili}
             onClick={() => onSec(s.deger)}
-            className={`rounded-md tracking-wide tabular-nums transition-colors duration-200
+            className={`whitespace-nowrap rounded-md tracking-wide tabular-nums transition-colors duration-200
               focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60
               ${esnek ? 'flex-1' : ''} ${kucuk ? 'px-2.5 py-1 text-xs' : 'px-3 py-1.5 text-sm'}
               ${secili ? 'bg-yuzey-acik text-metin ring-1 ring-inset ring-gunes/70' : 'text-metin-solgun hover:text-metin'}`}
