@@ -1,6 +1,6 @@
 import Temel from './sayfalar/Temel.jsx'
 
-// Şimdilik sadece Temel (geçici gökyüzü test sayfası). Mod geçişi Adım 5+'da.
+// Şimdilik doğrudan Temel sayfa. Giriş ekranı ve mod geçişi Adım 12'de.
 export default function App() {
   return <Temel />
 }

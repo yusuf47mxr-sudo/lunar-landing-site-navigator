@@ -23,3 +23,48 @@ html, body, #root {
 body {
   font-feature-settings: 'tnum' 1; /* sayılar tabular */
 }
+
+/* --- Zaman kaydırıcısı (ZamanKaydirici.jsx) ------------------------------ */
+.kaydirici {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--gunes) 0 var(--dolu, 0%),
+    var(--cizgi) var(--dolu, 0%) 100%
+  );
+  cursor: pointer;
+  outline: none;
+}
+.kaydirici:disabled { opacity: 0.4; cursor: default; }
+.kaydirici::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--metin);
+  border: 4px solid var(--gunes);
+  box-shadow: 0 0 0 5px rgba(245, 165, 36, 0.15);
+}
+.kaydirici::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--metin);
+  border: 4px solid var(--gunes);
+  box-shadow: 0 0 0 5px rgba(245, 165, 36, 0.15);
+}
+.kaydirici:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.45); }
+.kaydirici:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 5px rgba(34, 211, 238, 0.45); }
+
+/* --- Yatay kart şeridi (AlanListesi.jsx) --------------------------------- */
+.ince-kaydirma { scrollbar-width: thin; scrollbar-color: var(--cizgi) transparent; }
+.ince-kaydirma::-webkit-scrollbar { height: 6px; }
+.ince-kaydirma::-webkit-scrollbar-thumb { background: var(--cizgi); border-radius: 9999px; }
+.kenar-solma {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);
+}

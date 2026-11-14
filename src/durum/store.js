@@ -5,7 +5,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { create } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
-import { alanOnbellekte, alanYukle, efemerisOnbellekte, efemerisYukle } from '../core/veri.js'
+import {
+  alanOnbellekte,
+  alanYukle,
+  bolgeleriYukle,
+  bolgelerOnbellekte,
+  efemerisOnbellekte,
+  efemerisYukle,
+} from '../core/veri.js'
 import { ozelNoktaOlustur } from '../core/ozelNokta.js'
 import { geriSayim, guc, gunesOrani, iletisimDurumu, olcutler } from '../core/hesap.js'
 import { KUTUP_SINIRI } from '../core/sabitler.js'
@@ -108,6 +115,16 @@ function useYuklenen(anahtar, yukle, onbellekte) {
   return { veri, hata, yukleniyor: anahtar !== null && !veri && !hata }
 }
 
+/** bolgeler.json: bütün alanların listesi. */
+export function useBolgeler() {
+  const { veri, hata, yukleniyor } = useYuklenen(
+    'bolgeler',
+    () => bolgeleriYukle(),
+    () => bolgelerOnbellekte(),
+  )
+  return { bolgeler: veri, hata, yukleniyor }
+}
+
 /** Listedeki bir alanın verisini yükler (site null ise boş döner). */
 export function useAlanVerisi(site) {
   const { veri, hata, yukleniyor } = useYuklenen(site, alanYukle, alanOnbellekte)
@@ -149,6 +166,59 @@ export function useSeciliAlanVerisi() {
 
   if (!ozel) return liste
   return { alan: ozelSonuc.alan, hata: efHata ?? ozelSonuc.hata, yukleniyor: efYukleniyor }
+}
+
+// --- f(t) ve c(t) önbelleği -------------------------------------------------
+// Birden çok bileşen aynı alan + ufuk + epsilon için f ve c ister; dizi
+// başına bir kez hesaplanır. Anahtar alan nesnesi (özel noktalar dahil her
+// alan ayrı nesnedir), sonra ufuk dizisi, sonra epsilon.
+
+const goruOnbellek = new WeakMap() // alan → Map(horizon → { f, c: Map(eps → c) })
+
+function goruKaydi(alan, horizon) {
+  let m = goruOnbellek.get(alan)
+  if (!m) goruOnbellek.set(alan, (m = new Map()))
+  let k = m.get(horizon)
+  if (!k) m.set(horizon, (k = { f: null, c: new Map() }))
+  return k
+}
+
+/** Güneş diskinin görünen oranı f(t), önbellekli. */
+export function fDizisi(alan, horizon) {
+  const k = goruKaydi(alan, horizon)
+  if (!k.f) k.f = gunesOrani(alan.sun_alt, alan.sun_az, horizon)
+  return k.f
+}
+
+/** İletişim durumu c(t), önbellekli. */
+export function cDizisi(alan, horizon, epsilon) {
+  const k = goruKaydi(alan, horizon)
+  if (!k.c.has(epsilon)) k.c.set(epsilon, iletisimDurumu(alan.earth_alt, alan.earth_az, horizon, epsilon))
+  return k.c.get(epsilon)
+}
+
+/** Seçili alan için f ve c dizileri (hm ve epsilon depodan). */
+export function useGorunurluk() {
+  const { hm, epsilon } = useDurum(useShallow((s) => ({ hm: s.hm, epsilon: s.epsilon })))
+  const { alan, yukleniyor, hata } = useSeciliAlanVerisi()
+  const horizon = alan?.horizon[String(hm)] ?? null
+  const f = useMemo(() => (alan && horizon ? fDizisi(alan, horizon) : null), [alan, horizon])
+  const c = useMemo(
+    () => (alan && horizon ? cDizisi(alan, horizon, epsilon) : null),
+    [alan, horizon, epsilon],
+  )
+  return { alan, horizon, f, c, yukleniyor, hata }
+}
+
+/** t anından ileriye geri sayım (hesap.js geriSayim); veri yoksa null. */
+export function useGeriSayim() {
+  const t = useDurum((s) => s.t)
+  const { alan, f, c } = useGorunurluk()
+  return useMemo(() => {
+    if (!alan || !f || !c) return null
+    const i = Math.min(Math.max(0, Math.round(t)), f.length - 1)
+    return geriSayim(f, c, i, alan.dt_hours)
+  }, [alan, f, c, t])
 }
 
 // --- Anlık durum kancası -------------------------------------------------
@@ -219,12 +289,9 @@ export function useOlcutler() {
   const horizon = alan?.horizon[String(p.hm)] ?? null
   const dt = alan?.dt_hours ?? 1
 
-  const f = useMemo(
-    () => (alan && horizon ? gunesOrani(alan.sun_alt, alan.sun_az, horizon) : null),
-    [alan, horizon],
-  )
+  const f = useMemo(() => (alan && horizon ? fDizisi(alan, horizon) : null), [alan, horizon])
   const c = useMemo(
-    () => (alan && horizon ? iletisimDurumu(alan.earth_alt, alan.earth_az, horizon, p.epsilon) : null),
+    () => (alan && horizon ? cDizisi(alan, horizon, p.epsilon) : null),
     [alan, horizon, p.epsilon],
   )
   const P = useMemo(
