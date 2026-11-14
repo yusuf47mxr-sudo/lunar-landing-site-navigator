@@ -266,9 +266,13 @@ export default function GokyuzuGorunumu({
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
     const yonler = { 0: 'K', 90: 'D', 180: 'G', 270: 'B' }
+    // Dar görünümde (karşılaştırma sütunları) derece etiketleri üst üste biner:
+    // yalnızca yön harfleri yazılır
+    const dereceSigar = (x1 - x0) / 12 >= 30
     for (let sx = ilkIzgara; sx <= 360; sx += 30) {
       const az = Math.round(gercek(sx)) % 360
       const yon = yonler[az]
+      if (!yon && !dereceSigar) continue
       if (yon) {
         ctx.font = '500 11px Inter, ui-sans-serif, system-ui, sans-serif'
         ctx.fillStyle = R.metin
@@ -736,7 +740,16 @@ function kubbeDisIsaret(ctx, g, az, alt, renk) {
   ctx.textAlign = sag ? 'left' : 'right'
   // Doğu/Batı yakınında etiket "D"/"B" harfinin üstüne binmesin: harfin ötesine kaydır
   const harfPayi = Math.abs(Math.sin(az * DERECE)) > 0.97 ? 16 : 0
-  ctx.fillText(isaretli1(Math.round(alt * 10) / 10), x + (sag ? 1 : -1) * (KUBBE_DIS_R + 4 + harfPayi), y + 0.5)
+  const metin = isaretli1(Math.round(alt * 10) / 10)
+  const tx = x + (sag ? 1 : -1) * (KUBBE_DIS_R + 4 + harfPayi)
+  const gen = ctx.measureText(metin).width
+  if (sag ? tx + gen > g.cx * 2 - 2 : tx - gen < 2) {
+    // Dar tuvalde yana sığmıyor: işaretin altına (kubbenin alt yarısında üstüne) yaz
+    ctx.textAlign = 'center'
+    ctx.fillText(metin, x, y + (y >= g.cy ? -1 : 1) * (KUBBE_DIS_R + 8))
+    return
+  }
+  ctx.fillText(metin, tx, y + 0.5)
 }
 
 /**

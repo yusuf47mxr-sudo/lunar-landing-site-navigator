@@ -5,28 +5,19 @@
 // Zaman kaydırıcısı altta yapışıktır ve akışın içindedir: sayfanın sonunda kendi
 // yüksekliği kadar yer tutar, en alttaki içerik onun arkasında kalmaz.
 
-import { useState } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import AlanListesi from '../bilesenler/AlanListesi.jsx'
 import DurumGostergesi from '../bilesenler/DurumGostergesi.jsx'
 import IsiHaritasi from '../bilesenler/IsiHaritasi.jsx'
 import GokyuzuKutusu from '../bilesenler/GokyuzuKutusu.jsx'
-import { kubbeMi } from '../bilesenler/GokyuzuGorunumu.jsx'
 import Karsilastirma from '../bilesenler/Karsilastirma.jsx'
 import KutupHaritasi from '../bilesenler/KutupHaritasi.jsx'
 import ModDegistirici from '../bilesenler/ModDegistirici.jsx'
 import OzelKoordinat from '../bilesenler/OzelKoordinat.jsx'
 import ParametrePaneli from '../bilesenler/ParametrePaneli.jsx'
 import SayisalOzet from '../bilesenler/SayisalOzet.jsx'
-import Secenekler from '../bilesenler/Secenekler.jsx'
-import ZamanCizelgesi from '../bilesenler/ZamanCizelgesi.jsx'
+import ZamanCizelgesiKutusu from '../bilesenler/ZamanCizelgesiKutusu.jsx'
 import ZamanKaydirici from '../bilesenler/ZamanKaydirici.jsx'
-import { useAnlikDurum, useBolgeler, useDurum, useEnUzunAraliklar, useGorunurluk } from '../durum/store.js'
-
-const GORUNUM_SECENEKLERI = [
-  { deger: 'panorama', etiket: 'Panorama' },
-  { deger: 'kubbe', etiket: 'Kubbe' },
-]
+import { useBolgeler, useSeciliAlanVerisi } from '../durum/store.js'
 
 const BASLIK = 'text-[11px] uppercase tracking-[0.18em] text-metin-solgun'
 
@@ -40,20 +31,9 @@ function Kutu({ baslik, children, className = '' }) {
 }
 
 export default function Orta() {
-  const anlik = useAnlikDurum()
-  const { alan, f, c } = useGorunurluk()
-  const araliklar = useEnUzunAraliklar()
+  const { alan } = useSeciliAlanVerisi()
   const { bolgeler } = useBolgeler()
-  const { t, tL, D, tAyarla } = useDurum(
-    useShallow((s) => ({ t: s.t, tL: s.tL, D: s.D, tAyarla: s.tAyarla })),
-  )
   const kayit = alan && bolgeler ? bolgeler.find((b) => b.site === alan.site) : null
-
-  // Görünüm kipi: varsayılan otomatik (kutup → panorama, değilse kubbe).
-  // Elle seçim, kutup ↔ kutup dışı geçişinde geçersiz kalır ve otomatiğe döner.
-  const [secim, setSecim] = useState(null) // { kutup, gorunum } veya null
-  const gorunum = secim && secim.kutup === anlik.kutup ? secim.gorunum : 'otomatik'
-  const gosterilen = kubbeMi(gorunum, anlik.kutup) ? 'kubbe' : 'panorama'
 
   return (
     <div className="min-h-screen bg-zemin text-metin">
@@ -96,35 +76,11 @@ export default function Orta() {
             <DurumGostergesi kip="sayisal" />
 
             <section aria-label="Gökyüzü">
-              <div className="mb-2 flex items-center justify-between gap-4">
-                <h2 className={BASLIK}>Gökyüzü</h2>
-                <Secenekler
-                  secenekler={GORUNUM_SECENEKLERI}
-                  deger={gosterilen}
-                  onSec={(g) => setSecim({ kutup: anlik.kutup, gorunum: g })}
-                  etiket="Gökyüzü görünümü"
-                  kucuk
-                />
-              </div>
-              <GokyuzuKutusu gorunum={gorunum} className="h-[340px]" />
+              <GokyuzuKutusu gecisli className="h-[340px]" />
             </section>
 
             <Kutu baslik="Zaman çizelgesi">
-              {alan && f && c ? (
-                <ZamanCizelgesi
-                  f={f}
-                  c={c}
-                  t0={alan.t0}
-                  dtHours={alan.dt_hours}
-                  tSecili={t}
-                  tL={tL}
-                  D={D}
-                  araliklar={araliklar}
-                  onZamanSec={tAyarla}
-                />
-              ) : (
-                <p className="text-sm text-metin-solgun">Yükleniyor…</p>
-              )}
+              <ZamanCizelgesiKutusu />
             </Kutu>
           </div>
         </div>

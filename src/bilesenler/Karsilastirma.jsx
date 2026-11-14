@@ -216,7 +216,8 @@ const SutunAni = memo(function SutunAni({ alan, horizon, f, c, epsilon, kayma })
               <span aria-hidden="true" className="mr-1.5">
                 {k === 0 ? '☀' : '📡'}
               </span>
-              {s.onEk}
+              {/* Geçiş yoksa değer uzun bir cümledir; dar sütunda etiket kısalır */}
+              {s.saat === null ? (k === 0 ? 'Güneş' : 'Dünya') : s.onEk}
             </dt>
             <dd className="shrink-0 whitespace-nowrap text-right text-metin">
               {s.saat === null ? <span className="text-metin-solgun">{s.yoksa}</span> : <AkanSure saat={s.saat} tur={s.tur} />}
