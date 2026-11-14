@@ -1,6 +1,8 @@
 // Özel koordinat girişi — listede olmayan bir noktayı gösterir.
 // Enlem −90…90; boylam hem 0…360 hem −180…180 kabul edilir ve depoya
 // [0, 360) olarak yazılır. Sonuç yaklaşık veridir (CLAUDE.md bölüm 5.8).
+// Girişler yalnızca özel nokta seçiliyken doludur ve yazıldığı biçimde kalır;
+// listeden bir alan seçilince boşalır.
 
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -25,6 +27,17 @@ export function koordinatCoz(enlemMetin, boylamMetin) {
   return { lat: enlemHata ? null : lat, lon, enlemHata, boylamHata }
 }
 
+// Kullanıcının son gönderdiği metin. Mod değişip bileşen yeniden kurulunca
+// girişler depodaki [0, 360) değerine değil, yazıldığı biçime dönsün diye.
+let sonYazilan = null // { enlem, boylam, lat, lon }
+
+/** Bileşen kurulurken girişlerin metni: özel nokta yoksa boş. */
+function baslangicMetni(ozelNokta) {
+  if (!ozelNokta) return { enlem: '', boylam: '' }
+  if (sonYazilan && sonYazilan.lat === ozelNokta.lat && sonYazilan.lon === ozelNokta.lon) return sonYazilan
+  return { enlem: String(ozelNokta.lat), boylam: String(ozelNokta.lon) }
+}
+
 function Giris({ etiket, deger, onDegis, hata, ipucu, kimlik }) {
   return (
     <label className="block min-w-0 flex-1">
@@ -47,29 +60,40 @@ function Giris({ etiket, deger, onDegis, hata, ipucu, kimlik }) {
 }
 
 export default function OzelKoordinat({ className = '' }) {
-  const { ozelNokta, ozelNoktaSec } = useDurum(
-    useShallow((s) => ({ ozelNokta: s.ozelNokta, ozelNoktaSec: s.ozelNoktaSec })),
+  const { ozelNokta, seciliAlan, ozelNoktaSec } = useDurum(
+    useShallow((s) => ({ ozelNokta: s.ozelNokta, seciliAlan: s.seciliAlan, ozelNoktaSec: s.ozelNoktaSec })),
   )
-  const [enlem, setEnlem] = useState(ozelNokta ? String(ozelNokta.lat) : '')
-  const [boylam, setBoylam] = useState(ozelNokta ? String(ozelNokta.lon) : '')
+  const [enlem, setEnlem] = useState(() => baslangicMetni(ozelNokta).enlem)
+  const [boylam, setBoylam] = useState(() => baslangicMetni(ozelNokta).boylam)
   const [hata, setHata] = useState({ enlem: null, boylam: null })
 
-  // Özel nokta başka yerden (haritadan) seçilirse girişler onu göstersin.
-  // Kullanıcının kendi yazdığı (ör. −156.5 → 203.5) yeniden yazılmaz.
+  // Girişler depoyu izler:
+  //  - Listeden bir alan seçilince (ozelNokta yok) girişler boşalır; eski
+  //    özel noktanın metni başka bir alanın koordinatı gibi görünmesin.
+  //  - Özel nokta başka yerden (haritadan) seçilirse girişler onu gösterir.
+  //  - Kullanıcının kendi yazdığı (ör. −156.5 → depoda 203.5) yeniden yazılmaz.
   useEffect(() => {
-    if (!ozelNokta) return
+    if (!ozelNokta) {
+      sonYazilan = null
+      setEnlem('')
+      setBoylam('')
+      setHata({ enlem: null, boylam: null })
+      return
+    }
     const simdiki = koordinatCoz(enlem, boylam)
     if (simdiki.lat === ozelNokta.lat && simdiki.lon === ozelNokta.lon) return
     setEnlem(String(ozelNokta.lat))
     setBoylam(String(ozelNokta.lon))
     setHata({ enlem: null, boylam: null })
-  }, [ozelNokta]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ozelNokta, seciliAlan]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const goster = (e) => {
     e.preventDefault()
     const c = koordinatCoz(enlem, boylam)
     setHata({ enlem: c.enlemHata, boylam: c.boylamHata })
-    if (!c.enlemHata && !c.boylamHata) ozelNoktaSec({ lat: c.lat, lon: c.lon })
+    if (c.enlemHata || c.boylamHata) return
+    sonYazilan = { enlem, boylam, lat: c.lat, lon: c.lon }
+    ozelNoktaSec({ lat: c.lat, lon: c.lon })
   }
 
   return (
