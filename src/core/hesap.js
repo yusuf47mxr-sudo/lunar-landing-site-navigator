@@ -124,38 +124,23 @@ export function geriSayim(f, c, t, dt = 1) {
  *          Aralık veri sonunu aşarsa null. tauMax/sigmaMax saat, E Wh.
  */
 export function olcutler(f, c, P, tL, D, dt, w1 = 1, w2 = 1, w3 = 1) {
-  const adim = Math.round((D * 24) / dt)
-  const son = tL + adim
-  if (tL < 0 || adim <= 0 || son > f.length) return null
+  const aralik = gorevAraligi(f.length, tL, D, dt)
+  if (!aralik) return null
+  const { adim, son } = aralik
 
   let fTop = 0
   let cTop = 0
   let pTop = 0
-  let tauKosu = 0
-  let tauMax = 0
-  let sigmaKosu = 0
-  let sigmaMax = 0
-
   for (let k = tL; k < son; k++) {
-    const fk = f[k]
-    const ck = c[k]
-    fTop += fk
-    cTop += ck
+    fTop += f[k]
+    cTop += c[k]
     if (P) pTop += P[k]
-
-    if (fk === 0) {
-      if (++tauKosu > tauMax) tauMax = tauKosu
-    } else tauKosu = 0
-
-    if (ck === 0) {
-      if (++sigmaKosu > sigmaMax) sigmaMax = sigmaKosu
-    } else sigmaKosu = 0
   }
 
   const fBar = fTop / adim
   const cBar = cTop / adim
-  tauMax *= dt
-  sigmaMax *= dt
+  const tauMax = enUzunSifir(f, tL, son).adim * dt
+  const sigmaMax = enUzunSifir(c, tL, son).adim * dt
   return {
     fBar,
     cBar,
@@ -163,6 +148,53 @@ export function olcutler(f, c, P, tL, D, dt, w1 = 1, w2 = 1, w3 = 1) {
     sigmaMax,
     E: P ? pTop * dt : null,
     puan: w1 * fBar + w2 * cBar - w3 * (tauMax / (D * 24)),
+  }
+}
+
+/** Görev aralığı [tL, son): adım sayısı ve bitiş indeksi; veri dışına taşarsa null. */
+function gorevAraligi(n, tL, D, dt) {
+  const adim = Math.round((D * 24) / dt)
+  const son = tL + adim
+  if (tL < 0 || adim <= 0 || son > n) return null
+  return { adim, son }
+}
+
+/**
+ * [bas, son) içinde dizi[k] === 0 olan en uzun ardışık dizi.
+ * Eşit uzunlukta birden çok dizi varsa ilki. Hiç yoksa { bas: null, adim: 0 }.
+ * olcutler() (tauMax, sigmaMax) ve enUzunAraliklar() bunu ortak kullanır.
+ */
+function enUzunSifir(dizi, bas, son) {
+  let kosuBas = 0
+  let kosu = 0
+  let enBas = null
+  let enAdim = 0
+  for (let k = bas; k < son; k++) {
+    if (dizi[k] === 0) {
+      if (kosu === 0) kosuBas = k
+      if (++kosu > enAdim) {
+        enAdim = kosu
+        enBas = kosuBas
+      }
+    } else kosu = 0
+  }
+  return { bas: enBas, adim: enAdim }
+}
+
+/**
+ * Görev aralığında en uzun karanlık (f == 0) ve en uzun iletişim kesintisi
+ * (c == 0). bas: dizideki başlangıç indeksi (yoksa null), uzunluk: saat.
+ * Uzunluklar olcutler().tauMax / sigmaMax ile aynıdır.
+ * @returns {null | {karanlik: {bas, uzunluk}, kesinti: {bas, uzunluk}}}
+ */
+export function enUzunAraliklar(f, c, tL, D, dtHours) {
+  const aralik = gorevAraligi(f.length, tL, D, dtHours)
+  if (!aralik) return null
+  const k = enUzunSifir(f, tL, aralik.son)
+  const s = enUzunSifir(c, tL, aralik.son)
+  return {
+    karanlik: { bas: k.bas, uzunluk: k.adim * dtHours },
+    kesinti: { bas: s.bas, uzunluk: s.adim * dtHours },
   }
 }
 

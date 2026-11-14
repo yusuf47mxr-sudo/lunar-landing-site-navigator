@@ -6,6 +6,7 @@
 
 import { useEffect, useRef } from 'react'
 import { GUNES_YARICAP, ufukOku } from '../core/hesap.js'
+import { VARSAYILAN_RENK, YAZI, YAZI_KUCUK, renkleriOku, saydam, yuvarlakDikdortgen } from './tuval.js'
 
 const GECIS_MS = 150
 const GUNES_R = 10
@@ -15,45 +16,6 @@ const DERECE = Math.PI / 180
 
 // Kenar boşlukları (CSS pikseli): sol = yükseklik etiketleri, alt = yön etiketleri
 const KENAR = { sol: 40, sag: 10, ust: 10, alt: 26 }
-
-const VARSAYILAN_RENK = {
-  zemin: '#070B14',
-  yuzeyAcik: '#16203A',
-  cizgi: '#1F2B45',
-  metin: '#E6EDF7',
-  metinSolgun: '#8A97AC',
-  gunes: '#F5A524',
-  iletisim: '#22D3EE',
-  uyari: '#EF4444',
-}
-
-const YAZI = '400 11px Inter, ui-sans-serif, system-ui, sans-serif'
-const YAZI_KUCUK = '400 10px Inter, ui-sans-serif, system-ui, sans-serif'
-
-/** CSS değişkenlerinden paleti okur; bulunamazsa varsayılanlar. */
-function renkleriOku() {
-  if (typeof document === 'undefined') return VARSAYILAN_RENK
-  const st = getComputedStyle(document.documentElement)
-  const oku = (ad, yedek) => st.getPropertyValue(ad).trim() || yedek
-  const r = VARSAYILAN_RENK
-  return {
-    zemin: oku('--zemin', r.zemin),
-    yuzeyAcik: oku('--yuzey-acik', r.yuzeyAcik),
-    cizgi: oku('--cizgi', r.cizgi),
-    metin: oku('--metin', r.metin),
-    metinSolgun: oku('--metin-solgun', r.metinSolgun),
-    gunes: oku('--gunes', r.gunes),
-    iletisim: oku('--iletisim', r.iletisim),
-    uyari: oku('--uyari', r.uyari),
-  }
-}
-
-/** #RRGGBB → rgba(...) */
-function saydam(hex, a) {
-  const h = hex.replace('#', '')
-  const n = parseInt(h.length === 3 ? h.replace(/./g, '$&$&') : h, 16)
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`
-}
 
 const mod360 = (a) => ((a % 360) + 360) % 360
 /** a'dan b'ye en kısa döngüsel fark, (-180, 180] */
@@ -447,16 +409,6 @@ export default function GokyuzuGorunumu({
 const fmt = (v) => (Number.isFinite(v) ? `${v.toFixed(1)}°` : '—')
 
 // --- Yardımcı çizimler --------------------------------------------------------
-
-function yuvarlakDikdortgen(ctx, x, y, w, h, r) {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y, x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x, y + h, r)
-  ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y, x + w, y, r)
-  ctx.closePath()
-}
 
 /**
  * Eskiden yeniye [az, alt] noktalarını soluk ve incelen bir çizgiyle bağlar.

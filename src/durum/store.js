@@ -14,7 +14,15 @@ import {
   efemerisYukle,
 } from '../core/veri.js'
 import { ozelNoktaOlustur } from '../core/ozelNokta.js'
-import { geriSayim, guc, gunesOrani, iletisimDurumu, olcutler, panoramaMerkezi } from '../core/hesap.js'
+import {
+  enUzunAraliklar,
+  geriSayim,
+  guc,
+  gunesOrani,
+  iletisimDurumu,
+  olcutler,
+  panoramaMerkezi,
+} from '../core/hesap.js'
 import { KUTUP_SINIRI } from '../core/sabitler.js'
 
 export const MODLAR = ['temel', 'orta', 'ileri']
@@ -219,6 +227,19 @@ export function useGeriSayim() {
     const i = Math.min(Math.max(0, Math.round(t)), f.length - 1)
     return geriSayim(f, c, i, alan.dt_hours)
   }, [alan, f, c, t])
+}
+
+/**
+ * Görev aralığı [tL, tL + D) içinde en uzun karanlık ve iletişim kesintisi
+ * (hesap.js enUzunAraliklar). Aralık veri sonunu aşarsa null.
+ */
+export function useEnUzunAraliklar() {
+  const { tL, D } = useDurum(useShallow((s) => ({ tL: s.tL, D: s.D })))
+  const { alan, f, c } = useGorunurluk()
+  return useMemo(
+    () => (alan && f && c ? enUzunAraliklar(f, c, tL, D, alan.dt_hours) : null),
+    [alan, f, c, tL, D],
+  )
 }
 
 // --- Anlık durum kancası -------------------------------------------------
