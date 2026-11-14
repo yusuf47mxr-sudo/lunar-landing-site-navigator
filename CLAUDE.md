@@ -60,11 +60,12 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
 /src
   /core
     efemeris.js       altAz(): alt-noktadan yükseklik/azimut hesabı
-    hesap.js          f(t), c(t), ortalamalar, puan, geri sayım
+    hesap.js          f(t), c(t), ortalamalar, puan, geçişler ve geri sayım
+    disaAktar.js      CSV metni ve dosya adı (İleri)
     ozelNokta.js      Özel koordinat için yaklaşık veri üretimi
     veri.js           JSON yükleme ve önbellekleme
     sahteVeri.js      Test için fiziksel olarak gerçekçi veri üretimi
-    sabitler.js       Fiziksel sabitler ve varsayılan parametreler
+    sabitler.js       Fiziksel sabitler ve varsayılan parametreler (VARSAYILAN)
   /bilesenler
     GokyuzuGorunumu.jsx
     ZamanCizelgesi.jsx
@@ -76,14 +77,16 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     AyDunyaKarti.jsx
     Karsilastirma.jsx
     ZamanKaydirici.jsx
-    ParametrePaneli.jsx
+    ParametrePaneli.jsx   kapsam='gorev' (Orta) | 'tam' katlanabilir bölümler (İleri)
     AlanListesi.jsx
     OzelKoordinat.jsx     Özel koordinat girişi (yaklaşık veri)
     ModDegistirici.jsx    Temel / Orta / İleri geçişi
     Secenekler.jsx        Parçalı düğme (tek seçim)
     AkanSayi.jsx          Değişirken akan sayı
-    GokyuzuKutusu.jsx     Depoya bağlı gökyüzü görünümü + uyarı
-    SayisalOzet.jsx       Anlık ve görev aralığı sayıları
+    GokyuzuKutusu.jsx     Depoya bağlı gökyüzü görünümü + uyarı (+ Panorama/Kubbe düğmesi)
+    ZamanCizelgesiKutusu.jsx  Depoya bağlı zaman çizelgesi
+    SayisalOzet.jsx       Anlık ve görev aralığı sayıları; kip='tam' İleri özeti
+    DisaAktar.jsx         CSV indirme (İleri)
     tuval.js              Canvas bileşenlerinin ortak yardımcıları
   /sayfalar
     Giris.jsx
@@ -292,6 +295,9 @@ Görünmüyorsa:
 
 Veri aralığında geçiş yoksa: null → arayüzde "veri aralığında değişmiyor"
 ```
+
+Tarama tek yerdedir: `gecisler(dizi, t, dt) → { sonrakiBatis, sonrakiDogus }`
+(saat veya null). `geriSayim` bunu kullanır; İleri özeti dört değeri de gösterir.
 
 Sonuç saat cinsinden döner; arayüz `3 g 7 sa` biçiminde gösterir.
 
