@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "veri:uret": "node scripts/sahteVeriUret.mjs",
-    "veri:ozet": "node scripts/ozetUret.mjs"
+    "veri:ozet": "node scripts/ozetUret.mjs",
+    "veri:3b": "node scripts/ucBoyutVeriHazirla.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
@@ -17,6 +18,7 @@
     "d3-geo": "^3.1.2",
     "d3-scale": "^4.0.3",
     "framer-motion": "^14.14.0",
+    "postprocessing": "^6.39.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "three": "^0.187.0",

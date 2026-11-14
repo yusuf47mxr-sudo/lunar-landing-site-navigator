@@ -8,3 +8,6 @@ dist
 goruntu/
 .vercel
 .env*
+
+# Veri paketi arşivleri (public/veri/3b içine işlenir; arşivin kendisi depoya girmez)
+planb_veri_paketi*.zip
