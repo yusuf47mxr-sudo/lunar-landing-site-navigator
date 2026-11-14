@@ -2,35 +2,69 @@
 //
 // react-three-fiber + drei + postprocessing. Yalnız bu parça three.js içerir;
 // GokyuzuKutusu React.lazy ile 3B seçilince yükler. Katmanlar:
-//   Arazi (LOLA 10×10 km, 50 m) · never_lit örtüsü · uzak ufuk şeridi
-//   (R·tan H(az)) · Güneş (yönlü ışık + Bloom'lu disk) · Dünya · yıldızlar
-//   · pusula · kamera kipleri · tam ekran katmanı.
+//   Arazi (LOLA, r ≈ 5 km, 50 m) + etek + uzak ufuk şeridi (R·tan H(az)) + koni
+//   sacak — tek parça zemin · never_lit örtüsü · Güneş ve Dünya gök küresinde
+//   (şerit × 1.1; ufkun altında derinlik testiyle örtülür) · yıldızlar · pusula,
+//   iniş aracı ve etiketler · kamera kipleri (+ açılış uçuşu) · tam ekran katmanı.
+// Gölge haritası 4096; ilk saniyelerde fps < 40 ise sessizce 2048'e iner.
 // WebGL yoksa ya da sahne hata verirse onHata çağrılır; kutu panoramaya döner.
 //
 // Veri: public/veri/3b/<file> (yalnız seçili alan). Özel koordinatta arazi
 // verisi yoktur: düz plaka ve not.
 
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { Bloom, EffectComposer, ToneMapping } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { Component, useEffect, useMemo, useRef, useState } from 'react'
 import { PCFShadowMap } from 'three'
 import { useBolgeler } from '../../durum/store.js'
 import Secenekler from '../Secenekler.jsx'
-import Arazi, { NEVER_LIT_RENK } from './Arazi.jsx'
+import Arazi, { NEVER_LIT_RENK, zeminOlustur } from './Arazi.jsx'
 import Gok from './Gok.jsx'
 import Iskelet from './Iskelet.jsx'
-import Kamera from './Kamera.jsx'
 import EkranEtiketleri from './EkranEtiketleri.jsx'
-import Pusula, { PUSULA_YARICAP, pusulaEtiketleri } from './Pusula.jsx'
-import { ABARTILAR, KAMERA_UZAK } from './sahne.js'
+import Kamera, { FOV } from './Kamera.jsx'
+import Pusula, { PUSULA_YARICAP, sahneEtiketleri } from './Pusula.jsx'
+import { ABARTILAR, KAMERA_UZAK, UFUK_YARICAP } from './sahne.js'
 import { TamEkranKatmani, useKatmanGorunur, useTamEkran } from './TamEkran.jsx'
-import UfukSeridi from './UfukSeridi.jsx'
 import { useArazi } from './veri.js'
 
 /** Bloom yalnız bunun üstündeki parlaklığı alır: Güneş diski (ton eşlemesiz, ~8). */
 const BLOOM_ESIK = 2.0
 const KARANLIK_ESIK = 0.5
+
+/** Gölge haritası: ilk ölçümde yavaşsa 2048'e iner; sayfa oturumu boyunca hatırlanır. */
+const GOLGE_IYI = 4096
+const GOLGE_HAFIF = 2048
+const FPS_ESIK = 40
+let golgeBoyutu = GOLGE_IYI
+
+/**
+ * İlk karelerden sonra (1. ile 3. saniye arası) fps'i bir kez ölçer; eşiğin
+ * altındaysa onYavas(fps) çağırır. Arayüzde görünmez.
+ */
+function GolgeOlcer({ onYavas }) {
+  const d = useRef({ ilk: null, bas: null, kare: 0, bitti: false })
+  useFrame(() => {
+    const o = d.current
+    if (o.bitti) return
+    const simdi = performance.now()
+    if (o.ilk === null) o.ilk = simdi
+    if (simdi - o.ilk < 1000) return
+    if (o.bas === null) {
+      o.bas = simdi
+      return
+    }
+    o.kare++
+    if (simdi - o.bas >= 2000) {
+      o.bitti = true
+      const fps = (o.kare * 1000) / (simdi - o.bas)
+      if (import.meta.env.DEV) window.__golgeOlcum = { fps: Math.round(fps * 10) / 10 }
+      if (fps < FPS_ESIK) onYavas(fps)
+    }
+  })
+  return null
+}
 
 const KAMERA_SECENEKLERI = [
   { deger: 'yerden', etiket: 'Yerden' },
@@ -112,16 +146,32 @@ export default function AraziSahnesi({ anlik, f, c, aciklama, onHata }) {
     if (hata) onHata?.(hata)
   }, [hata, onHata])
 
+  const [golgeBoyut, setGolgeBoyut] = useState(golgeBoyutu)
+  const golgeOlcumu = golgeBoyutu === GOLGE_IYI // zaten düşürüldüyse yeniden ölçme
+  const yavasSa = useMemo(
+    () => () => {
+      golgeBoyutu = GOLGE_HAFIF
+      setGolgeBoyut(GOLGE_HAFIF)
+    },
+    [],
+  )
+  if (import.meta.env.DEV && typeof window !== 'undefined') window.__golgeBoyut = golgeBoyut
+
+  // Zemin modeli: arazi + etek + şerit + sacak; kamera da buna kenetlenir
+  const zemin = useMemo(() => (arazi ? zeminOlustur(arazi, abarti, horizon) : null), [arazi, abarti, horizon])
+  // Gölge kamerası: arazi + etek, ufka kadar (dışında gölge sınırı çizgisi görünmesin)
   const golgeYari = useMemo(
-    () => (arazi ? Math.hypot(arazi.yariGenislik * 1.02, ((arazi.enCok - arazi.enAz) * abarti) / 2) : 6000),
+    () => (arazi ? Math.hypot(UFUK_YARICAP, ((arazi.enCok - arazi.enAz) * abarti) / 2) : UFUK_YARICAP),
     [arazi, abarti],
   )
-  const tabanY = arazi ? (arazi.enAz - 60) * abarti : -60
   const etiketler = useMemo(
-    () => (arazi ? pusulaEtiketleri(arazi, abarti, earthAz, PUSULA_YARICAP[kip], c === 1) : []),
-    [arazi, abarti, earthAz, kip, c],
+    () =>
+      arazi
+        ? sahneEtiketleri({ arazi, abarti, r: PUSULA_YARICAP[kip], kip, earthAz, earthAlt, sunAz, sunAlt, c })
+        : [],
+    [arazi, abarti, kip, earthAz, earthAlt, sunAz, sunAlt, c],
   )
-  const spanlar = useRef({})
+  const ogeler = useRef({})
 
   const karanlik = f <= KARANLIK_ESIK
   const karanlikNot = sunAlt + 0.266 < 0 ? 'Güneş ufkun altında' : 'Güneş uzaktaki arazinin arkasında'
@@ -143,17 +193,26 @@ export default function AraziSahnesi({ anlik, f, c, aciklama, onHata }) {
           <Canvas
             shadows={{ type: PCFShadowMap }}
             dpr={[1, 2]}
-            camera={{ fov: 55, near: 0.5, far: KAMERA_UZAK, position: [0, 3200, 6500] }}
+            camera={{ fov: FOV.kus, near: 0.5, far: KAMERA_UZAK, position: [0, 30000, 4000] }}
             gl={{ antialias: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true }}
             style={{ position: 'absolute', inset: 0 }}
           >
             <color attach="background" args={['#02030a']} />
-            <Gok sunAlt={sunAlt} sunAz={sunAz} earthAlt={earthAlt} earthAz={earthAz} f={f} c={c} golgeYari={golgeYari} />
-            <Arazi arazi={arazi} abarti={abarti} />
-            <UfukSeridi horizon={horizon} tabanY={tabanY - 4000} />
-            <Pusula arazi={arazi} abarti={abarti} earthAz={earthAz} yaricap={PUSULA_YARICAP[kip]} />
-            <EkranEtiketleri noktalar={etiketler} spanlar={spanlar} />
-            <Kamera komut={komut} arazi={arazi} abarti={abarti} sunAlt={sunAlt} sunAz={sunAz} earthAlt={earthAlt} earthAz={earthAz} />
+            <Gok
+              sunAlt={sunAlt}
+              sunAz={sunAz}
+              earthAlt={earthAlt}
+              earthAz={earthAz}
+              f={f}
+              c={c}
+              golgeYari={golgeYari}
+              golgeBoyut={golgeBoyut}
+            />
+            <Arazi arazi={arazi} abarti={abarti} zemin={zemin} />
+            <Pusula arazi={arazi} abarti={abarti} yaricap={PUSULA_YARICAP[kip]} aracGorunur={kip !== 'yerden'} />
+            <EkranEtiketleri noktalar={etiketler} ogeler={ogeler} />
+            <Kamera komut={komut} zemin={zemin} sunAlt={sunAlt} sunAz={sunAz} earthAlt={earthAlt} earthAz={earthAz} />
+            {golgeOlcumu && <GolgeOlcer onYavas={yavasSa} />}
             <EffectComposer multisampling={4}>
               <Bloom luminanceThreshold={BLOOM_ESIK} luminanceSmoothing={0.3} mipmapBlur intensity={1.2} radius={0.7} />
               <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
@@ -162,20 +221,33 @@ export default function AraziSahnesi({ anlik, f, c, aciklama, onHata }) {
         </HataSiniri>
       )}
 
-      {/* Pusula etiketleri: konumları EkranEtiketleri her karede yazar */}
+      {/* Sahne etiketleri: konumları EkranEtiketleri her karede yazar */}
       {arazi && (
-        <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden" aria-hidden="true">
+        <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden" aria-hidden="true" data-etiketler="">
           {etiketler.map((e) => (
-            <span
+            <div
               key={e.id}
+              data-etiket={e.id}
               ref={(el) => {
-                if (el) spanlar.current[e.id] = el
-                else delete spanlar.current[e.id]
+                if (el) ogeler.current[e.id] = el
+                else delete ogeler.current[e.id]
               }}
-              className={`absolute left-0 top-0 whitespace-nowrap select-none opacity-0 ${e.sinif}`}
+              className={`absolute left-0 top-0 select-none whitespace-nowrap leading-tight opacity-0 ${e.sinif}`}
             >
-              {e.metin}
-            </span>
+              {e.ok ? (
+                <span className="flex items-center gap-1.5">
+                  <svg data-ok="" viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+                    <path d="M2 8h10M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span>
+                    {e.metin}
+                    {e.ikinci && <span className="block text-[10px] opacity-80">{e.ikinci}</span>}
+                  </span>
+                </span>
+              ) : (
+                e.metin
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -202,8 +274,13 @@ export default function AraziSahnesi({ anlik, f, c, aciklama, onHata }) {
         <BuyutSimgesi acik={tamEkran} />
       </button>
 
-      {/* Sol alt: kamera ve düşey abartı */}
+      {/* Sol alt: (yerden notu) kamera ve düşey abartı */}
       <div className={`absolute bottom-3 left-3 z-10 flex flex-wrap items-center gap-2 ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
+        {kip === 'yerden' && (
+          <p data-yerden-not="" className="pointer-events-none w-full text-[11px] tracking-wide text-metin-solgun">
+            Ay'da hava olmadığı için gölgeler tam karanlık.
+          </p>
+        )}
         <Secenekler secenekler={KAMERA_SECENEKLERI} deger={komut.tip} onSec={kamera} etiket="Kamera" kucuk className="bg-zemin/70" />
         <Secenekler secenekler={ABARTI_SECENEKLERI} deger={abarti} onSec={setAbarti} etiket="Düşey abartı" kucuk className="bg-zemin/70" />
         {kutup && abarti === 1 && <span className="text-[11px] text-metin-solgun">kutupta 2× önerilir</span>}

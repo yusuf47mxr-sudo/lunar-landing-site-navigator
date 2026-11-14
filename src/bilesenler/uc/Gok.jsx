@@ -2,15 +2,23 @@
 // gerçek boyutun ~3 katı; c = 0 iken içi boş halka), çok zayıf ortam ışığı,
 // Dünya görünürken hafif mavi dolgu (earthshine) ve sönük yıldızlar.
 //
-// Güneş ışığının şiddeti f ile ölçeklenir: disk uzak arazinin arkasına
-// girdikçe sahne kararır (Ay'da atmosfer yok, gölgeler zifiri).
-// Yalnız Güneş diski ton eşlemesinden muaf ve çok parlaktır; Bloom eşiği
-// (AraziSahnesi) onun dışındaki hiçbir şeyi parlatmaz.
+// Güneş ve Dünya sonsuzda değil, uzak ufukla aynı merkezli gök küresinde
+// (GOK_YARICAP = ufuk × 1.1). Ufkun altına indiklerinde etek ve sacak onları
+// derinlik testiyle örter; elle gizleme yok. Işığın yönü aynıdır.
+// Disk ve küreler her kameradan aynı açısal boyutta görünür (kameraya
+// uzaklıkla ölçeklenir); kuş bakışında yakın kalan Dünya dev görünmez.
+// Güneş'in çevresinde soluk bir hale vardır (yine derinlik testli): Güneş
+// sırtın hemen arkasındayken halenin üst kısmı silüeti belli eder.
+//
+// Güneş ışığının şiddeti f ile ölçeklenir (Ay'da atmosfer yok, gölgeler zifiri).
+// Yalnız Güneş diski ton eşlemesiz ve çok parlaktır; Bloom eşiği (AraziSahnesi)
+// onun dışındaki hiçbir şeyi parlatmaz.
 
 import { Billboard, Stars } from '@react-three/drei'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { DERECE, DUNYA_DISK_DERECE, GOK_UZAKLIK, GUNES_DISK_DERECE, YILDIZ_YARICAP, yonVektoru } from './sahne.js'
+import { AdditiveBlending, CanvasTexture, SRGBColorSpace, Vector3 } from 'three'
+import { DERECE, DUNYA_DISK_DERECE, GOK_YARICAP, GUNES_DISK_DERECE, SACAK_YARICAP, YILDIZ_YARICAP, yonVektoru } from './sahne.js'
 
 const GUNES_SIDDET = 2.4
 /** Ay'da atmosfer yok: ortam çok zayıf; yalnız sahne tamamen kaybolmasın diye */
@@ -21,21 +29,91 @@ export const GUNES_DISK_RENK = [9, 7.6, 5.6]
 const DUNYA_RENK = '#5b9be6'
 const DUNYA_GECE = '#060d1c'
 export const DUNYA_HALKA_RENK = '#22d3ee'
+const ISIK_UZAKLIK = 20000
+
+const HALE_DERECE = 11
+const HALE_OPAKLIK = 0.7
+
+export const GUNES_DISK_YARICAP = GOK_YARICAP * Math.tan(GUNES_DISK_DERECE * DERECE)
+export const DUNYA_DISK_YARICAP = GOK_YARICAP * Math.tan(DUNYA_DISK_DERECE * DERECE)
+
+/**
+ * Hale, kameradan Güneş'e giden ışın üzerinde, Güneş'in bu kadar gerisinde
+ * çizilir: ekranda hep Güneş'le aynı yerdedir, ama önündeki her zemin (sacak
+ * dahil) onu derinlik testiyle örter; yalnız gökyüzüne karşı görünür.
+ */
+const HALE_ARKA = SACAK_YARICAP * 1.5
+const HALE_TAN = Math.tan(HALE_DERECE * DERECE)
+const _isin = new Vector3()
+
+/** Halenin dokusu: merkezde sıcak beyaz, kenara doğru üstel sönen ışıma. */
+let haleDokusu = null
+function haleDokusuAl() {
+  if (haleDokusu) return haleDokusu
+  const boyut = 256
+  const tuval = document.createElement('canvas')
+  tuval.width = tuval.height = boyut
+  const ctx = tuval.getContext('2d')
+  const g = ctx.createRadialGradient(boyut / 2, boyut / 2, 0, boyut / 2, boyut / 2, boyut / 2)
+  g.addColorStop(0, 'rgba(255, 236, 200, 0.9)')
+  g.addColorStop(0.05, 'rgba(255, 220, 170, 0.45)')
+  g.addColorStop(0.2, 'rgba(255, 205, 150, 0.16)')
+  g.addColorStop(0.55, 'rgba(255, 195, 135, 0.05)')
+  g.addColorStop(1, 'rgba(255, 190, 130, 0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, boyut, boyut)
+  haleDokusu = new CanvasTexture(tuval)
+  haleDokusu.colorSpace = SRGBColorSpace
+  return haleDokusu
+}
+
+/** Çocukları, kameradan bakınca merkezden görülen açısal boyutta tutar. */
+function SabitAci({ position, children }) {
+  const ref = useRef()
+  useFrame(({ camera }) => {
+    const g = ref.current
+    if (g) g.scale.setScalar(camera.position.distanceTo(g.position) / GOK_YARICAP)
+  })
+  return (
+    <group ref={ref} position={position}>
+      {children}
+    </group>
+  )
+}
+
+/** Güneş halesi: her karede ışın üzerine konur, kameraya döner, sabit açıda kalır. */
+function Hale({ gunesKonum }) {
+  const ref = useRef()
+  useFrame(({ camera }) => {
+    const m = ref.current
+    if (!m) return
+    _isin.copy(gunesKonum).sub(camera.position)
+    const uzaklik = _isin.length() + HALE_ARKA
+    m.position.copy(camera.position).addScaledVector(_isin.normalize(), uzaklik)
+    m.quaternion.copy(camera.quaternion)
+    m.scale.setScalar(uzaklik * HALE_TAN)
+  })
+  return (
+    <mesh ref={ref} renderOrder={1}>
+      <planeGeometry args={[2, 2]} />
+      <meshBasicMaterial map={haleDokusuAl()} transparent opacity={HALE_OPAKLIK} blending={AdditiveBlending} depthWrite={false} />
+    </mesh>
+  )
+}
 
 /**
  * @param {number} props.sunAlt, props.sunAz, props.earthAlt, props.earthAz  (°)
  * @param {number} props.f  Güneş diskinin görünen oranı (0–1)
  * @param {0|1}    props.c  iletişim durumu
  * @param {number} props.golgeYari  gölge kamerasının yarı genişliği (m); araziyi sıkı sarar
+ * @param {number} props.golgeBoyut gölge haritası (4096; yavaş cihazda 2048)
  */
-export default function Gok({ sunAlt, sunAz, earthAlt, earthAz, f, c, golgeYari }) {
+export default function Gok({ sunAlt, sunAz, earthAlt, earthAz, f, c, golgeYari, golgeBoyut = 4096 }) {
   const isik = useRef()
   const gunesYon = useMemo(() => yonVektoru(sunAlt, sunAz), [sunAlt, sunAz])
   const dunyaYon = useMemo(() => yonVektoru(earthAlt, earthAz), [earthAlt, earthAz])
-  const gunesKonum = useMemo(() => gunesYon.clone().multiplyScalar(GOK_UZAKLIK), [gunesYon])
-  const dunyaKonum = useMemo(() => dunyaYon.clone().multiplyScalar(GOK_UZAKLIK), [dunyaYon])
-  const gunesR = GOK_UZAKLIK * Math.tan(GUNES_DISK_DERECE * DERECE)
-  const dunyaR = GOK_UZAKLIK * Math.tan(DUNYA_DISK_DERECE * DERECE)
+  const gunesKonum = useMemo(() => gunesYon.clone().multiplyScalar(GOK_YARICAP), [gunesYon])
+  const dunyaKonum = useMemo(() => dunyaYon.clone().multiplyScalar(GOK_YARICAP), [dunyaYon])
   // Dünya'nın gece yarısı: Güneş'in tersine bakan yarım küre
   const geceHedef = useMemo(() => dunyaKonum.clone().sub(gunesYon), [dunyaKonum, gunesYon])
 
@@ -44,11 +122,16 @@ export default function Gok({ sunAlt, sunAz, earthAlt, earthAz, f, c, golgeYari 
     if (isik.current) isik.current.target.updateMatrixWorld()
   })
 
-  // Disk yalnız geometrik ufkun üstündeyken çizilir (sunAlt + ρ > 0): yüksek
-  // kameradan ufuk şeridinin üstü görülebildiği için ufkun altındaki Güneş
-  // yoksa "sızar". Uzak arazinin arkasındaysa (f = 0, alt > 0) parlaması
-  // sırtın üstünden görünür; bu istenen etki.
-  const gunesUfkunUstunde = sunAlt + 0.266 > 0
+  // Gölge haritası boyutu değişince eski harita bırakılır; three yenisini kurar
+  useEffect(() => {
+    const golge = isik.current?.shadow
+    if (!golge) return
+    golge.mapSize.set(golgeBoyut, golgeBoyut)
+    if (golge.map && golge.map.width !== golgeBoyut) {
+      golge.map.dispose()
+      golge.map = null
+    }
+  }, [golgeBoyut])
 
   return (
     <>
@@ -59,9 +142,9 @@ export default function Gok({ sunAlt, sunAz, earthAlt, earthAz, f, c, golgeYari 
         ref={isik}
         color={GUNES_RENK}
         intensity={GUNES_SIDDET * f}
-        position={gunesYon.clone().multiplyScalar(20000)}
+        position={gunesYon.clone().multiplyScalar(ISIK_UZAKLIK)}
         castShadow
-        shadow-mapSize={[4096, 4096]}
+        shadow-mapSize={[golgeBoyut, golgeBoyut]}
         shadow-radius={4}
         shadow-bias={-0.00015}
         shadow-normalBias={3}
@@ -69,34 +152,37 @@ export default function Gok({ sunAlt, sunAz, earthAlt, earthAz, f, c, golgeYari 
         shadow-camera-right={golgeYari}
         shadow-camera-top={golgeYari}
         shadow-camera-bottom={-golgeYari}
-        shadow-camera-near={20000 - golgeYari - 500}
-        shadow-camera-far={20000 + golgeYari + 500}
+        shadow-camera-near={ISIK_UZAKLIK - golgeYari - 500}
+        shadow-camera-far={ISIK_UZAKLIK + golgeYari + 500}
       />
 
-      {gunesUfkunUstunde && (
-        <Billboard position={gunesKonum}>
+      <Hale gunesKonum={gunesKonum} />
+      <SabitAci position={gunesKonum}>
+        <Billboard>
           <mesh>
-            <circleGeometry args={[gunesR, 48]} />
+            <circleGeometry args={[GUNES_DISK_YARICAP, 48]} />
             <meshBasicMaterial color={GUNES_DISK_RENK} toneMapped={false} />
           </mesh>
         </Billboard>
-      )}
+      </SabitAci>
 
       {c === 1 ? (
-        <group position={dunyaKonum}>
+        <SabitAci position={dunyaKonum}>
           <mesh>
-            <sphereGeometry args={[dunyaR, 48, 32]} />
+            <sphereGeometry args={[DUNYA_DISK_YARICAP, 48, 32]} />
             <meshBasicMaterial color={DUNYA_RENK} />
           </mesh>
-          <GeceYarisi hedef={geceHedef} r={dunyaR} />
-        </group>
+          <GeceYarisi hedef={geceHedef} r={DUNYA_DISK_YARICAP} />
+        </SabitAci>
       ) : (
-        <Billboard position={dunyaKonum}>
-          <mesh>
-            <ringGeometry args={[dunyaR * 0.9, dunyaR, 64]} />
-            <meshBasicMaterial color={DUNYA_HALKA_RENK} transparent opacity={0.55} />
-          </mesh>
-        </Billboard>
+        <SabitAci position={dunyaKonum}>
+          <Billboard>
+            <mesh>
+              <ringGeometry args={[DUNYA_DISK_YARICAP * 0.9, DUNYA_DISK_YARICAP, 64]} />
+              <meshBasicMaterial color={DUNYA_HALKA_RENK} transparent opacity={0.55} />
+            </mesh>
+          </Billboard>
+        </SabitAci>
       )}
 
       <Stars radius={YILDIZ_YARICAP} depth={30000} count={3500} factor={900} saturation={0} fade speed={0} />

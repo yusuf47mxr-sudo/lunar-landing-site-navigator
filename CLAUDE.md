@@ -86,12 +86,11 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     GokyuzuKutusu.jsx     Depoya bağlı gökyüzü görünümü + uyarı (Panorama / Kubbe / 3B düğmesi)
     /uc                   3B yerel sahne (react-three-fiber); yalnız 3B seçilince yüklenir
       AraziSahnesi.jsx    Canvas, HUD, kamera düğmeleri, düşey abartı, tam ekran, hata → panorama
-      Arazi.jsx           LOLA arazi ağı (201×201, 50 m), never_lit örtüsü, taban
-      UfukSeridi.jsx      Uzak ufuk duvarı: her azimutta R·tan(H(az)); rozetle aynı örtme
-      Gok.jsx             Güneş ışığı + Bloom'lu disk, Dünya (c=0: halka), earthshine, yıldızlar
-      Pusula.jsx          Yer halkası, kuzey oku, Dünya yönü; harf noktaları
-      EkranEtiketleri.jsx Sahne noktalarını DOM etiketlerine izdüşürür (drei Html yerine)
-      Kamera.jsx          Yerden / kuş bakışı / Güneş'e bak / Dünya'ya bak; 1 sn geçiş
+      Arazi.jsx           Tek parça kutupsal zemin: LOLA (r 5 km) + etek → ufuk R·tan(H) + koni sacak; never_lit örtüsü
+      Gok.jsx             Gök küresinde Güneş (Bloom'lu disk + hale) ve Dünya (c=0: halka); ışık, earthshine, yıldızlar
+      Pusula.jsx          Araziye oturan halka, iniş aracı modeli; sahne etiketleri listesi
+      EkranEtiketleri.jsx Sahne noktalarını DOM etiketlerine izdüşürür (drei Html yerine); çakışma kaçınması
+      Kamera.jsx          Yerden (−3°, FOV 60) / kuş bakışı / Güneş'e bak / Dünya'ya bak; 1 sn geçiş, 2 sn açılış uçuşu
       TamEkran.jsx        Fullscreen API (+ sahte yedek), F/ESC, 3 sn solan katman
       Iskelet.jsx         Yüklenirken iskelet (three içermez)
       veri.js             public/veri/3b/ yükleme, yükseklik ara değeri
@@ -572,13 +571,23 @@ aralığında, doğu yönünde artan.
 - **3B sahne.** Temel'de varsayılan görünüm 3B, Orta/İleri'de panorama;
   üçünde de Panorama / Kubbe / 3B düğmesi var. three.js yalnız 3B
   seçilince iner (React.lazy); WebGL yoksa ya da sahne hata verirse kutu
-  kendiliğinden panoramaya döner ve not gösterir. Uzak ufuk şeridi
-  `R·tan(H(az))` ile 2B görünümle aynı örtmeyi verir; yakın arazi (gerçek
-  LOLA) sahte ufuk verisiyle birebir tutarlı olmayabilir — gerçek ufuk
-  gelince kendiliğinden tutarlı olur. Düşey abartı yalnız araziye uygulanır
-  (şerit açısal gerçektir). Güneş ışığı `f` ile ölçeklenir; `f ≤ 0.5` iken
-  üstte "Güneş ufkun altında" ya da "Güneş uzaktaki arazinin arkasında" notu.
-  Güneş diski yalnız `sunAlt + ρ > 0` iken çizilir. Tam ekranda
+  kendiliğinden panoramaya döner ve not gösterir.
+  Zemin tek parça ve dairesel: gerçek arazi (r ≈ 5 km) → etek → `R = 9 km`'de
+  tam olarak `R·tan(H(az))` (uzak ufuk) → dışa koni sacak `y = r·tan(H)`
+  (20 km'ye kadar, kararan ton). Güneş ve Dünya sonsuzda değil, aynı merkezli
+  gök küresinde (`R × 1.1`); ufkun altına inince zemin onları **derinlik
+  testiyle** örter, elle gizleme yok (sacak, yüksek kameradan da örtmeyi
+  korur). Disk ve küreler kameradan sabit açısal boyutta çizilir. Güneş halesi
+  kamera→Güneş ışınında, zeminin ötesinde: yalnız gökyüzüne karşı görünür,
+  Güneş sırtın arkasındayken silüeti belli eder. Yakın arazi (gerçek LOLA)
+  sahte ufuk verisiyle birebir tutarlı olmayabilir — gerçek ufuk gelince
+  kendiliğinden tutarlı olur. Düşey abartı yalnız araziye uygulanır (ufuk ve
+  sacak açısal gerçektir). Güneş ışığı `f` ile ölçeklenir; ortam ışığı
+  bilerek çok zayıf (yerden kipte "Ay'da hava olmadığı için gölgeler tam
+  karanlık." notu). `f ≤ 0.5` iken üstte "Güneş ufkun altında" ya da "Güneş
+  uzaktaki arazinin arkasında" notu. Gölge haritası 4096; ilk ölçümde
+  (1.–3. sn) fps < 40 ise sessizce 2048'e iner ve oturum boyunca öyle kalır.
+  Kamera 3B ilk açıldığında 2 sn'lik uçuşla iner (oturumda bir kez). Tam ekranda
   `ZamanKaydirici` ikinci kez çizilir; oynatma döngüsünü yalnız sayfadaki
   sürer (`surucu={false}`).
 - **Türkçe isimlendirme.** Bileşen ve değişken adları Türkçe; JSON alan
