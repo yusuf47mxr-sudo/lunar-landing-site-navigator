@@ -8,15 +8,30 @@
 // → iletişim eşiği → etiketler, oklar, lejant, rozet. Cisimler hep tam opak
 // çizilir; örtmeyi arazinin kendisi yapar: kısmen batan disk arazinin
 // siluetiyle kesilir, tamamen arkada kalan cisim arazinin arasından soluk görünür.
+//
+// İSTİSNA (yalnızca kubbe): kubbede arazi halkası Güneş diskinden ince olduğu
+// için örtmeyi gösteremez. Bu yüzden kubbede f = 0 iken (Güneş tamamen
+// arazinin arkasında) disk %25 opaklıkla çizilir; rozet "Gölgede" derken
+// resim aksini söylemesin. Panoramada bu istisna yoktur.
+//
+// Dünya iki kipte de iletişim durumunu gösterir: c = 1 dolu disk, c = 0 içi
+// boş halka (2px kenar, --iletisim).
 
 import { useEffect, useRef } from 'react'
-import { ufukOku } from '../core/hesap.js'
+import { GUNES_YARICAP, ufukOku } from '../core/hesap.js'
 import { VARSAYILAN_RENK, YAZI, YAZI_KUCUK, renkleriOku, saydam, yuvarlakDikdortgen } from './tuval.js'
 
 const GECIS_MS = 150
 const GUNES_R = 10
 const DUNYA_R = 8
 const ARAZI_OPAK = 0.8 // arkasındaki cisim %20 görünür
+const KUBBE_GOLGE_OPAK = 0.25 // kubbe istisnası: f = 0 iken Güneş diski
+const HALKA_KALINLIK = 2 // c = 0 iken Dünya halkasının kenarı (px)
+
+/** f(t) > 0 ile aynı koşul (hesap.js gunesOrani): diskin bir kısmı ufkun üstünde. */
+const gunesGorunur = (hz, az, alt) => !hz || alt + GUNES_YARICAP > ufukOku(hz, az)
+/** c(t) = 1 ile aynı koşul (hesap.js iletisimDurumu). */
+const dunyaBagli = (hz, az, alt, eps) => !hz || alt > ufukOku(hz, az) + eps
 const DERECE = Math.PI / 180
 
 // Kenar boşlukları (CSS pikseli): sol = yükseklik etiketleri, alt = yön etiketleri
@@ -179,12 +194,13 @@ export default function GokyuzuGorunumu({
     izCiz(ctx, izEkr(p.earthTrail), R.iletisim, gx, gy)
 
     // 5. Cisimler — önce Güneş, sonra Dünya: Ay'dan bakınca Dünya önde durur
+    const hz = p.horizon && p.horizon.length === 360 ? p.horizon : null
     if (konum) {
-      cisimCiz(ctx, ekr(konum.sunAz), konum.sunAlt, GUNES_R, R.gunes, true, gx, gy)
-      cisimCiz(ctx, ekr(konum.earthAz), konum.earthAlt, DUNYA_R, R.iletisim, false, gx, gy)
+      cisimCiz(ctx, ekr(konum.sunAz), konum.sunAlt, GUNES_R, R.gunes, { parlama: true }, gx, gy)
+      const halka = !dunyaBagli(hz, konum.earthAz, konum.earthAlt, p.epsilon)
+      cisimCiz(ctx, ekr(konum.earthAz), konum.earthAlt, DUNYA_R, R.iletisim, { halka }, gx, gy)
     }
 
-    const hz = p.horizon && p.horizon.length === 360 ? p.horizon : null
     if (hz) {
       // 6. Arazi: H(A)'nın altı dolu; cisimlerin ÜSTÜNE çizilir
       const profil = (ek_ = 0) => {
@@ -465,17 +481,20 @@ function izCiz(ctx, iz, renk, gx, gy) {
   ctx.lineCap = 'butt'
 }
 
-function cisimCiz(ctx, az, alt, r, renk, parlama, gx, gy) {
+function cisimCiz(ctx, az, alt, r, renk, secenek, gx, gy) {
   // 0°/360° kenarındaki cisim yarım görünmesin: karşı kenara da çiz
   const xler = [gx(az)]
   if (az < 3) xler.push(gx(az + 360))
   if (az > 357) xler.push(gx(az - 360))
   const y = gy(alt)
-  for (const x of xler) diskCiz(ctx, x, y, r, renk, 1, parlama)
+  for (const x of xler) diskCiz(ctx, x, y, r, renk, 1, secenek)
 }
 
-/** Dolu daire; parlama=true ise etrafında yumuşak ışık (Güneş). */
-function diskCiz(ctx, x, y, r, renk, opak, parlama) {
+/**
+ * Daire. parlama: etrafında yumuşak ışık (Güneş). halka: içi boş, yalnızca
+ * HALKA_KALINLIK kenar (iletişim yokken Dünya); dış çapı dolu diskle aynı.
+ */
+function diskCiz(ctx, x, y, r, renk, opak, { parlama = false, halka = false } = {}) {
   if (parlama) {
     const g = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 3.2)
     g.addColorStop(0, saydam(renk, 0.45 * opak))
@@ -484,6 +503,14 @@ function diskCiz(ctx, x, y, r, renk, opak, parlama) {
     ctx.beginPath()
     ctx.arc(x, y, r * 3.2, 0, Math.PI * 2)
     ctx.fill()
+  }
+  if (halka) {
+    ctx.strokeStyle = saydam(renk, opak)
+    ctx.lineWidth = HALKA_KALINLIK
+    ctx.beginPath()
+    ctx.arc(x, y, r - HALKA_KALINLIK / 2, 0, Math.PI * 2)
+    ctx.stroke()
+    return
   }
   ctx.fillStyle = saydam(renk, opak)
   ctx.beginPath()
@@ -633,9 +660,12 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
 
   // Ufkun üstündeki cisimler, kubbenin içinde (kenar çemberiyle kırpılır).
   // Önce Güneş, sonra Dünya: Ay'dan bakınca Dünya önde durur
+  // Kubbe istisnası: f = 0 iken Güneş %25 opak (dosya başındaki yoruma bakın)
+  const sunOpak = konum && !gunesGorunur(hz, konum.sunAz, konum.sunAlt) ? KUBBE_GOLGE_OPAK : 1
+  const dunyaHalka = konum ? !dunyaBagli(hz, konum.earthAz, konum.earthAlt, p.epsilon) : false
   if (konum) {
-    if (konum.sunAlt >= 0) diskCiz(ctx, ...kubbeXY(g, konum.sunAz, konum.sunAlt), GUNES_R, R.gunes, 1, true)
-    if (konum.earthAlt >= 0) diskCiz(ctx, ...kubbeXY(g, konum.earthAz, konum.earthAlt), DUNYA_R, R.iletisim, 1, false)
+    if (konum.sunAlt >= 0) diskCiz(ctx, ...kubbeXY(g, konum.sunAz, konum.sunAlt), GUNES_R, R.gunes, sunOpak, { parlama: true })
+    if (konum.earthAlt >= 0) diskCiz(ctx, ...kubbeXY(g, konum.earthAz, konum.earthAlt), DUNYA_R, R.iletisim, 1, { halka: dunyaHalka })
   }
 
   if (hz) {
@@ -694,7 +724,7 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
   // Ufkun altındaki cisimler: kenarın hemen dışında işaret + yükseklik etiketi
   if (konum) {
     if (konum.sunAlt < 0) kubbeDisIsaret(ctx, g, konum.sunAz, konum.sunAlt, R.gunes)
-    if (konum.earthAlt < 0) kubbeDisIsaret(ctx, g, konum.earthAz, konum.earthAlt, R.iletisim)
+    if (konum.earthAlt < 0) kubbeDisIsaret(ctx, g, konum.earthAz, konum.earthAlt, R.iletisim, dunyaHalka)
   }
 
   // Lejant ve yaklaşık uyarısı panoramadaki yerlerinde
@@ -730,9 +760,9 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
 }
 
 /** Ufkun altındaki cisim: kenarın hemen dışında küçük soluk nokta + yükseklik etiketi. */
-function kubbeDisIsaret(ctx, g, az, alt, renk) {
+function kubbeDisIsaret(ctx, g, az, alt, renk, halka = false) {
   const [x, y] = kubbeKenarXY(g, az, g.Rk + 6 + KUBBE_DIS_R)
-  diskCiz(ctx, x, y, KUBBE_DIS_R, renk, KUBBE_DIS_OPAK, false)
+  diskCiz(ctx, x, y, KUBBE_DIS_R, renk, KUBBE_DIS_OPAK, { halka })
   ctx.font = '500 10px Inter, ui-sans-serif, system-ui, sans-serif'
   ctx.fillStyle = saydam(renk, 0.8)
   ctx.textBaseline = 'middle'

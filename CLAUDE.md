@@ -520,6 +520,11 @@ aralığında, doğu yönünde artan.
   kutup alanları için `−15°…+15°`, diğerleri için `−90°…+90°`. Bir alan
   içinde eksen sabittir, zaman ilerledikçe oynamaz. Azimut her zaman
   `0°…360°`, puan `0…1`.
+- **Gökyüzünde örtme.** Çizim sırası: ızgara → izler → Güneş → Dünya →
+  arazi (opaklık 0.8) → iletişim eşiği → etiketler. Örtmeyi arazi yapar.
+  **İstisna — yalnızca kubbe:** arazi halkası Güneş diskinden ince olduğu
+  için f = 0 iken Güneş diski %25 opaklıkla çizilir. Dünya iki görünümde de
+  c = 1 iken dolu disk, c = 0 iken içi boş halka (2px, `--iletisim`).
 - **Türkçe isimlendirme.** Bileşen ve değişken adları Türkçe; JSON alan
   adları İngilizce (veri sözleşmesi öyle kararlaştırıldı).
 - **Dosya boyutu.** Her alan ayrı JSON; sadece seçili alan yüklenir.
