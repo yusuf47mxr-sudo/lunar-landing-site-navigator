@@ -1,9 +1,10 @@
 // Alan listesi — bolgeler.json'dan, kategorilere göre gruplu kartlar.
-// yerlesim='yatay': yatay kaydırılabilir şerit (Temel)
+// yerlesim='yatay': yatay kaydırılabilir şerit (Temel). Kenarlarda solma
+//                    maskesi yalnızca o yönde gizli içerik varken görünür.
 // yerlesim='dikey' : üstte arama kutusu, altında kendi içinde kayan liste;
 //                    ikisi birlikte en fazla 240px (Orta, sol sütun)
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBolgeler, useDurum } from '../durum/store.js'
 
@@ -15,6 +16,17 @@ export const KATEGORILER = [
 ]
 
 /** Arama için sadeleştirme: küçük harf, Türkçe/aksanlı harfler ve noktalama yok. */
+const SOLMA = 40 // şerit kenarındaki solma genişliği (px)
+
+/** Şeridin kenar maskesi: yalnızca o yönde gizli içerik varken solar. */
+function solmaMaskesi({ sol, sag }) {
+  if (!sol && !sag) return undefined
+  const m = `linear-gradient(to right, ${sol ? `transparent, #000 ${SOLMA}px` : '#000'}, ${
+    sag ? `#000 calc(100% - ${SOLMA}px), transparent` : '#000'
+  })`
+  return { WebkitMaskImage: m, maskImage: m }
+}
+
 export function aramaDuzle(s) {
   return s
     .toLocaleLowerCase('tr')
@@ -36,6 +48,26 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
   const seritRef = useRef(null)
   const kartRef = useRef(new Map())
   const ilkKaydirma = useRef(true)
+  const [kenar, setKenar] = useState({ sol: false, sag: false }) // gizli içerik var mı
+
+  // Yatay şerit: kaydırma ve boyut değişince kenar maskelerini güncelle
+  useLayoutEffect(() => {
+    const serit = seritRef.current
+    if (!yatay || !serit) return
+    const guncelle = () => {
+      const sol = serit.scrollLeft > 1
+      const sag = serit.scrollLeft + serit.clientWidth < serit.scrollWidth - 1
+      setKenar((k) => (k.sol === sol && k.sag === sag ? k : { sol, sag }))
+    }
+    guncelle()
+    serit.addEventListener('scroll', guncelle, { passive: true })
+    const ro = new ResizeObserver(guncelle)
+    ro.observe(serit)
+    return () => {
+      serit.removeEventListener('scroll', guncelle)
+      ro.disconnect()
+    }
+  }, [yatay, bolgeler])
 
   // Seçili kartı görünür alana getir. Sadece şeridin/listenin kendi kaydırması
   // değişir; sayfa kaymaz.
@@ -47,6 +79,14 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
     const behavior = ilkKaydirma.current ? 'auto' : 'smooth'
     ilkKaydirma.current = false
     if (yatay) {
+      if (behavior === 'auto') {
+        // İlk açılış: şerit mümkünse başta kalır. Seçili kart sağdaki solmanın
+        // dışında görünüyorsa hiç kaydırma; değilse yalnızca görünecek kadar kaydır.
+        const sagUc = kart.offsetLeft + kart.clientWidth
+        const gorunurSon = serit.clientWidth - (serit.scrollWidth > serit.clientWidth ? SOLMA : 0)
+        serit.scrollTo({ left: sagUc <= gorunurSon ? 0 : sagUc - serit.clientWidth + SOLMA + 8, behavior })
+        return
+      }
       const sol = kart.offsetLeft - serit.clientWidth / 2 + kart.clientWidth / 2
       serit.scrollTo({ left: Math.max(0, sol), behavior })
       return
@@ -73,9 +113,10 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
     <nav
       ref={seritRef}
       aria-label="İniş alanları"
+      style={yatay ? solmaMaskesi(kenar) : undefined}
       className={
         yatay
-          ? `relative flex gap-8 overflow-x-auto pb-3 ince-kaydirma kenar-solma ${className}`
+          ? `relative flex gap-8 overflow-x-auto pb-3 ince-kaydirma ${className}`
           : 'relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-2 ince-kaydirma'
       }
     >
