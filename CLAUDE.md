@@ -78,7 +78,13 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     ZamanKaydirici.jsx
     ParametrePaneli.jsx
     AlanListesi.jsx
-    OzelKoordinat.jsx
+    OzelKoordinat.jsx     Özel koordinat girişi (yaklaşık veri)
+    ModDegistirici.jsx    Temel / Orta / İleri geçişi
+    Secenekler.jsx        Parçalı düğme (tek seçim)
+    AkanSayi.jsx          Değişirken akan sayı
+    GokyuzuKutusu.jsx     Depoya bağlı gökyüzü görünümü + uyarı
+    SayisalOzet.jsx       Anlık ve görev aralığı sayıları
+    tuval.js              Canvas bileşenlerinin ortak yardımcıları
   /sayfalar
     Giris.jsx
     Temel.jsx

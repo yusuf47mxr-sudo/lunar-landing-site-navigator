@@ -1,7 +1,7 @@
 // Alan listesi — bolgeler.json'dan, kategorilere göre gruplu kartlar.
 // yerlesim='yatay': yatay kaydırılabilir şerit (Temel)
-// yerlesim='dikey' : üstte arama kutusu, altında en fazla 320px yüksek,
-//                    kendi içinde kayan liste (Orta, sol sütun)
+// yerlesim='dikey' : üstte arama kutusu, altında kendi içinde kayan liste;
+//                    ikisi birlikte en fazla 240px (Orta, sol sütun)
 
 import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
@@ -76,7 +76,7 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
       className={
         yatay
           ? `relative flex gap-8 overflow-x-auto pb-3 ince-kaydirma kenar-solma ${className}`
-          : 'relative flex max-h-[320px] flex-col gap-4 overflow-y-auto pr-2 ince-kaydirma'
+          : 'relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-2 ince-kaydirma'
       }
     >
       {gruplar.map((g) => (
@@ -120,14 +120,14 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
 
   if (yatay) return liste
   return (
-    <div className={className}>
+    <div className={`flex max-h-[240px] flex-col ${className}`}>
       <input
         type="search"
         value={arama}
         onChange={(e) => setArama(e.target.value)}
         placeholder="Alan ara (ad veya açıklama)"
         aria-label="Alan ara"
-        className="mb-3 w-full rounded-lg border border-cizgi bg-zemin px-3 py-2 text-sm text-metin
+        className="mb-3 w-full shrink-0 rounded-lg border border-cizgi bg-zemin px-3 py-2 text-sm text-metin
           placeholder:text-metin-solgun/70 focus:border-iletisim/60 focus:outline-none"
       />
       {liste}

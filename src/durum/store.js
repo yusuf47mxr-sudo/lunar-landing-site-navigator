@@ -12,6 +12,8 @@ import {
   bolgelerOnbellekte,
   efemerisOnbellekte,
   efemerisYukle,
+  ozetOnbellekte,
+  ozetYukle,
 } from '../core/veri.js'
 import { ozelNoktaOlustur } from '../core/ozelNokta.js'
 import {
@@ -149,6 +151,16 @@ export function useEfemeris(etkin = true) {
     () => efemerisOnbellekte(),
   )
   return { efemeris: veri, hata, yukleniyor }
+}
+
+/** ozet.json: ısı haritası için önceden hesaplanmış dönem ölçütleri (bölüm 4.4). */
+export function useOzet() {
+  const { veri, hata, yukleniyor } = useYuklenen(
+    'ozet',
+    () => ozetYukle(),
+    () => ozetOnbellekte(),
+  )
+  return { ozet: veri, hata, yukleniyor }
 }
 
 /**

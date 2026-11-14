@@ -1,11 +1,14 @@
 // Orta mod — iki sütun (sol 380px sabit, sağ esnek); 1024px altında tek sütun.
-// Sol: alan listesi, özel koordinat, kutup haritası, görev ayarları, sayısal özet.
-// Sağ: rozetler, gökyüzü görünümü, zaman çizelgesi. Zaman kaydırıcısı altta yapışık.
+// Sol: alan listesi, kutup haritası, özel koordinat, görev ayarları, sayısal özet.
+// Sağ: rozetler, gökyüzü görünümü, zaman çizelgesi. Altta tam genişlik ısı haritası.
+// Zaman kaydırıcısı altta yapışıktır ve akışın içindedir: sayfanın sonunda kendi
+// yüksekliği kadar yer tutar, en alttaki içerik onun arkasında kalmaz.
 
 import { useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import AlanListesi from '../bilesenler/AlanListesi.jsx'
 import DurumGostergesi from '../bilesenler/DurumGostergesi.jsx'
+import IsiHaritasi from '../bilesenler/IsiHaritasi.jsx'
 import GokyuzuKutusu from '../bilesenler/GokyuzuKutusu.jsx'
 import { kubbeMi } from '../bilesenler/GokyuzuGorunumu.jsx'
 import KutupHaritasi from '../bilesenler/KutupHaritasi.jsx'
@@ -78,11 +81,11 @@ export default function Orta() {
             <Kutu baslik="İniş alanı">
               <AlanListesi yerlesim="dikey" />
             </Kutu>
-            <Kutu baslik="Özel koordinat">
-              <OzelKoordinat />
-            </Kutu>
             <Kutu baslik="Güney kutbu haritası">
               <KutupHaritasi />
+            </Kutu>
+            <Kutu baslik="Özel koordinat">
+              <OzelKoordinat />
             </Kutu>
             <Kutu baslik="Görev ayarları">
               <ParametrePaneli />
@@ -92,8 +95,10 @@ export default function Orta() {
             </Kutu>
           </div>
 
-          {/* SAĞ SÜTUN — geniş ekranda sol sütun kaydırılırken görünür kalır */}
-          <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-6 lg:self-start">
+          {/* SAĞ SÜTUN — yalnızca yeterince yüksek ekranda (≥ 950px) yapışık kalır.
+              Daha kısa ekranda sütun ekrana sığmaz; yapışık olsaydı zaman çizelgesi
+              kaydırıcının arkasında kalır ve kaydırarak da görülemezdi. */}
+          <div className="flex min-w-0 flex-col gap-6 lg:self-start lg:[@media(min-height:950px)]:sticky lg:[@media(min-height:950px)]:top-6">
             <DurumGostergesi kip="sayisal" />
 
             <section aria-label="Gökyüzü">
@@ -130,10 +135,11 @@ export default function Orta() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <BosKutu>Isı haritası — Adım 8</BosKutu>
-          <BosKutu>Karşılaştırma — Adım 9</BosKutu>
-        </div>
+        <section aria-label="Isı haritası" className="rounded-2xl border border-cizgi bg-yuzey p-4">
+          <IsiHaritasi />
+        </section>
+
+        <BosKutu>Karşılaştırma — Adım 9</BosKutu>
       </main>
 
       <ZamanKaydirici enFazla="max-w-[1400px]" />

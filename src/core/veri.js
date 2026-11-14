@@ -111,6 +111,10 @@ export function bolgelerOnbellekte() {
   return hazir.get('bolgeler')
 }
 
+export function ozetOnbellekte() {
+  return hazir.get('ozet')
+}
+
 export function efemerisOnbellekte() {
   return hazir.get('efemeris')
 }
