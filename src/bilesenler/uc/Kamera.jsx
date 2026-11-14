@@ -9,8 +9,9 @@
 // döner; kuş bakışında → nesnenin karşı tarafına geçer, nesne arazinin
 // üstünde karşıdan görünür.
 //
-// Geçişler ~1 sn (smoothstep), FOV da ara değerlenir. Sayfa oturumunda 3B ilk
-// açıldığında kamera yüksekten alana 2 sn'lik bir uçuşla iner (bir kez).
+// Geçişler ~1 sn (smoothstep), FOV da ara değerlenir. Açılış uçuşu: kamera
+// yüksekten alana 2 sn'de iner — sahne her küreden inişte (acilisUcusu) ve
+// sayfa oturumunda ilk açılışta bir kez.
 // Kamera yerin altına inemez (zemin.y'ye kenetlenir); kaydırma kapalı.
 
 import { OrbitControls } from '@react-three/drei'
@@ -46,7 +47,8 @@ const duzgun = (t) => t * t * (3 - 2 * t)
  * @param {object} props.zemin  Arazi.zeminOlustur() çıktısı (zemin.y(x, z))
  * @param {number} props.sunAlt, props.sunAz, props.earthAlt, props.earthAz
  */
-export default function Kamera({ komut, zemin, sunAlt, sunAz, earthAlt, earthAz }) {
+export default function Kamera({ komut, zemin, sunAlt, sunAz, earthAlt, earthAz, acilisUcusu = false }) {
+  const ucusBekliyor = useRef(acilisUcusu)
   const camera = useThree((s) => s.camera)
   const denetim = useRef()
   const kip = useRef('kus')
@@ -79,7 +81,7 @@ export default function Kamera({ komut, zemin, sunAlt, sunAz, earthAlt, earthAz 
     const d = denetim.current
     if (!d) return
     const { poz, hedef, fov } = hedefHesapla(komut.tip)
-    const acilis = !acilisYapildi && kip.current === 'kus'
+    const acilis = (ucusBekliyor.current || !acilisYapildi) && kip.current === 'kus'
     if (acilis) {
       // Yüksekten, Güneş'in karşı tarafından hafif eğik iniş
       camera.position.copy(yatayYon(guncel.current.sunAz).multiplyScalar(-4000))
@@ -110,7 +112,7 @@ export default function Kamera({ komut, zemin, sunAlt, sunAz, earthAlt, earthAz 
     const g = gecis.current
     if (g) {
       // Sekme arka plandayken birikmiş büyük dt adımı atlatmasın
-      g.t = Math.min(1, g.t + Math.min(dt, 0.1) / g.sure)
+      g.t = Math.min(1, g.t + Math.min(dt, 0.25) / g.sure)
       const s = g.acilis ? yumusak(g.t) : duzgun(g.t)
       camera.position.lerpVectors(g.basPoz, g.sonPoz, s)
       d.target.lerpVectors(g.basHedef, g.sonHedef, s)
@@ -119,7 +121,10 @@ export default function Kamera({ komut, zemin, sunAlt, sunAz, earthAlt, earthAz 
       camera.lookAt(d.target)
       if (g.t >= 1) {
         gecis.current = null
-        if (g.acilis) acilisYapildi = true
+        if (g.acilis) {
+          acilisYapildi = true
+          ucusBekliyor.current = false
+        }
         Object.assign(d, KIP_SINIRLARI[kip.current])
         d.enabled = true
         d.update()

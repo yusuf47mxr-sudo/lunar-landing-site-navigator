@@ -24,8 +24,11 @@ Challenge'ın dört sorusuna hızlıca cevap verir:
 | **Zamanlama:** Gün batımına ve Dünya batışına (Earthset) ne kadar kaldı? | Her sayfada görünen geri sayım; 24 saatin altında uyarı renginde |
 | **Karşılaştırma:** Başka bir alan ya da tarih seçilse ne değişir? | Isı haritası (alan × iniş haftası) ve yan yana karşılaştırma |
 
-**3B yerel sahne** (Temel modda varsayılan; diğerlerinde Panorama / Kubbe /
-3B düğmesi): seçili alanın 10 × 10 km'lik gerçek LOLA arazisi, Güneş'in
+**3B Ay küresi ve yerel sahne** (Temel modda varsayılan; diğerlerinde
+Panorama / Kubbe / 3B düğmesi): önce bütün alanların işaretli olduğu Ay
+küresi — LROC renk dokusu, LOLA kabartması, seçili ana göre Güneş ışığı ve
+gece-gündüz sınırı, uzakta evreli Dünya. Bir işarete tıklayınca kamera alana
+yaklaşır ve yerel sahneye iner; "Ay › alan" çubuğuyla geri dönülür. Yerel sahne: seçili alanın 10 × 10 km'lik gerçek LOLA arazisi, Güneş'in
 yönlü ışığı ve gölgeleri, uzak ufuk şeridi (Güneş uzak dağın arkasına
 girince 3B'de de kaybolur), Dünya (bağlantı yokken içi boş halka), 18 yılda
 hiç Güneş almayan hücrelerin mavi örtüsü, pusula, dört kamera kipi, düşey
@@ -103,7 +106,7 @@ Güneş ve Dünya konumları paketin, Python hattıyla birebir doğrulanmış
 | [LRO LOLA](https://pds-geosciences.wustl.edu/missions/lro/lola.htm) — kutupta 20 m / 80 m (bazı alanlarda PGDA 104 5 m) | Kutup alanlarında 720 yönlü ufuk (0, 2, 10 m direk), 3B arazi, "18 yılda hiç Güneş almayan" hücreler |
 | SLDEM2015 (≈ 118 m; Chandrayaan-3 için LOLA ≈ 237 m) | Kutup dışı alanlarda ufuk ve 3B arazi; arayüzde "Arazi ~118 m çözünürlükte." notu |
 | NASA NSSDC, LROC, USGS, makaleler | Alan koordinatları (`bolgeler.json` "kaynak") |
-| [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) — NASA's Scientific Visualization Studio | Ay dokusu (`public/veri/3b/moon/`, 3B Ay küresi için) |
+| [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) — NASA's Scientific Visualization Studio | 3B Ay küresinin renk dokusu (LROC WAC) ve yükseklik haritası (LOLA), `public/veri/3b/moon/`; arayüzde kredi yazılır |
 
 **Tanımlar (paketle aynı):** Güneş diskinin görünen oranı `f` daire dilimidir,
 yarıçap Güneş uzaklığından; `f > 0.5` "aydınlık"; Dünya görünür = merkezi ufkun

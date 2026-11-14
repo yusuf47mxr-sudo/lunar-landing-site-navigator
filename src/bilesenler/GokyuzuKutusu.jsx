@@ -3,7 +3,7 @@
 // noktadaki tam uyarı cümlesini gösterir. Bütün sayfalar bunu kullanır.
 // gecisli: üstte "Gökyüzü" başlığı ve Panorama / Kubbe / 3B düğmesi.
 //
-// 3B (uc/AraziSahnesi) React.lazy ile ayrı parçadır: 3B seçilmedikçe three.js
+// 3B (uc/UcBoyut: Ay küresi + yerel sahne) React.lazy ile ayrı parçadır: 3B seçilmedikçe three.js
 // indirilmez; inerken Iskelet görünür. WebGL yoksa ya da sahne hata verirse
 // kutu kendiliğinden panoramaya döner ve küçük bir not gösterir.
 // varsayilan: ilk görünüm ('3b' Temel, 'otomatik' Orta/İleri).
@@ -15,7 +15,7 @@ import GokyuzuGorunumu, { kubbeMi } from './GokyuzuGorunumu.jsx'
 import Secenekler from './Secenekler.jsx'
 import Iskelet from './uc/Iskelet.jsx'
 
-const AraziSahnesi = lazy(() => import('./uc/AraziSahnesi.jsx'))
+const UcBoyut = lazy(() => import('./uc/UcBoyut.jsx'))
 
 const GORUNUM_SECENEKLERI = [
   { deger: 'panorama', etiket: 'Panorama' },
@@ -87,12 +87,14 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
       <div className={`grid overflow-hidden rounded-2xl border border-cizgi ${className}`}>
         {anlik.hata ? (
           <p className="p-6 text-uyari">Veri yüklenemedi: {String(anlik.hata.message ?? anlik.hata)}</p>
+        ) : ucBoyut ? (
+          // 3B, alan verisi yüklenirken de bağlı kalır (seviye ve kamera korunsun);
+          // yerel sahne yükleme sırasında kendi iskeletini gösterir.
+          <Suspense fallback={<Iskelet />}>
+            <UcBoyut anlik={anlik} f={hazir ? f[anlik.t] : 0} c={hazir ? c[anlik.t] : 0} aciklama={aciklama} onHata={onHata} />
+          </Suspense>
         ) : !hazir ? (
           <p className="self-center justify-self-center text-metin-solgun">Yükleniyor…</p>
-        ) : ucBoyut ? (
-          <Suspense fallback={<Iskelet />}>
-            <AraziSahnesi anlik={anlik} f={f[anlik.t]} c={c[anlik.t]} aciklama={aciklama} onHata={onHata} />
-          </Suspense>
         ) : (
           <GokyuzuGorunumu
             horizon={anlik.horizon}

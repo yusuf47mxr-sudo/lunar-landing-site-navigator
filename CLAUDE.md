@@ -70,7 +70,6 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     ZamanCizelgesi.jsx
     IsiHaritasi.jsx
     KutupHaritasi.jsx
-    AyKuresi.jsx
     DurumGostergesi.jsx
     GeriSayim.jsx
     AyDunyaKarti.jsx
@@ -83,8 +82,15 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     Secenekler.jsx        Parçalı düğme (tek seçim)
     AkanSayi.jsx          Değişirken akan sayı
     GokyuzuKutusu.jsx     Depoya bağlı gökyüzü görünümü + uyarı (Panorama / Kubbe / 3B düğmesi)
-    /uc                   3B yerel sahne (react-three-fiber); yalnız 3B seçilince yüklenir
-      AraziSahnesi.jsx    Canvas, HUD, kamera düğmeleri, düşey abartı, tam ekran, hata → panorama
+    /uc                   3B (react-three-fiber): Ay küresi + yerel sahne; yalnız 3B seçilince yüklenir
+      UcBoyut.jsx         Kapsayıcı: küre ↔ yerel seviye, gezinti çubuğu "Ay › alan", geçiş perdesi,
+                          tam ekran (F/ESC) ve üst katman (iki seviyede de)
+      AyKuresi.jsx        Ay küresi: dokular, Güneş/Dünya ışığı, 26 işaret (DOM), kamera, yaklaşma uçuşu
+      ayDokulari.js       Renk 2k/4k, displacement ve normal haritası (16 bit yükseklikten)
+      png16.js            16 bit gri PNG çözücü (DecompressionStream)
+      kure.js             Enlem/boylam → küre vektörü, kamera duruşları
+      HataSiniri.jsx      WebGL denetimi ve sahne hata sınırı (→ panorama)
+      AraziSahnesi.jsx    Yerel sahne: Canvas, HUD, kamera düğmeleri, düşey abartı
       Arazi.jsx           Tek parça kutupsal zemin: LOLA (r 5 km) + etek → ufuk R·tan(H) + koni sacak; never_lit örtüsü
       Gok.jsx             Gök küresinde Güneş (Bloom'lu disk + hale) ve Dünya (c=0: halka); ışık, earthshine, yıldızlar
       Pusula.jsx          Araziye oturan halka, iniş aracı modeli; sahne etiketleri listesi
@@ -608,6 +614,23 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   bir çizgi ve "0°" etiketiyle ayrıca gösterilir. Arazi dış kenardan H(A)'ya
   kadar halka, iletişim eşiği H(A)+ε kesikli çizgi. Kenar dışı işaret (nokta +
   "−2.7°") yalnızca `alt < altMin` iken çizilir.
+- **3B Ay küresi.** 3B açılınca önce küre (`uc/AyKuresi.jsx`): yarıçap 1,
+  256 dilim; LROC WAC renk (2k, yalnız tam ekranda 4k), LOLA 16 bit yükseklikten
+  displacement (4×) ve normal haritası. Doku eşdikdörtgen, boylam −180…+180
+  soldan sağa; three ekseni: 0° boylam +x, 90°D −z, kuzey +y (`kure.js`;
+  Apollo 11 Mare Tranquillitatis'te, Tycho ve Chang'e 4 doğru yerde
+  doğrulandı). Işık Güneş alt-noktasından (`efemeris.json`, seçili t; her
+  karede yumuşak), gece tarafında yalnız Dünya'ya bakan yüzde hafif
+  earthshine; uzakta evreli Dünya. 26 işaret DOM'dadır: artemis daire, clps
+  kare, apollo üçgen, uluslararasi elmas; seçili `--gunes` ve büyük; arka
+  yüzdekiler gizli; adlar yalnız yakınlaşınca (çakışan ad gizlenir); üzerine
+  gelince ad, açıklama ve görev aralığı ölçütleri (`ozet.json`, ε = 2°).
+  İşarete tıklama: `alanSec` + kamera 2 sn'de alana yaklaşır → perde → yerel
+  sahne açılış uçuşuyla iner. Gezinti çubuğu "Ay › alan": "Ay" yerelden küreye
+  geri uçar, alan adı küreden iner. Listeden alan seçimi: kürede kamera döner,
+  yerelde yeni alana geçilir (3B, alan verisi yüklenirken de bağlı kalır).
+  Küre ve yerel sahne ayrı Canvas; aynı anda biri bağlı, kapanan WebGL bağlamını
+  ve dokularını bırakır. Doku kredisi: "NASA's Scientific Visualization Studio".
 - **3B sahne.** Temel'de varsayılan görünüm 3B, Orta/İleri'de panorama;
   üçünde de Panorama / Kubbe / 3B düğmesi var. three.js yalnız 3B
   seçilince iner (React.lazy); WebGL yoksa ya da sahne hata verirse kutu
@@ -653,7 +676,7 @@ Süre biterse listenin sonundakiler eksik kalır, gerisi ayakta durur.
 8. Isı haritası
 9. Yan yana karşılaştırma
 10. İleri sayfa
-11. 3B yerel sahne (arazi, Güneş, Dünya; sunumun ana görseli) ✓ — 3B Ay küresi hâlâ açık
+11. 3B: Ay küresi (bütün alanlar, tıklayınca iniş) + yerel sahne ✓
 12. Giriş ekranı
 
 **Not:** 3B küre bütün alanları tek bakışta gösterebilen tek görünüm

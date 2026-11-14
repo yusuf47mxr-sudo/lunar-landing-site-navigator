@@ -113,7 +113,8 @@ export function TamEkranKatmani({ gorunur, aciklama }) {
   const sinif = `transition-opacity duration-500 ${gorunur ? 'opacity-100' : 'pointer-events-none opacity-0'}`
   return (
     <>
-      <div className={`pointer-events-none absolute left-4 top-4 z-20 max-w-[min(60vw,520px)] ${sinif}`}>
+      {/* Sol üst: gezinti çubuğunun (UcBoyut) altında */}
+      <div className={`pointer-events-none absolute left-4 top-14 z-20 max-w-[min(60vw,520px)] ${sinif}`}>
         <p className="text-2xl font-light tracking-wide text-metin drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
           {anlik.alan?.site ?? ''}
         </p>
