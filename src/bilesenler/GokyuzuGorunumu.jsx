@@ -11,6 +11,7 @@ const GECIS_MS = 150
 const GUNES_R = 10
 const DUNYA_R = 8
 const SOLUK = 0.25
+const DERECE = Math.PI / 180
 
 // Kenar boşlukları (CSS pikseli): sol = yükseklik etiketleri, alt = yön etiketleri
 const KENAR = { sol: 40, sag: 10, ust: 10, alt: 26 }
@@ -81,6 +82,7 @@ const isaretli = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(Math.roun
  * @param {Array<[number, number]>} [props.sunTrail]   [az, alt] çiftleri, eskiden yeniye
  * @param {Array<[number, number]>} [props.earthTrail]
  * @param {boolean} [props.yaklasik]
+ * @param {'otomatik'|'panorama'|'kubbe'} [props.gorunum]  otomatik: kutup → panorama, değilse kubbe
  * @param {string} [props.className]
  */
 export default function GokyuzuGorunumu({
@@ -94,6 +96,7 @@ export default function GokyuzuGorunumu({
   sunTrail = null,
   earthTrail = null,
   yaklasik = false,
+  gorunum = 'otomatik',
   className = '',
 }) {
   const kapRef = useRef(null)
@@ -101,7 +104,7 @@ export default function GokyuzuGorunumu({
 
   // Çizimin okuduğu her şey ref'te; böylece rAF döngüsü React render'ına bağlı kalmaz.
   const propsRef = useRef(null)
-  propsRef.current = { horizon, epsilon, kutup, sunTrail, earthTrail, yaklasik }
+  propsRef.current = { horizon, epsilon, kutup, sunTrail, earthTrail, yaklasik, gorunum }
 
   const boyutRef = useRef({ w: 0, h: 0, dpr: 1 })
   const fareRef = useRef(null) // { x, y } CSS pikseli veya null
@@ -138,6 +141,11 @@ export default function GokyuzuGorunumu({
     const p = propsRef.current
     const ek = eksen(p.kutup)
     const konum = anlikKonum(simdi)
+
+    if (kubbeMi(p.gorunum, p.kutup)) {
+      kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare: fareRef.current })
+      return !konum || konum.bitti
+    }
 
     const x0 = KENAR.sol
     const x1 = w - KENAR.sag
@@ -289,22 +297,7 @@ export default function GokyuzuGorunumu({
     aciklamaCiz(ctx, R, x1, y0)
 
     // 11. Yaklaşık veri uyarısı (sol üst)
-    if (p.yaklasik) {
-      ctx.font = '500 11px Inter, ui-sans-serif, system-ui, sans-serif'
-      const metin = 'Arazi hesaba katılmadı'
-      const gen = ctx.measureText(metin).width
-      const bx = x0 + 8
-      const by = y0 + 8
-      ctx.fillStyle = saydam(R.uyari, 0.15)
-      ctx.strokeStyle = saydam(R.uyari, 0.6)
-      yuvarlakDikdortgen(ctx, bx, by, gen + 16, 20, 4)
-      ctx.fill()
-      ctx.stroke()
-      ctx.fillStyle = R.uyari
-      ctx.textAlign = 'left'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(metin, bx + 8, by + 10.5)
-    }
+    if (p.yaklasik) rozetCiz(ctx, R, x0, y0)
 
     // Fare etiketi: o azimuttaki ufuk yüksekliği
     if (fareAz !== null && hz && hz.length === 360) {
@@ -364,7 +357,7 @@ export default function GokyuzuGorunumu({
     const g = gecisRef.current
     if (g) gecisRef.current = { bas: g.hedef, hedef: g.hedef, baslangic: -Infinity }
     cizIsteRef.current()
-  }, [horizon, kutup])
+  }, [horizon, kutup, gorunum])
 
   // Diğer görsel girdiler değişince yeniden çiz
   useEffect(() => {
@@ -497,21 +490,24 @@ function cisimCiz(ctx, az, alt, r, renk, opak, parlama, gx, gy) {
   if (az < 3) xler.push(gx(az + 360))
   if (az > 357) xler.push(gx(az - 360))
   const y = gy(alt)
-  for (const x of xler) {
-    if (parlama) {
-      const g = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 3.2)
-      g.addColorStop(0, saydam(renk, 0.45 * opak))
-      g.addColorStop(1, saydam(renk, 0))
-      ctx.fillStyle = g
-      ctx.beginPath()
-      ctx.arc(x, y, r * 3.2, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    ctx.fillStyle = saydam(renk, opak)
+  for (const x of xler) diskCiz(ctx, x, y, r, renk, opak, parlama)
+}
+
+/** Dolu daire; parlama=true ise etrafında yumuşak ışık (Güneş). */
+function diskCiz(ctx, x, y, r, renk, opak, parlama) {
+  if (parlama) {
+    const g = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 3.2)
+    g.addColorStop(0, saydam(renk, 0.45 * opak))
+    g.addColorStop(1, saydam(renk, 0))
+    ctx.fillStyle = g
     ctx.beginPath()
-    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.arc(x, y, r * 3.2, 0, Math.PI * 2)
     ctx.fill()
   }
+  ctx.fillStyle = saydam(renk, opak)
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 /** Cisim eksen sınırını aşıyorsa kenarda küçük ok ve "+23°" etiketi. */
@@ -534,6 +530,24 @@ function tasmaCiz(ctx, az, alt, renk, ek, gx, y0, y1, x0, x1) {
   ctx.textBaseline = 'middle'
   const lx = ctx.textAlign === 'right' ? x - 8 : x + 8
   ctx.fillText(isaretli(alt), lx, uc + 4 * yon)
+}
+
+/** Sol üstte "Arazi hesaba katılmadı" rozeti (iki kipte de aynı yerde). */
+function rozetCiz(ctx, R, x0, y0) {
+  ctx.font = '500 11px Inter, ui-sans-serif, system-ui, sans-serif'
+  const metin = 'Arazi hesaba katılmadı'
+  const gen = ctx.measureText(metin).width
+  const bx = x0 + 8
+  const by = y0 + 8
+  ctx.fillStyle = saydam(R.uyari, 0.15)
+  ctx.strokeStyle = saydam(R.uyari, 0.6)
+  yuvarlakDikdortgen(ctx, bx, by, gen + 16, 20, 4)
+  ctx.fill()
+  ctx.stroke()
+  ctx.fillStyle = R.uyari
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(metin, bx + 8, by + 10.5)
 }
 
 function aciklamaCiz(ctx, R, x1, y0) {
@@ -560,4 +574,222 @@ function aciklamaCiz(ctx, R, x1, y0) {
     ctx.fillText(ad, x + 13, y + 0.5)
     x += genislikler[i]
   })
+}
+
+// --- Gök kubbesi --------------------------------------------------------------
+// Yukarı bakan gözlemcinin gördüğü gökyüzü haritası: merkez = tepe noktası
+// (90°), kenar = ufuk (0°). Kuzey yukarıda, Doğu solda, Batı sağda.
+
+const KUBBE_PAY = 40 // kenar dışındaki etiketler için boşluk (px)
+const KUBBE_DIS_R = 5 // ufkun altındaki cisim için kenar dışı nokta yarıçapı
+const KUBBE_DIS_OPAK = 0.4
+
+/** gorunum + kutup → kubbe mi çizilecek? */
+export function kubbeMi(gorunum, kutup) {
+  if (gorunum === 'kubbe') return true
+  if (gorunum === 'panorama') return false
+  return !kutup
+}
+
+/** Yükseklik/azimut → ekran (yükseklik 0'ın altı da hesaplanır, r > Rk). */
+function kubbeXY(g, az, alt) {
+  const r = (g.Rk * (90 - alt)) / 90
+  const a = az * DERECE
+  return [g.cx - r * Math.sin(a), g.cy - r * Math.cos(a)]
+}
+
+/** Kenara göre yarıçap ile ekran noktası (kenar dışı öğeler için). */
+function kubbeKenarXY(g, az, r) {
+  const a = az * DERECE
+  return [g.cx - r * Math.sin(a), g.cy - r * Math.cos(a)]
+}
+
+const isaretli1 = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}°`
+
+/** H(A) gibi 360 elemanlı bir profilden kapalı eğri çizer (alt = fn(az)). */
+function kapaliEgri(ctx, g, fn) {
+  for (let az = 0; az < 360; az++) {
+    const [x, y] = kubbeXY(g, az, fn(az))
+    az === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+}
+
+function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
+  const g = { cx: w / 2, cy: h / 2, Rk: Math.max(10, Math.min(w, h) / 2 - KUBBE_PAY) }
+  const { cx, cy, Rk } = g
+  const hz = p.horizon && p.horizon.length === 360 ? p.horizon : null
+  const TAM = Math.PI * 2
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.fillStyle = R.zemin
+  ctx.fillRect(0, 0, w, h)
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, Rk + 0.5, 0, TAM)
+  ctx.clip()
+
+  // Izgara: 30° ve 60° yükseklik çemberleri, her 30° azimutta merkeze çizgi
+  ctx.strokeStyle = R.cizgi
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  for (const alt of [30, 60]) {
+    const r = (Rk * (90 - alt)) / 90
+    ctx.moveTo(cx + r, cy)
+    ctx.arc(cx, cy, r, 0, TAM)
+  }
+  for (let az = 0; az < 360; az += 30) {
+    const [x, y] = kubbeKenarXY(g, az, Rk)
+    ctx.moveTo(cx, cy)
+    ctx.lineTo(x, y)
+  }
+  ctx.stroke()
+
+  if (hz) {
+    // Ufuk profili: kenar ile r_H arası dolu halka (negatif H kenarda kalır)
+    ctx.beginPath()
+    ctx.arc(cx, cy, Rk, 0, TAM)
+    kapaliEgri(ctx, g, (az) => Math.max(hz[az], 0))
+    ctx.fillStyle = R.yuzeyAcik
+    ctx.fill('evenodd')
+
+    ctx.strokeStyle = R.cizgi
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    kapaliEgri(ctx, g, (az) => Math.max(hz[az], 0))
+    ctx.stroke()
+
+    // İletişim eşiği H(A) + ε
+    ctx.strokeStyle = saydam(R.iletisim, 0.7)
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 4])
+    ctx.beginPath()
+    kapaliEgri(ctx, g, (az) => Math.max(hz[az] + p.epsilon, 0))
+    ctx.stroke()
+    ctx.setLineDash([])
+  }
+
+  // İzler (ufkun altındaki parçalar çizilmez)
+  kubbeIzCiz(ctx, g, p.sunTrail, R.gunes)
+  kubbeIzCiz(ctx, g, p.earthTrail, R.iletisim)
+
+  ctx.restore()
+
+  // Ufuk çemberi (yükseklik 0)
+  ctx.strokeStyle = saydam(R.metinSolgun, 0.55)
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.arc(cx, cy, Rk, 0, TAM)
+  ctx.stroke()
+
+  // Kenar dışı: 30° işaretleri ve K / D / G / B
+  ctx.strokeStyle = saydam(R.metinSolgun, 0.5)
+  ctx.beginPath()
+  for (let az = 0; az < 360; az += 30) {
+    const [xa, ya] = kubbeKenarXY(g, az, Rk + 1)
+    const [xb, yb] = kubbeKenarXY(g, az, Rk + (az % 90 === 0 ? 8 : 5))
+    ctx.moveTo(xa, ya)
+    ctx.lineTo(xb, yb)
+  }
+  ctx.stroke()
+  ctx.font = '500 11px Inter, ui-sans-serif, system-ui, sans-serif'
+  ctx.fillStyle = R.metin
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  for (const [az, yon] of [[0, 'K'], [90, 'D'], [180, 'G'], [270, 'B']]) {
+    const [x, y] = kubbeKenarXY(g, az, Rk + 22)
+    ctx.fillText(yon, x, y + 0.5)
+  }
+
+  // Cisimler: ufkun üstündeyse içeride, altındaysa kenarın hemen dışında
+  if (konum && hz) {
+    const dunyaGorunur = konum.earthAlt > ufukOku(hz, konum.earthAz) + p.epsilon
+    kubbeCisim(ctx, g, konum.earthAz, konum.earthAlt, DUNYA_R, R.iletisim, dunyaGorunur ? 1 : SOLUK, false)
+    const gunesGorunur = konum.sunAlt + GUNES_YARICAP > ufukOku(hz, konum.sunAz)
+    kubbeCisim(ctx, g, konum.sunAz, konum.sunAlt, GUNES_R, R.gunes, gunesGorunur ? 1 : SOLUK, true)
+  }
+
+  // Lejant ve yaklaşık uyarısı panoramadaki yerlerinde
+  aciklamaCiz(ctx, R, w - KENAR.sag, KENAR.ust)
+  if (p.yaklasik) rozetCiz(ctx, R, KENAR.sol, KENAR.ust)
+
+  // Fare: imlecin altındaki noktanın azimut ve yüksekliği
+  if (fare) {
+    const dx = fare.x - cx
+    const dy = fare.y - cy
+    const r = Math.hypot(dx, dy)
+    if (r <= Rk) {
+      const alt = 90 - (90 * r) / Rk
+      const az = mod360(Math.atan2(-dx, -dy) / DERECE)
+      const metin = `Az ${Math.round(az) % 360}° · yük. ${isaretli1(Math.round(alt * 10) / 10)}`
+      ctx.font = YAZI
+      const gen = ctx.measureText(metin).width + 14
+      let lx = fare.x + 12
+      if (lx + gen > w - 4) lx = fare.x - 12 - gen
+      const ly = Math.max(4, Math.min(h - 24, fare.y - 30))
+      ctx.fillStyle = saydam(R.zemin, 0.85)
+      ctx.strokeStyle = R.cizgi
+      ctx.lineWidth = 1
+      yuvarlakDikdortgen(ctx, lx, ly, gen, 20, 4)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = R.metin
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(metin, lx + 7, ly + 10.5)
+    }
+  }
+}
+
+function kubbeCisim(ctx, g, az, alt, r, renk, opak, parlama) {
+  if (alt >= 0) {
+    const [x, y] = kubbeXY(g, az, alt)
+    diskCiz(ctx, x, y, r, renk, opak, parlama)
+    return
+  }
+  // Ufkun altında: kenarın hemen dışında küçük soluk nokta + yükseklik etiketi
+  const [x, y] = kubbeKenarXY(g, az, g.Rk + 6 + KUBBE_DIS_R)
+  diskCiz(ctx, x, y, KUBBE_DIS_R, renk, KUBBE_DIS_OPAK, false)
+  ctx.font = '500 10px Inter, ui-sans-serif, system-ui, sans-serif'
+  ctx.fillStyle = saydam(renk, 0.8)
+  ctx.textBaseline = 'middle'
+  const sag = x >= g.cx
+  ctx.textAlign = sag ? 'left' : 'right'
+  // Doğu/Batı yakınında etiket "D"/"B" harfinin üstüne binmesin: harfin ötesine kaydır
+  const harfPayi = Math.abs(Math.sin(az * DERECE)) > 0.97 ? 16 : 0
+  ctx.fillText(isaretli1(Math.round(alt * 10) / 10), x + (sag ? 1 : -1) * (KUBBE_DIS_R + 4 + harfPayi), y + 0.5)
+}
+
+/**
+ * Kutupsal koordinatta sürekli iz. 0°/360° kesmesine gerek yok; ufkun
+ * altına inen segment yükseklik 0'da kesilir.
+ */
+function kubbeIzCiz(ctx, g, iz, renk) {
+  if (!iz || iz.length < 2) return
+  const n = iz.length
+  ctx.lineCap = 'round'
+  for (let i = 1; i < n; i++) {
+    let [azA, altA] = iz[i - 1]
+    let [azB, altB] = iz[i]
+    if (![azA, altA, azB, altB].every(Number.isFinite)) continue
+    if (altA < 0 && altB < 0) continue
+    if (altA < 0 || altB < 0) {
+      // Yükseklik 0 kesişimi; azimut kısa yoldan ara değer
+      const k = altA / (altA - altB)
+      const az0 = azA + donguselFark(azA, azB) * k
+      if (altA < 0) [azA, altA] = [az0, 0]
+      else [azB, altB] = [az0, 0]
+    }
+    const u = i / (n - 1)
+    ctx.strokeStyle = saydam(renk, 0.05 + 0.5 * u)
+    ctx.lineWidth = 0.5 + 2 * u
+    const [xa, ya] = kubbeXY(g, azA, altA)
+    const [xb, yb] = kubbeXY(g, azB, altB)
+    ctx.beginPath()
+    ctx.moveTo(xa, ya)
+    ctx.lineTo(xb, yb)
+    ctx.stroke()
+  }
+  ctx.lineCap = 'butt'
 }

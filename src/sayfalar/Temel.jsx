@@ -3,10 +3,11 @@
 //
 // Kolay ekran görüntüsü için URL parametreleri:
 //   ?alan=Apollo%2011&t=704&oynat=1      ozel=-60,10 → özel koordinat
+//   gorunum=panorama|kubbe → otomatik seçimi ez
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import GokyuzuGorunumu from '../bilesenler/GokyuzuGorunumu.jsx'
+import GokyuzuGorunumu, { kubbeMi } from '../bilesenler/GokyuzuGorunumu.jsx'
 import { useAnlikDurum, useDurum } from '../durum/store.js'
 
 const ADIM_SANIYEDE = 30 // oynatırken saniyede kaç zaman adımı (1 adım = 1 saat)
@@ -92,6 +93,16 @@ export default function Temel() {
   )
   useOynatma(alan?.n ?? 0)
 
+  // Elle görünüm seçimi sadece seçildiği alanda geçerli; alan değişince otomatik
+  const [elle, setElle] = useState(() => ({
+    site: undefined,
+    gorunum: new URLSearchParams(window.location.search).get('gorunum'),
+  }))
+  const elleGecerli = elle.gorunum && (elle.site === undefined || elle.site === alan?.site)
+  const gorunum = elleGecerli ? elle.gorunum : 'otomatik'
+  const etkinKubbe = kubbeMi(gorunum, anlik.kutup)
+  const gorunumSec = (g) => setElle({ site: alan?.site, gorunum: g })
+
   const sunTrail = useMemo(
     () => (alan ? izKes(alan.sun_az, alan.sun_alt, anlik.t, IZ_SAAT, alan.dt_hours) : null),
     [alan, anlik.t],
@@ -120,13 +131,23 @@ export default function Temel() {
         <button className={dugme(!!ozelNokta)} onClick={() => ozelNoktaSec({ lat: -60, lon: 10 })}>
           Özel (−60°, 10°)
         </button>
+        <div className="ml-auto flex rounded-md border border-cizgi overflow-hidden text-xs">
+          {[
+            ['panorama', 'Panorama'],
+            ['kubbe', 'Kubbe'],
+          ].map(([g, ad]) => (
+            <button
+              key={g}
+              onClick={() => gorunumSec(g)}
+              className={`px-3 py-1.5 transition-colors ${
+                etkinKubbe === (g === 'kubbe') ? 'bg-yuzey-acik text-metin' : 'text-metin-solgun hover:bg-yuzey'
+              }`}
+            >
+              {ad}
+            </button>
+          ))}
+        </div>
       </header>
-
-      {anlik.yaklasik && (
-        <p className="text-sm text-uyari">
-          Arazi hesaba katılmadı — ufuk düz kabul edildi. Gerçek değerler farklı olabilir.
-        </p>
-      )}
 
       <section className="grid flex-1 min-h-[360px] rounded-lg border border-cizgi overflow-hidden">
         {anlik.hata ? (
@@ -143,6 +164,7 @@ export default function Temel() {
             sunTrail={sunTrail}
             earthTrail={earthTrail}
             yaklasik={anlik.yaklasik}
+            gorunum={gorunum}
           />
         ) : (
           <p className="p-4 text-metin-solgun">Yükleniyor…</p>
