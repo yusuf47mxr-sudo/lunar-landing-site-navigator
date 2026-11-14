@@ -31,7 +31,7 @@ export const SAHTE_BOLGELER = [
   // artemis
   { site: 'Peak near Cabeus B', kategori: 'artemis', aciklama: ARTEMIS, lat: -82.2, lon: 326.0, taban: -2.5 },
   { site: 'Haworth', kategori: 'artemis', aciklama: ARTEMIS, lat: -87.5, lon: 355.0, taban: 2.0 },
-  { site: 'Malapert Massif', kategori: 'artemis', aciklama: ARTEMIS, lat: -86.0, lon: 2.7, taban: -3.5 },
+  { site: 'Malapert Massif', kategori: 'artemis', aciklama: ARTEMIS, lat: -86.0, lon: 2.7, taban: -5.0 },
   { site: 'Mons Mouton', kategori: 'artemis', aciklama: ARTEMIS, lat: -84.6, lon: 31.0, taban: -3.0 },
   { site: 'Mons Mouton Plateau', kategori: 'artemis', aciklama: ARTEMIS, lat: -84.3, lon: 28.0, taban: -2.5 },
   { site: 'Nobile Rim 1', kategori: 'artemis', aciklama: ARTEMIS, lat: -85.4, lon: 38.0, taban: -1.0 },
