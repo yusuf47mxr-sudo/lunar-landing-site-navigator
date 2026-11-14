@@ -8,7 +8,7 @@
 // `yukleyiciAyarla` ile dosya sisteminden okuyan bir yükleyici verir.
 
 const ZAMAN_ALANLARI = ['sun_alt', 'sun_az', 'earth_alt', 'earth_az', 'sun_au']
-const EFEMERIS_ALANLARI = ['sun_sub_lat', 'sun_sub_lon', 'earth_sub_lat', 'earth_sub_lon', 'sun_au']
+const EFEMERIS_ALANLARI = ['sun_sub_lat', 'sun_sub_lon', 'earth_sub_lat', 'earth_sub_lon', 'sun_au', 'earth_dist_km']
 
 const tabanYol = () => {
   const taban = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'

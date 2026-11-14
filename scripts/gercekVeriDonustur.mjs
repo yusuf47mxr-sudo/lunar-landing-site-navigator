@@ -12,7 +12,7 @@
 //                  horizon "0"/"2"/"10" (720 yön, 0.5° — paketle aynı)
 //   bolgeler.json  26 alan; kısa ad, kategori, Türkçe açıklama, kaynak, arazi türü
 //                  (ad ve açıklama aşağıdaki AD / ACIKLAMA tablolarından; eşleme paket kimliğiyle)
-//   efemeris.json  saatlik alt-noktalar (özel koordinat için) + sun_au
+//   efemeris.json  saatlik alt-noktalar (özel koordinat için) + sun_au + earth_dist_km
 // Eski alan dosyaları (bolgeler.json'da olmayan *.json) silinir.
 
 import { readdir, readFile, unlink, writeFile } from 'node:fs/promises'
@@ -210,7 +210,7 @@ bolgeler.sort((a, b) => KATEGORI_SIRASI.indexOf(a.kategori) - KATEGORI_SIRASI.in
 await writeFile(path.join(CIKTI, 'bolgeler.json'), JSON.stringify(bolgeler, null, 2) + '\n')
 
 // --- efemeris.json: alt-noktalar (özel koordinat) ---------------------------
-const ef = { t0: BASLANGIC_UTC, dt_hours: 1, n: SAAT, sun_sub_lat: [], sun_sub_lon: [], earth_sub_lat: [], earth_sub_lon: [], sun_au: sunAu }
+const ef = { t0: BASLANGIC_UTC, dt_hours: 1, n: SAAT, sun_sub_lat: [], sun_sub_lon: [], earth_sub_lat: [], earth_sub_lon: [], sun_au: sunAu, earth_dist_km: [] }
 const D = 180 / Math.PI
 for (let k = 0; k < SAAT; k++) {
   const i = i0 + k
@@ -220,6 +220,7 @@ for (let k = 0; k < SAAT; k++) {
   ef.sun_sub_lon.push(yuvarla(boylam360(Math.atan2(sy, sx) * D), 4))
   ef.earth_sub_lat.push(yuvarla(Math.atan2(ez, Math.hypot(ex, ey)) * D, 4))
   ef.earth_sub_lon.push(yuvarla(boylam180(Math.atan2(ey, ex) * D), 4))
+  ef.earth_dist_km.push(yuvarla(Math.hypot(ex, ey, ez), 1)) // Ay merkezinden Dünya merkezine
 }
 await writeFile(path.join(CIKTI, 'efemeris.json'), JSON.stringify(ef))
 

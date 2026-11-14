@@ -23,16 +23,23 @@ import { DERECE, DUNYA_DISK_DERECE, GOK_YARICAP, GUNES_DISK_DERECE, SACAK_YARICA
 const GUNES_SIDDET = 2.4
 /** Ay'da atmosfer yok: ortam çok zayıf; yalnız sahne tamamen kaybolmasın diye */
 const ORTAM_SIDDET = 0.12
+/**
+ * Yıldız ışığı: f ≤ 0.5 iken (Güneş arazinin arkasında ya da ufkun altında)
+ * gökten gelen çok zayıf dolgu; arazinin silüeti seçilebilsin. f 0.5 → 0
+ * arasında yumuşakça açılır; Güneş görünürken kapalı.
+ */
+const YILDIZ_ISIGI = 0.3
 const GUNES_RENK = '#fff4e0'
 /** Ton eşlemesiz, Bloom eşiğinin (AraziSahnesi BLOOM_ESIK) çok üstünde */
 export const GUNES_DISK_RENK = [9, 7.6, 5.6]
 const DUNYA_RENK = '#5b9be6'
-const DUNYA_GECE = '#060d1c'
+/** Dünya'nın gece yüzü: koyu lacivert değil, çok soluk gri-mavi disk. */
+const DUNYA_GECE = '#2a3240'
 export const DUNYA_HALKA_RENK = '#22d3ee'
 const ISIK_UZAKLIK = 20000
 
-const HALE_DERECE = 11
-const HALE_OPAKLIK = 0.7
+const HALE_DERECE = 5
+const HALE_OPAKLIK = 0.4
 
 export const GUNES_DISK_YARICAP = GOK_YARICAP * Math.tan(GUNES_DISK_DERECE * DERECE)
 export const DUNYA_DISK_YARICAP = GOK_YARICAP * Math.tan(DUNYA_DISK_DERECE * DERECE)
@@ -55,11 +62,13 @@ function haleDokusuAl() {
   tuval.width = tuval.height = boyut
   const ctx = tuval.getContext('2d')
   const g = ctx.createRadialGradient(boyut / 2, boyut / 2, 0, boyut / 2, boyut / 2, boyut / 2)
-  g.addColorStop(0, 'rgba(255, 236, 200, 0.9)')
-  g.addColorStop(0.05, 'rgba(255, 220, 170, 0.45)')
-  g.addColorStop(0.2, 'rgba(255, 205, 150, 0.16)')
-  g.addColorStop(0.55, 'rgba(255, 195, 135, 0.05)')
-  g.addColorStop(1, 'rgba(255, 190, 130, 0)')
+  // Sıcak beyaz, düşük doygunluk; kenarda tam sıfır (ekran kenarında ya da
+  // ufukta kesilince turuncu leke kalmasın)
+  g.addColorStop(0, 'rgba(255, 244, 228, 0.9)')
+  g.addColorStop(0.08, 'rgba(255, 238, 215, 0.4)')
+  g.addColorStop(0.3, 'rgba(255, 232, 205, 0.1)')
+  g.addColorStop(0.65, 'rgba(255, 230, 200, 0.02)')
+  g.addColorStop(1, 'rgba(255, 230, 200, 0)')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, boyut, boyut)
   haleDokusu = new CanvasTexture(tuval)
@@ -136,6 +145,10 @@ export default function Gok({ sunAlt, sunAz, earthAlt, earthAz, f, c, golgeYari,
   return (
     <>
       <ambientLight color="#aab4c8" intensity={ORTAM_SIDDET} />
+      <hemisphereLight
+        args={['#8fa3c7', '#000000']}
+        intensity={YILDIZ_ISIGI * (1 - Math.min(1, Math.max(0, f / 0.5)) ** 2)}
+      />
       {/* Earthshine: Dünya görünürken çok hafif mavi dolgu */}
       {c === 1 && <directionalLight color="#7fb0ff" intensity={0.09} position={dunyaKonum} />}
       <directionalLight
@@ -200,7 +213,7 @@ function GeceYarisi({ hedef, r }) {
     <group ref={ref}>
       <mesh>
         <sphereGeometry args={[r * 1.004, 48, 32, 0, Math.PI]} />
-        <meshBasicMaterial color={DUNYA_GECE} transparent opacity={0.9} />
+        <meshBasicMaterial color={DUNYA_GECE} transparent opacity={0.94} />
       </mesh>
     </group>
   )

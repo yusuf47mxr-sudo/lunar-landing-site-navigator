@@ -32,7 +32,15 @@ const YUMUSAK_GECIS = 0.35
 const RENK_ALCAK = [0.33, 0.32, 0.31]
 const RENK_YUKSEK = [0.6, 0.58, 0.56]
 const RENK_UZAK = [0.4, 0.39, 0.38] // uzak regolit tonu (ufukta)
-const UFUK_KARART = 0.72 // ufukta ton çarpanı
+/**
+ * Etek ufka doğru kararır ve ufukta neredeyse siyah olur: uzak arazi silüete
+ * karışır, Güneş'e bakan yükselen etek "dev hilal" gibi parlamaz.
+ * karart(s) = UFUK_KARART + (1 − UFUK_KARART)·(1 − s)^ETEK_US
+ */
+const UFUK_KARART = 0.03
+const ETEK_US = 2.2
+/** Sacak, ufuktaki tondan dış kenarda bu orana kadar kararır. */
+const SACAK_SON = 0.15
 const GURULTU = 0.02
 /** Kalıcı gölge örtüsünün arazi üstündeki yüksekliği (m, abartısız). */
 const ORTU_YUKSEKLIK = 3
@@ -175,7 +183,7 @@ export function zeminGeometrisi(arazi, abarti, zemin) {
       } else {
         konum.set([x, etekY(zemin, j, s), z], k * 3)
         // Kenar renginden uzak regolit tonuna, uzaklaştıkça hafifçe kararan
-        const karart = 1 - (1 - UFUK_KARART) * s
+        const karart = UFUK_KARART + (1 - UFUK_KARART) * Math.pow(1 - s, ETEK_US)
         const g = hucreGurultusu(x, z) * GURULTU * (1 - s)
         for (let c = 0; c < 3; c++) {
           renk[k * 3 + c] = ((yukseklikRengi(zemin.kenarHam[j], c) + g) * (1 - s) + RENK_UZAK[c] * s) * karart
@@ -195,14 +203,19 @@ export function zeminGeometrisi(arazi, abarti, zemin) {
   return geometriKur(konum, renk, indeks)
 }
 
-/** Ufuktan dışarı koni sacak: y = r·tan H; uzaklaştıkça neredeyse siyaha kararır. */
+/**
+ * Ufuktan dışarı koni sacak: y = r·tan H; ufuktaki koyu tondan dışa doğru
+ * düzgünce siyaha kararır. Normaller hep yukarı: H(az) dilimden dilime
+ * değiştiği için hesaplanan normaller alçak Güneş'te ışınsal çizgi yapıyordu.
+ * Gölge de almaz (gölge kamerasının kenarında akne olmasın).
+ */
 export function sacakGeometrisi(zemin) {
   const halkalar = SACAK_YARICAPLARI.length
   const konum = new Float32Array(halkalar * DILIM * 3)
   const renk = new Float32Array(halkalar * DILIM * 3)
   SACAK_YARICAPLARI.forEach((r, i) => {
     const u = (r - UFUK_YARICAP) / (SACAK_YARICAP - UFUK_YARICAP)
-    const karart = UFUK_KARART * Math.pow(1 - u, 1.6) + 0.025
+    const karart = UFUK_KARART * (1 - (1 - SACAK_SON) * Math.pow(u, 0.7))
     for (let j = 0; j < DILIM; j++) {
       const b = dilimAz(j) * DERECE
       const k = i * DILIM + j
@@ -213,7 +226,11 @@ export function sacakGeometrisi(zemin) {
   const indeks = new Uint32Array((halkalar - 1) * DILIM * 6)
   let p = 0
   for (let i = 0; i < halkalar - 1; i++) p = halkaIndeksleri(indeks, p, i * DILIM, (i + 1) * DILIM)
-  return geometriKur(konum, renk, indeks)
+  const g = geometriKur(konum, renk, indeks)
+  const normal = g.getAttribute('normal')
+  for (let k = 0; k < normal.count; k++) normal.setXYZ(k, 0, 1, 0)
+  normal.needsUpdate = true
+  return g
 }
 
 /**
@@ -277,7 +294,7 @@ export default function Arazi({ arazi, abarti = 1, zemin }) {
       <mesh geometry={yer} castShadow receiveShadow>
         <Regolit />
       </mesh>
-      <mesh geometry={sacak} receiveShadow>
+      <mesh geometry={sacak}>
         <Regolit side={DoubleSide} />
       </mesh>
       {ortu && (

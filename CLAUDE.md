@@ -88,6 +88,7 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
       AyKuresi.jsx        Ay küresi: dokular, Güneş/Dünya ışığı, 26 işaret (DOM), kamera, yaklaşma uçuşu
       ayDokulari.js       Renk 2k/4k, displacement ve normal haritası (16 bit yükseklikten)
       png16.js            16 bit gri PNG çözücü (DecompressionStream)
+      kutupYamasi.js      80°G içi 400 m DEM yaması, 80°G'de kesik küre; dikişsiz geçiş
       kure.js             Enlem/boylam → küre vektörü, kamera duruşları
       HataSiniri.jsx      WebGL denetimi ve sahne hata sınırı (→ panorama)
       AraziSahnesi.jsx    Yerel sahne: Canvas, HUD, kamera düğmeleri, düşey abartı
@@ -221,7 +222,8 @@ yüzey noktası), `MOON_ME` çerçevesinde. Bütün alanlar için ortaktır.
   "sun_sub_lon":   [178.4, "... n eleman, [0, 360)"],
   "earth_sub_lat": [-3.1, "... n eleman"],
   "earth_sub_lon": [4.7, "... n eleman, [-180, 180)"],
-  "sun_au":        [0.98332, "... n eleman"]
+  "sun_au":        [0.98332, "... n eleman"],
+  "earth_dist_km": [384121.5, "... n eleman, Ay merkezinden Dünya merkezine"]
 }
 ```
 
@@ -631,6 +633,13 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   yerelde yeni alana geçilir (3B, alan verisi yüklenirken de bağlı kalır).
   Küre ve yerel sahne ayrı Canvas; aynı anda biri bağlı, kapanan WebGL bağlamını
   ve dokularını bırakır. Doku kredisi: "NASA's Scientific Visualization Studio".
+  Güney kutbu yaması: kamera kutba yaklaşınca ya da kutup alanına (enlem < −75°)
+  uçuş/dönüşte bir kez `dem_south_400m.bin` yüklenir; küre 80°G'de kesilir
+  (UV enlemden yeniden yazılır) ve 400 m DEM'li yama kutbu tamamlar. Dış halka
+  kürenin kenar köşeleriyle aynı yükseklikte (768 = 256 × 3 dilim); 4°'lik
+  geçişte yükseklik küreselden DEM'e, normal de kürenin normal haritasından
+  geometrik normale karışır — dikiş görünmez. Uzak Dünya'nın gece yüzü çok
+  soluk gri-mavi (zayıf öz ışıma).
 - **3B sahne.** Temel'de varsayılan görünüm 3B, Orta/İleri'de panorama;
   üçünde de Panorama / Kubbe / 3B düğmesi var. three.js yalnız 3B
   seçilince iner (React.lazy); WebGL yoksa ya da sahne hata verirse kutu
@@ -642,7 +651,14 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   testiyle** örter, elle gizleme yok (sacak, yüksek kameradan da örtmeyi
   korur). Disk ve küreler kameradan sabit açısal boyutta çizilir. Güneş halesi
   kamera→Güneş ışınında, zeminin ötesinde: yalnız gökyüzüne karşı görünür,
-  Güneş sırtın arkasındayken silüeti belli eder. Yakın arazi (LOLA 50 m
+  Güneş sırtın arkasındayken silüeti belli eder (5°, düşük doygunluk; ekran
+  kenarında kesik leke bırakmaz). Etek ufka doğru `(1 − s)^2.2` ile kararır,
+  ufukta neredeyse siyah: uzak arazi silüete karışır. Sacak gölge almaz,
+  normalleri yukarı (H(az) dilimden dilime değiştiği için hesaplanan normaller
+  alçak Güneş'te ışınsal çizgi yapıyordu) ve dışa doğru siyaha kararır.
+  Dünya'nın gece yüzü çok soluk gri-mavi. `f ≤ 0.5` iken gökten çok zayıf
+  yıldız ışığı (hemisphereLight, en fazla 0.3; f 0.5 → 0 arasında açılır):
+  arazi silüeti seçilir, not aynen kalır. Yakın arazi (LOLA 50 m
   ızgara) ile uzak ufuk (paketin 20 m / 80 m ışın izlemesi) aynı DEM'den gelir
   ama farklı çözünürlükte; küçük farklar olabilir. Düşey abartı yalnız araziye uygulanır (ufuk ve
   sacak açısal gerçektir). Güneş ışığı `f` ile ölçeklenir; ortam ışığı

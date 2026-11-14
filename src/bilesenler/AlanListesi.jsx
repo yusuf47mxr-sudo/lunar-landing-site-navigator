@@ -8,6 +8,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useBolgeler, useDurum } from '../durum/store.js'
 
+/** "Artemis III aday bölgesi · bölgedeki en iyi nokta" → "Artemis III aday bölgesi" */
+export const kisaAciklama = (a) => (a ?? '').split(' · ')[0]
+
 export const KATEGORILER = [
   { anahtar: 'artemis', baslik: 'Artemis' },
   { anahtar: 'clps', baslik: 'CLPS' },
@@ -147,7 +150,8 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
                     >
                       {b.site}
                     </span>
-                    <span className="mt-0.5 block text-xs text-metin-solgun truncate">{b.aciklama}</span>
+                    {/* Kartta yalnız kısa açıklama ("·" öncesi); tamamı başlık altındaki satırda */}
+                    <span className="mt-0.5 block text-xs text-metin-solgun truncate">{kisaAciklama(b.aciklama)}</span>
                   </button>
                 </li>
               )

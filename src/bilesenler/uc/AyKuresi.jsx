@@ -10,7 +10,7 @@
 
 import { OrbitControls, Stars } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Quaternion, Vector3 } from 'three'
 import { useShallow } from 'zustand/react/shallow'
 import { yuzdeBicimle } from '../../core/hesap.js'
@@ -20,6 +20,7 @@ import { useAyDokulari } from './ayDokulari.js'
 import { HataSiniri } from './HataSiniri.jsx'
 import Iskelet from './Iskelet.jsx'
 import { enlemBoylamVektoru, kameraDurusu, yakinBakis } from './kure.js'
+import { useKutupYamasi } from './kutupYamasi.js'
 
 const DUNYA_UZAKLIK = 42
 const DUNYA_YARICAP = 0.55
@@ -65,30 +66,68 @@ function Isiklar({ gunesYon, dunyaYon, dunyaRef }) {
   )
 }
 
-function Ay({ dokular }) {
+/**
+ * Ay. Kutup yaması hazırsa küre 80°G'de kesilir ve güney kutbunu 400 m DEM'li
+ * yama tamamlar (kutupYamasi.js); değilse tam küre.
+ */
+function Ay({ dokular, kutup }) {
+  const malzeme = (
+    <meshStandardMaterial
+      map={dokular.renk}
+      displacementMap={dokular.yer}
+      displacementScale={dokular.ayar.olcek}
+      displacementBias={dokular.ayar.kayma}
+      normalMap={dokular.normal}
+      roughness={1}
+      metalness={0}
+    />
+  )
   return (
-    <mesh>
-      <sphereGeometry args={[1, 256, 128]} />
-      <meshStandardMaterial
-        map={dokular.renk}
-        displacementMap={dokular.yer}
-        displacementScale={dokular.ayar.olcek}
-        displacementBias={dokular.ayar.kayma}
-        normalMap={dokular.normal}
-        roughness={1}
-        metalness={0}
-      />
-    </mesh>
+    <>
+      {kutup.kure ? (
+        <mesh key="kesik" geometry={kutup.kure}>
+          {malzeme}
+        </mesh>
+      ) : (
+        <mesh key="tam">
+          <sphereGeometry args={[1, 256, 128]} />
+          {malzeme}
+        </mesh>
+      )}
+      {kutup.yama && (
+        <mesh geometry={kutup.yama}>
+          <meshStandardMaterial map={dokular.renk} roughness={1} metalness={0} />
+        </mesh>
+      )}
+    </>
   )
 }
 
-/** Uzakta küçük Dünya; evresini aynı Güneş ışığı verir. */
+/** Kamera güney kutbuna yaklaşınca (yakın ve 55°G'den güneye bakıyor) kutup yamasını ister; bir kez. */
+function KutupTetik({ onIste }) {
+  const camera = useThree((s) => s.camera)
+  const istendi = useRef(false)
+  useFrame(() => {
+    if (istendi.current) return
+    const r = camera.position.length()
+    if (r < 2.4 && camera.position.y / r < -0.55) {
+      istendi.current = true
+      onIste()
+    }
+  })
+  return null
+}
+
+/**
+ * Uzakta küçük Dünya; evresini aynı Güneş ışığı verir. Gece yüzü siyah değil,
+ * çok soluk gri-mavi (zayıf öz ışıma): Güneş arkadayken ince hilal + soluk disk.
+ */
 function Dunya({ dunyaRef }) {
   return (
     <group ref={dunyaRef}>
       <mesh>
         <sphereGeometry args={[DUNYA_YARICAP, 64, 32]} />
-        <meshStandardMaterial color="#3d7bd6" roughness={0.55} metalness={0} />
+        <meshStandardMaterial color="#3d7bd6" emissive="#2a3240" emissiveIntensity={1} roughness={0.55} metalness={0} />
       </mesh>
     </group>
   )
@@ -295,6 +334,15 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
   const ucusNoktasi = ucus ? noktalar.find((n) => n.id === ucus.site) : null
   const ucusHedefi = ucusNoktasi ? { enlem: ucusNoktasi.enlem, boylam: ucusNoktasi.boylam, site: ucus.site, sira: ucus.sira } : null
 
+  // Güney kutbu yaması: yaklaşınca, kutup alanına uçuşta ya da kutup alanından dönüşte
+  const [kutupIstek, setKutupIstek] = useState(false)
+  const kutupAlani = (enlem) => enlem != null && enlem < -75
+  useEffect(() => {
+    if (kutupAlani(ucusHedefi?.enlem) || (donus && kutupAlani(durus?.enlem))) setKutupIstek(true)
+  }, [ucusHedefi?.sira, donus]) // eslint-disable-line react-hooks/exhaustive-deps
+  const kutup = useKutupYamasi(kutupIstek, dokular.yer, dokular.ayar, dokular.normal)
+  if (import.meta.env.DEV && typeof window !== 'undefined') window.__kutupYamasi = !!kutup.yama
+
   const ogeler = useRef({})
   const hazir = dokular.hazir && efemeris && bolgeler && durus
 
@@ -313,7 +361,8 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
             <color attach="background" args={['#010208']} />
             <Stars radius={300} depth={80} count={4000} factor={5} saturation={0} fade speed={0} />
             <Isiklar gunesYon={gunesYon} dunyaYon={dunyaYon} dunyaRef={dunyaRef} />
-            <Ay dokular={dokular} />
+            <Ay dokular={dokular} kutup={kutup} />
+            {!kutupIstek && <KutupTetik onIste={() => setKutupIstek(true)} />}
             <Dunya dunyaRef={dunyaRef} />
             <KureKamera durus={durus} ucus={ucusHedefi} donus={donus} onVaris={onInis} />
             <IsaretIzdusumu noktalar={noktalar} ogeler={ogeler} seciliId={seciliId} />
