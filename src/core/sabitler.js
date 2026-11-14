@@ -12,14 +12,16 @@ export const INIS_SAYISI = 52
  * Depo bunlarla başlar; ParametrePaneli "Varsayılana dön" ve rozet sayımı için okur.
  */
 /**
- * Açılıştaki an: 7. gün (t = 168, dt = 1 saat). t = 0'da Malapert gökyüzünde
- * Güneş ve Dünya aynı noktada duruyor; 168'de aralarında ≈ 93° var ve ikisi de
- * görünür. Haftalık iniş ızgarasının 2. haftasıdır (8 Ocak).
+ * Açılıştaki an: 6. gün (t = 120, dt = 1 saat). t = 0'da Malapert gökyüzünde
+ * Güneş ve Dünya aynı noktada duruyor; 120'de aralarında ≈ 68° var, ikisi de
+ * görünür ve Dünya batışına 11 saat kalmış: Earthset geri sayımı açılışta
+ * uyarı renginde görünür. iniş tarihi (tL) ızgaranın ilk haftasıdır (1 Ocak):
+ * tL haftalık ızgaradan seçilir, 120 ızgarada yok.
  */
-export const BASLANGIC_T = 168
+export const BASLANGIC_T = 120
 
 export const VARSAYILAN = Object.freeze({
-  tL: BASLANGIC_T, // iniş tarihi indeksi — açılıştaki anla aynı hafta
+  tL: 0, // iniş tarihi indeksi — 1 Ocak; açılıştaki an (t = 120) bu görevin 6. günü
   D: 30, // görev süresi (gün)
   hm: 2, // direk yüksekliği (m)
   epsilon: 2, // iletişim güvenlik payı (derece)

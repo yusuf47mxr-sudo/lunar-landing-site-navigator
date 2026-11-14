@@ -354,8 +354,9 @@ sadece diziler yeniden taranır.
   seciliAlan: 'Malapert Massif',
   ozelNokta: null,          // { lat, lon } veya null
   karsilastirma: [],        // en fazla 3 alan adı
-  t: 168,                   // zaman dizisindeki indeks (7. gün; alan değişince korunur)
-  tL: 168,                  // iniş tarihi indeksi (aynı hafta)
+  t: 120,                   // zaman dizisindeki indeks (6. gün; alan değişince korunur)
+                            // Malapert'te Dünya batışına 11 sa: Earthset açılışta görünür
+  tL: 0,                    // iniş tarihi indeksi (1 Ocak; t bu görevin içinde)
   D: 30,                    // görev süresi (gün) — sadece 7, 30, 90 veya 180
 
   // Mühendislik parametreleri
