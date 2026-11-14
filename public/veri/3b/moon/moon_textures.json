@@ -1,0 +1,13 @@
+{
+ "color_4k": "moon_color_4k.jpg",
+ "color_2k": "moon_color_2k.jpg",
+ "height": "moon_height_1440.png",
+ "height_bits": 16,
+ "height_km_min": -8.878499984741211,
+ "height_km_max": 10.504000663757324,
+ "height_note": "km relative to 1737.4 km radius; pixel = min + v/65535*(max-min)",
+ "projection": "equirectangular (simple cylindrical), lon -180..180 left to right, lat 90..-90 top to bottom",
+ "source": "NASA SVS CGI Moon Kit (svs.gsfc.nasa.gov/4720): lroc_color_poles_4k.tif (LROC WAC color, polar detail), ldem_4.tif (LOLA)",
+ "credit": "NASA's Scientific Visualization Studio",
+ "note": "Optimized for aesthetics, not science (SVS)."
+}

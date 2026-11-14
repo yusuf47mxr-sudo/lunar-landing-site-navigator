@@ -1,0 +1,1 @@
+{"width": 1520, "height": 1520, "pixel_m": 400.0, "x0": -304000.0, "y0": 304000.0, "proj": "+proj=stere +lat_0=-90 +lon_0=0 +k=1 +R=1737400 (polar stereographic, true scale at pole)", "src_proj": "+proj=stere +lat_0=-90 +lat_ts=-90 +lon_0=0 +x_0=0 +y_0=0 +R=1737400 +units=m +no_defs=True", "source": "LOLA LDEM_80S_80MPP_ADJ (NASA PGDA 90), 5x5 block mean"}
