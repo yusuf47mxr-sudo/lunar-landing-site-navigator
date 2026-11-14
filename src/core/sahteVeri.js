@@ -3,6 +3,7 @@
 // Saf JS: hem tarayıcıda hem Node'da çalışır (dosya sistemi kullanmaz).
 
 import { altAzDizi } from './efemeris.js'
+import { KUTUP_SINIRI } from './sabitler.js'
 
 // --- Sabitler -------------------------------------------------------------
 
@@ -10,7 +11,7 @@ export const T0 = '2027-01-01T00:00:00Z'
 export const DT_SAAT = 1
 export const N = 8760
 export const DIREK_YUKSEKLIKLERI = [0, 2, 10]
-export const KUTUP_SINIRI = 75 // |lat| >= 75° kutup alanı
+export { KUTUP_SINIRI }
 
 // Direk yüksekliğine göre ufuk düşüşü (derece)
 const DIREK_DUSUSU = { 0: 0, 2: 0.1, 10: 0.4 }

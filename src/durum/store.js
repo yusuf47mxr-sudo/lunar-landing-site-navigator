@@ -8,6 +8,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { alanOnbellekte, alanYukle, efemerisOnbellekte, efemerisYukle } from '../core/veri.js'
 import { ozelNoktaOlustur } from '../core/ozelNokta.js'
 import { geriSayim, guc, gunesOrani, iletisimDurumu, olcutler } from '../core/hesap.js'
+import { KUTUP_SINIRI } from '../core/sabitler.js'
 
 export const MODLAR = ['temel', 'orta', 'ileri']
 export const GOREV_SURELERI = [7, 30, 90, 180]
@@ -148,6 +149,45 @@ export function useSeciliAlanVerisi() {
 
   if (!ozel) return liste
   return { alan: ozelSonuc.alan, hata: efHata ?? ozelSonuc.hata, yukleniyor: efYukleniyor }
+}
+
+// --- Anlık durum kancası -------------------------------------------------
+
+/**
+ * Seçili alanda t anındaki ham konumlar ve gökyüzü görünümünün ihtiyaç
+ * duyduğu her şey. Hesap yapmaz; sadece dizilerden okur.
+ * Veri yoksa alan null döner, diğer değerler null/varsayılan olur.
+ */
+export function useAnlikDurum() {
+  const { t, hm, epsilon } = useDurum(
+    useShallow((s) => ({ t: s.t, hm: s.hm, epsilon: s.epsilon })),
+  )
+  const { alan, yukleniyor, hata } = useSeciliAlanVerisi()
+
+  return useMemo(() => {
+    if (!alan) {
+      return {
+        alan: null, yukleniyor, hata, t: 0, zaman: null, horizon: null, epsilon,
+        sunAlt: null, sunAz: null, earthAlt: null, earthAz: null, kutup: false, yaklasik: false,
+      }
+    }
+    const i = Math.min(Math.max(0, Math.round(t)), alan.n - 1)
+    return {
+      alan,
+      yukleniyor,
+      hata,
+      t: i,
+      zaman: new Date(Date.parse(alan.t0) + i * alan.dt_hours * 3600e3),
+      horizon: alan.horizon[String(hm)] ?? null,
+      epsilon,
+      sunAlt: alan.sun_alt[i],
+      sunAz: alan.sun_az[i],
+      earthAlt: alan.earth_alt[i],
+      earthAz: alan.earth_az[i],
+      kutup: Math.abs(alan.lat) >= KUTUP_SINIRI,
+      yaklasik: alan.yaklasik === true,
+    }
+  }, [alan, yukleniyor, hata, t, hm, epsilon])
 }
 
 // --- Ölçüt kancası ---------------------------------------------------------
