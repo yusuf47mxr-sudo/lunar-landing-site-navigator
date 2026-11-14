@@ -87,6 +87,7 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     ZamanCizelgesiKutusu.jsx  Depoya bağlı zaman çizelgesi
     SayisalOzet.jsx       Anlık ve görev aralığı sayıları; kip='tam' İleri özeti
     DisaAktar.jsx         CSV indirme (İleri)
+    VeriUyarisi.jsx       Sahte veri notu (sabitler.js VERI_KAYNAGI)
     tuval.js              Canvas bileşenlerinin ortak yardımcıları
   /sayfalar
     Giris.jsx
@@ -538,6 +539,9 @@ aralığında, doğu yönünde artan.
   Isı haritası `ozet.json`'dan beslenir.
 - **Yaklaşık veri işaretlenir.** `yaklasik: true` olan her alanda uyarı
   görünür. Kullanıcıyı yanıltabilecek hiçbir sonuç uyarısız gösterilmez.
+  Bütün veri sahteyken (`sabitler.js`: `VERI_KAYNAGI = 'sahte'`) üç sayfanın
+  başlığı altında `VeriUyarisi` görünür; gerçek veri gelince sabit
+  `'gercek'` yapılır, başka bir şey değişmez.
 
 ---
 

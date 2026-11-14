@@ -9,6 +9,7 @@ import DurumGostergesi from '../bilesenler/DurumGostergesi.jsx'
 import GeriSayim from '../bilesenler/GeriSayim.jsx'
 import GokyuzuKutusu from '../bilesenler/GokyuzuKutusu.jsx'
 import ModDegistirici from '../bilesenler/ModDegistirici.jsx'
+import VeriUyarisi from '../bilesenler/VeriUyarisi.jsx'
 import ZamanKaydirici from '../bilesenler/ZamanKaydirici.jsx'
 import { useBolgeler, useSeciliAlanVerisi } from '../durum/store.js'
 
@@ -29,6 +30,7 @@ export default function Temel() {
             {alan?.site ?? ' '}
             {kayit?.aciklama && <span className="text-metin-solgun/70"> · {kayit.aciklama}</span>}
           </p>
+          <VeriUyarisi className="mt-3" />
         </header>
 
         <AlanListesi yerlesim="yatay" />

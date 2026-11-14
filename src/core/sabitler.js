@@ -32,3 +32,10 @@ export const VARSAYILAN = Object.freeze({
   w2: 1,
   w3: 1,
 })
+
+/**
+ * public/veri/ altındaki verinin kaynağı: 'sahte' (scripts/sahteVeriUret.mjs)
+ * ya da 'gercek' (SPICE + LOLA). 'sahte' iken üç sayfanın başlığı altında
+ * VeriUyarisi görünür. Gerçek veri gelince bu satırı 'gercek' yapmak yeter.
+ */
+export const VERI_KAYNAGI = 'sahte'
