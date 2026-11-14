@@ -1,11 +1,15 @@
+import { useDurum } from './durum/store.js'
+import Ileri from './sayfalar/Ileri.jsx'
+import Orta from './sayfalar/Orta.jsx'
 import Temel from './sayfalar/Temel.jsx'
-import TestZaman from './sayfalar/TestZaman.jsx'
 
-// Şimdilik doğrudan Temel sayfa. Giriş ekranı ve mod geçişi Adım 12'de.
-// GEÇİCİ: ?test=zaman → zaman çizelgesi test sayfası
-const testSayfasi = new URLSearchParams(window.location.search).get('test')
+// Sayfa store.mod'a göre seçilir; mod ModDegistirici ile değişir.
+// Seçili alan, zaman ve parametreler depoda durduğu için mod değişince korunur.
+// Giriş ekranı Adım 12'de.
+const SAYFALAR = { temel: Temel, orta: Orta, ileri: Ileri }
 
 export default function App() {
-  if (testSayfasi === 'zaman') return <TestZaman />
-  return <Temel />
+  const mod = useDurum((s) => s.mod)
+  const Sayfa = SAYFALAR[mod] ?? Temel
+  return <Sayfa />
 }

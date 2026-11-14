@@ -73,6 +73,8 @@ export const useDurum = create((set) => ({
     }),
   tAyarla: (t) => set({ t }),
   tLAyarla: (tL) => set({ tL }),
+  /** İniş tarihi seçimi: görev başlangıcı değişir ve zaman oraya atlar. */
+  inisSec: (tL) => set({ tL, t: tL }),
   DAyarla: (D) => set((s) => ({ D: izinli(D, GOREV_SURELERI, s.D) })),
   hmAyarla: (hm) => set((s) => ({ hm: izinli(hm, DIREK_YUKSEKLIKLERI, s.hm) })),
   yonelimAyarla: (yonelim) => set((s) => ({ yonelim: izinli(yonelim, YONELIMLER, s.yonelim) })),

@@ -20,6 +20,9 @@ const saatBicim = new Intl.DateTimeFormat('tr-TR', {
   timeZone: 'UTC',
 })
 
+/** "14 Mart 2027" */
+export const gunBicimle = (d) => gunBicim.format(d)
+
 /** "14 Mart 2027, 08:00 UTC" */
 export const tarihBicimle = (d) => `${gunBicim.format(d)}, ${saatBicim.format(d)} UTC`
 
@@ -66,7 +69,8 @@ function OynatSimgesi({ oynatiliyor }) {
   )
 }
 
-export default function ZamanKaydirici({ className = '' }) {
+/** @param {string} [props.enFazla] iç genişlik sınırı (sayfanın sütun genişliğiyle aynı olmalı) */
+export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px]' }) {
   const anlik = useAnlikDurum()
   const { alan } = anlik
   const n = alan?.n ?? 0
@@ -86,7 +90,7 @@ export default function ZamanKaydirici({ className = '' }) {
     <div
       className={`sticky bottom-0 z-20 border-t border-cizgi bg-zemin/85 backdrop-blur-md ${className}`}
     >
-      <div className="mx-auto max-w-[900px] px-4 sm:px-6 py-3">
+      <div className={`mx-auto ${enFazla} px-4 py-3 sm:px-6`}>
         <p className="mb-2 text-center text-sm tracking-wide text-metin tabular-nums" aria-live="off">
           {anlik.zaman ? tarihBicimle(anlik.zaman) : '—'}
         </p>

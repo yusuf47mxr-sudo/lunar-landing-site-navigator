@@ -62,7 +62,7 @@ body {
 
 /* --- Yatay kart şeridi (AlanListesi.jsx) --------------------------------- */
 .ince-kaydirma { scrollbar-width: thin; scrollbar-color: var(--cizgi) transparent; }
-.ince-kaydirma::-webkit-scrollbar { height: 6px; }
+.ince-kaydirma::-webkit-scrollbar { height: 6px; width: 6px; }
 .ince-kaydirma::-webkit-scrollbar-thumb { background: var(--cizgi); border-radius: 9999px; }
 .kenar-solma {
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent);

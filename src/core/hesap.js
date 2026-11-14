@@ -216,6 +216,19 @@ export function saatBicimle(saat) {
   return dk > 0 ? `${sa} sa ${dk} dk` : `${sa} sa`
 }
 
+/** Yükseklik açısı: +2.3° / −1.1° / 0.0° (bir ondalık, işaretli). Geçersizse "—". */
+export function dereceBicimle(v) {
+  if (v == null || !Number.isFinite(v)) return '—'
+  const y = Math.round(v * 10) / 10
+  return `${y > 0 ? '+' : y < 0 ? '−' : ''}${Math.abs(y).toFixed(1)}°`
+}
+
+/** 0…1 oranı → "%82" */
+export const yuzdeBicimle = (v) => `%${Math.round(v * 100)}`
+
+/** Saat → "62 sa" (güne çevrilmez; tabloda karşılaştırması kolay) */
+export const tamSaatBicimle = (v) => `${Math.round(v)} sa`
+
 // --- Panorama merkezi -----------------------------------------------------
 
 /** Açıların döngüsel ortalaması: atan2(ortalama sin, ortalama cos), [0, 360). */

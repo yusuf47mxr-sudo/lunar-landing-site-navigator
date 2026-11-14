@@ -1,8 +1,9 @@
 // Durum göstergesi — Güneş ve iletişim için iki büyük rozet.
 // kip='sozel'  : sadece durum cümlesi (Temel)
-// kip='sayisal': altında yükseklik açısı da yazar (Orta, İleri)
+// kip='sayisal': daha küçük, hep yan yana; altında yükseklik açısı da yazar (Orta, İleri)
 
 import { AnimatePresence, motion } from 'framer-motion'
+import { dereceBicimle as derece } from '../core/hesap.js'
 import { useAnlikDurum, useGorunurluk } from '../durum/store.js'
 
 // Framer Motion renkleri ara değerleyebilsin diye hepsi rgba
@@ -17,13 +18,7 @@ const STIL = {
 
 const GECIS = { duration: 0.45, ease: 'easeOut' }
 
-const derece = (v) => {
-  if (v == null || !Number.isFinite(v)) return '—'
-  const y = Math.round(v * 10) / 10
-  return `${y > 0 ? '+' : y < 0 ? '−' : ''}${Math.abs(y).toFixed(1)}°`
-}
-
-function Rozet({ etiket, durum, metin, ek }) {
+function Rozet({ etiket, durum, metin, ek, kucuk }) {
   const s = STIL[durum]
   return (
     <motion.div
@@ -32,7 +27,9 @@ function Rozet({ etiket, durum, metin, ek }) {
       initial={false}
       animate={{ backgroundColor: s.zemin, borderColor: s.kenar }}
       transition={GECIS}
-      className="min-h-[100px] rounded-2xl border px-5 py-4 flex flex-col justify-center gap-1.5"
+      className={`flex flex-col justify-center border ${
+        kucuk ? 'min-h-[76px] gap-1 rounded-xl px-4 py-3' : 'min-h-[100px] gap-1.5 rounded-2xl px-5 py-4'
+      }`}
     >
       <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-metin-solgun">
         <motion.span
@@ -44,7 +41,7 @@ function Rozet({ etiket, durum, metin, ek }) {
         {etiket}
       </span>
       <motion.span
-        className="relative block text-[20px] font-light tracking-wide"
+        className={`relative block font-light tracking-wide ${kucuk ? 'text-base' : 'text-[20px]'}`}
         initial={false}
         animate={{ color: s.metin }}
         transition={GECIS}
@@ -70,7 +67,10 @@ function Rozet({ etiket, durum, metin, ek }) {
 export default function DurumGostergesi({ kip = 'sozel', className = '' }) {
   const anlik = useAnlikDurum()
   const { f, c } = useGorunurluk()
-  if (!f || !c || !anlik.alan) return <div className={`min-h-[100px] ${className}`} aria-busy="true" />
+  const sayisal = kip === 'sayisal'
+  if (!f || !c || !anlik.alan) {
+    return <div className={`${sayisal ? 'min-h-[76px]' : 'min-h-[100px]'} ${className}`} aria-busy="true" />
+  }
 
   const fT = f[anlik.t]
   const cT = c[anlik.t]
@@ -82,16 +82,21 @@ export default function DurumGostergesi({ kip = 'sozel', className = '' }) {
   const iletisim = cT === 1
     ? { durum: 'baglanti', metin: 'Dünya ile bağlantı var' }
     : { durum: 'baglantiYok', metin: 'Bağlantı yok' }
-  const sayisal = kip === 'sayisal'
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${className}`}>
+    <div className={`grid ${sayisal ? 'grid-cols-2 gap-3' : 'grid-cols-1 gap-4 sm:grid-cols-2'} ${className}`}>
       <Rozet
         etiket="Güneş"
         {...gunes}
+        kucuk={sayisal}
         ek={sayisal ? `Yükseklik ${derece(anlik.sunAlt)}` : null}
       />
-      <Rozet etiket="İletişim" {...iletisim} ek={sayisal ? `Dünya yüksekliği ${derece(anlik.earthAlt)}` : null} />
+      <Rozet
+        etiket="İletişim"
+        {...iletisim}
+        kucuk={sayisal}
+        ek={sayisal ? `Dünya yüksekliği ${derece(anlik.earthAlt)}` : null}
+      />
     </div>
   )
 }
