@@ -73,8 +73,12 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     store.js          Zustand deposu
   App.jsx
   main.jsx
+/scripts
+  sahteVeriUret.mjs   Test verisini public/veri/ altına yazar
+  ozetUret.mjs        hesap.js ile ozet.json üretir
 /public
   /veri
+    bolgeler.json     9 bölgenin listesi ve dosya adları
     malapert_massif.json
     haworth.json
     ...
@@ -121,21 +125,43 @@ Arayüz **sadece** bu yapıyı bilir.
 - Yükseklik (altitude): ufuk düzleminden yukarısı pozitif
 - Zaman dizileri düzgün aralıklıdır; `t0` ve `dt_hours` ile hesaplanır
 
-**Özet dosyası** (`ozet.json`) ısı haritası için:
+**Bölge listesi** (`bolgeler.json`):
+
+```json
+[
+  { "site": "Malapert Massif", "lat": -86.0, "lon": 2.7, "file": "malapert_massif.json" }
+]
+```
+
+**Özet dosyası** (`ozet.json`) ısı haritası için. Hesap modülüyle
+(`scripts/ozetUret.mjs`) önceden üretilir. `epsilon` 2° sabittir.
+Puan burada saklanmaz; ağırlıklar değişebildiği için tarayıcıda hesaplanır.
 
 ```json
 {
-  "landing_dates": ["2027-01-01", "2027-01-08", "..."],
-  "mission_days": 30,
+  "t0": "2027-01-01T00:00:00Z",
+  "landing_step_h": 168,
+  "landing_count": 52,
+  "epsilon_deg": 2,
   "sites": {
     "Malapert Massif": {
-      "f_bar": [0.82, 0.84, "..."],
-      "c_bar": [0.91, 0.90, "..."],
-      "tau_max_h": [48, 42, "..."]
+      "2": {
+        "30": {
+          "f_bar":       [0.72, 0.74, "... 52 eleman"],
+          "c_bar":       [0.85, 0.83, "..."],
+          "tau_max_h":   [48, 42, "..."],
+          "sigma_max_h": [60, 66, "..."]
+        },
+        "7": { "...": "..." }, "90": { "...": "..." }, "180": { "...": "..." }
+      },
+      "0": { "...": "..." }, "10": { "...": "..." }
     }
   }
 }
 ```
+
+Anahtarlar: önce direk yüksekliği `hm` (0, 2, 10), sonra görev süresi
+`D` (7, 30, 90, 180 gün). Görev yıl sonunu aşan hücreler `null` olur.
 
 ---
 
@@ -196,7 +222,7 @@ yeniden taranır.
   seciliAlan: 'Malapert Massif',
   t: 0,              // zaman dizisindeki indeks
   tL: 0,             // iniş tarihi indeksi
-  D: 30,             // görev süresi (gün)
+  D: 30,             // görev süresi (gün) — sadece 7, 30, 90 veya 180
 
   // Mühendislik parametreleri
   hm: 2,             // direk yüksekliği (m) — 0, 2 veya 10

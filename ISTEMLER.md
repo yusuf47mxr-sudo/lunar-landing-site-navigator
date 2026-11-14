@@ -33,43 +33,82 @@ açık olsun.
 ## Adım 2 — Sahte Veri Üreteci
 
 ```
-src/core/sahteVeri.js dosyasını yaz.
+src/core/sahteVeri.js dosyasını ve onu çalıştıran scripts/sahteVeriUret.mjs
+node betiğini yaz.
 
-CLAUDE.md bölüm 10'daki 9 aday bölge için, bölüm 4'teki veri sözleşmesine
-tam uyan JSON nesneleri üretecek. Veri rastgele değil, fiziksel olarak
-gerçekçi olacak:
+AMAÇ: CLAUDE.md bölüm 10'daki 9 bölge için, bölüm 4'teki veri sözleşmesine
+birebir uyan JSON dosyaları üretmek. Veri gerçek değil ama fiziksel olarak
+gerçekçi olacak; gerçek veri gelince bu dosyaların yerini alacak.
 
-GÜNEŞ YÜKSEKLİĞİ:
-  delta_sun(t) = 1.54 * sin(2*PI*t / 346.6_gun)
-  H(t) = 2*PI*t / 27.32_gun + lon_radyan
-  sun_alt = asin( sin(lat)*sin(delta_sun) + cos(lat)*cos(delta_sun)*cos(H) )
+ZAMAN: t0 = 2027-01-01T00:00:00Z, dt = 1 saat, n = 8760.
+t_gun = k / 24   (k = 0 .. n-1)
 
-GÜNEŞ AZİMUTU: standart altazimut dönüşümü, 0=kuzey, saat yönünde artan.
+--- GÜNEŞ ---
+delta = 1.54 * sin(2*PI * t_gun / 346.62)        [derece]
+H     = lon + 360 * t_gun / 29.53                [derece, saat açısı]
+(29.53 gün = Ay'da bir güneş günü, yani sinodik ay. 27.32 KULLANMA.)
 
-DÜNYA YÜKSEKLİĞİ (librasyon):
-  delta_earth(t) = 6.7 * sin(2*PI*t / 27.2_gun)
-  lambda_earth(t) = 7.9 * sin(2*PI*t / 27.5_gun)
-  earth_alt = asin( sin(lat)*sin(delta_earth)
-                    + cos(lat)*cos(delta_earth)*cos(lambda_earth - lon) )
+--- DÜNYA ---
+delta = 6.7 * sin(2*PI * t_gun / 27.21)          [derece]
+lamE  = 7.9 * sin(2*PI * t_gun / 27.55)          [derece]
+H     = lon - lamE                               [derece]
 
-DÜNYA AZİMUTU: aynı dönüşüm.
+--- YÜKSEKLİK VE AZİMUT (Güneş ve Dünya için aynı fonksiyon) ---
+phi = enlem. Hepsi radyana çevrilerek:
+  sin_h = sin(phi)*sin(delta) + cos(phi)*cos(delta)*cos(H)
+  alt   = asin(sin_h)
+  kuzey = cos(phi)*sin(delta) - sin(phi)*cos(delta)*cos(H)
+  dogu  = -cos(delta)*sin(H)
+  az    = atan2(dogu, kuzey) → dereceye çevir → [0, 360) aralığına getir
+Bunu ayrı ve dışa aktarılmış bir fonksiyon olarak yaz:
+  altAz(phi, delta, H) → { alt, az }
 
-UFUK PROFİLİ H(A), her mast_height için ayrı:
-  3-5 adet Gauss tümsekinin toplamı,
-  H(A) = toplam_i( a_i * exp( -(A - A_i)^2 / (2*sigma_i^2) ) )
-  a_i: 1-6 derece arası, A_i: rastgele azimut, sigma_i: 20-60 derece.
-  Her bölge için sabit bir tohum (seed) kullan ki her çalıştırmada aynı
-  profil çıksın. mast_height arttıkça profil hafifçe alçalsın
-  (10 m için yaklaşık %30 düşük).
+--- UFUK PROFİLİ ---
+H(A) = taban + toplam_i  a_i * exp( -d_i^2 / (2 * s_i^2) )
+  d_i: A ile A_i arasındaki DÖNGÜSEL fark, [-180, 180] aralığında.
+       (Düz fark alınırsa 0°/360° sınırında profil kopar.)
+  Bölge başına 3-5 tümsek. a_i: 0.5-4°, A_i: 0-360°, s_i: 15-60°.
+  taban — bölgenin karakteri (TEST İÇİN UYDURULMUŞ DEĞERLER):
+    Malapert Massif -3.5     Mons Mouton -3.0     Mons Mouton Plateau -2.5
+    Peak near Cabeus B -2.5  de Gerlache Rim 2 -1.5
+    Nobile Rim 1 -1.0        Nobile Rim 2 -1.0
+    Slater Plain +1.0        Haworth +2.0
+  (Negatif taban = yüksekte duran nokta; ufku göz hizasının altında görür.)
+Direk yüksekliği: hm=0 → H,  hm=2 → H - 0.1,  hm=10 → H - 0.4
 
-Zaman aralığı: 2027-01-01'den başlayarak 8760 saat (1 yıl), dt = 1 saat.
+Rastgelelik için tohumlu bir üreteç kullan (örn. mulberry32); tohum bölge
+adından türetilsin. Math.random KULLANMA — her çalıştırmada aynı veri
+çıkmalı.
 
-Ayrıca ozet.json üretecek bir fonksiyon yaz: haftalık iniş tarihleri
-(52 adet) ve D=30 gün için her bölgenin f_bar, c_bar, tau_max_h
-değerlerini hesaplasın.
+--- ÇIKTI ---
+public/veri/<dosya_adi>.json
+  Dosya adı: küçük harf, boşluk yerine _, Türkçe karakter yok.
+  Örn. malapert_massif.json, de_gerlache_rim_2.json
+public/veri/bolgeler.json
+  [{ "site": "...", "lat": ..., "lon": ..., "file": "..." }, ...]
+Bütün sayılar 2 ondalığa yuvarlansın.
+package.json'a  "veri:uret": "node scripts/sahteVeriUret.mjs"  ekle.
 
-Çıktıları public/veri/ altına yazan bir node betiği de ekle.
-Betiği çalıştır ve üretilen dosyaların boyutunu söyle.
+ozet.json bu adımda ÜRETİLMEYECEK; hesap modülü yazıldıktan sonra
+Adım 3'te üretilecek.
+
+--- DOĞRULAMA: betiği çalıştır, sonuçları tablo olarak yaz ---
+1. Malapert Massif sun_alt min / max          → beklenen ≈ -5.5 / +5.5
+2. Malapert Massif earth_alt min / max        → beklenen ≈ -2.8 / +10.7
+3. Mons Mouton earth_alt min / max            → beklenen ≈ -12 / +1
+   (Dünya'ya göre arka yüze bakan bölge; çoğu zaman görmemeli)
+4. Malapert earth_alt dönemi
+   (ardışık tepeler arası ortalama süre)      → beklenen ≈ 27.2 gün
+5. Malapert sun_az bir tam turu kaç günde atıyor? → beklenen ≈ 29.5 gün
+6. Malapert earth_az'ın 0°'dan en büyük döngüsel sapması
+                                              → beklenen ≈ 11° içinde
+7. Her dosyada horizon dizileri 360, zaman dizileri 8760 eleman mı?
+8. horizon["2"] ortalaması: Malapert ve Haworth
+                                              → Malapert negatif, Haworth pozitif
+9. Toplam dosya boyutu
+
+Beklenenle uyuşmayan bir değer varsa düzeltmeye girişmeden önce bana
+bildir. Uyuşuyorsa commit at.
 ```
 
 ---
@@ -98,9 +137,21 @@ Betiği çalıştır ve üretilen dosyaların boyutunu söyle.
 src/core/veri.js de yaz: public/veri/ altından JSON yükler, yüklenen
 alanları bellekte önbellekler.
 
-Konsola Malapert Massif için fBar, cBar ve tauMax değerlerini yazdıran
-küçük bir test ekle ve sonucu söyle. Beklenen: fBar 0.6-0.9 arası,
-cBar 0.7-1.0 arası.
+3) scripts/ozetUret.mjs — hesap.js'deki fonksiyonları KULLANARAK
+   (formülleri kopyalamadan) public/veri/ozet.json üretir:
+   - İniş tarihleri: t0'dan itibaren haftalık, 52 adet (her 168 saatte bir)
+   - hm ∈ {0, 2, 10},  D ∈ {7, 30, 90, 180} gün,  epsilon = 2° sabit
+   - Her bölge × hm × D için 52 elemanlı diziler:
+       f_bar, c_bar, tau_max_h, sigma_max_h
+   - tL + D yıl sonunu aşıyorsa o hücre null olsun
+   - Yapı CLAUDE.md bölüm 4'teki ozet.json tanımına uysun
+   - package.json'a "veri:ozet": "node scripts/ozetUret.mjs" ekle
+
+DOĞRULAMA (hm=2, D=180, ilk iniş tarihi):
+  - Malapert fBar ≈ 0.6-0.9,  Haworth fBar < 0.2
+  - Malapert cBar > 0.7,      Mons Mouton cBar < 0.3
+Sayılar tam tutmasa da SIRALAMA böyle olmalı. Değilse bana bildir.
+ozet.json'un boyutunu da söyle.
 ```
 
 ---
@@ -257,11 +308,17 @@ kutu bırak, Adım 8'de doldurulacak.
 src/bilesenler/IsiHaritasi.jsx yaz. Canvas 2D.
 
 VERİ: public/veri/ozet.json
+  Store'daki hm ve D değerine göre ilgili diziler seçilir.
+  Puan tarayıcıda hesaplanır:
+    puan = w1*f_bar + w2*c_bar - w3*(tau_max_h / (D*24))
 
 ÇİZİM:
   Satırlar: 9 bölge (solda isimleri)
   Sütunlar: 52 haftalık iniş tarihi (altta ay isimleri)
   Hücre rengi: puan değerine göre.
+  null hücreler (görev yıl sonunu aşıyor): ince çapraz taralı, boş.
+  İleri modda epsilon 2°'den farklıysa haritanın üstünde küçük not:
+    "Isı haritası ε = 2° ile önceden hesaplanmıştır."
 
   Renk ölçeği: düşük puan --zemin, yüksek puan --gunes.
   Sürekli bir gradyan kullan, 5-6 basamaklı değil.
