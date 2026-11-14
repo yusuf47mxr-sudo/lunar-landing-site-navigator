@@ -18,6 +18,7 @@ import {
 import { ozelNoktaOlustur } from '../core/ozelNokta.js'
 import {
   enUzunAraliklar,
+  gecisler,
   geriSayim,
   guc,
   gunesOrani,
@@ -25,7 +26,7 @@ import {
   olcutler,
   panoramaMerkezi,
 } from '../core/hesap.js'
-import { KUTUP_SINIRI } from '../core/sabitler.js'
+import { KUTUP_SINIRI, VARSAYILAN } from '../core/sabitler.js'
 
 export const MODLAR = ['temel', 'orta', 'ileri']
 export const GOREV_SURELERI = [7, 30, 90, 180]
@@ -48,18 +49,11 @@ export const useDurum = create((set) => ({
   ozelNokta: null, // { lat, lon } veya null
   karsilastirma: [], // en fazla 3 alan adı
   t: 0, // zaman dizisindeki indeks
-  tL: 0, // iniş tarihi indeksi
-  D: 30, // görev süresi (gün) — 7, 30, 90 veya 180
 
-  // Mühendislik parametreleri
-  hm: 2, // direk yüksekliği (m) — 0, 2 veya 10
-  epsilon: 2, // iletişim güvenlik payı (derece)
-  S: 1, // panel alanı (m²)
-  eta: 0.3, // panel verimi
-  yonelim: 'izleyen',
-  w1: 1,
-  w2: 1,
-  w3: 1,
+  // Görev ve mühendislik parametreleri — varsayılanlar sabitler.js'te:
+  // tL (iniş indeksi), D (7/30/90/180 gün), hm (0/2/10 m), epsilon (°),
+  // S (m²), eta, yonelim, w1, w2, w3
+  ...VARSAYILAN,
 
   // Oynatma
   oynatiliyor: false,
@@ -98,6 +92,14 @@ export const useDurum = create((set) => ({
   yonelimAyarla: (yonelim) => set((s) => ({ yonelim: izinli(yonelim, YONELIMLER, s.yonelim) })),
   /** epsilon, S, eta, w1, w2, w3 gibi serbest sayısal parametreler için. */
   parametreAyarla: (ad, deger) => set({ [ad]: deger }),
+  /** Adı verilen parametreleri varsayılana döndürür. tL dönerse zaman da oraya atlar (inisSec gibi). */
+  varsayilanaDon: (adlar) =>
+    set(() => {
+      const yeni = {}
+      for (const ad of adlar) if (ad in VARSAYILAN) yeni[ad] = VARSAYILAN[ad]
+      if ('tL' in yeni) yeni.t = yeni.tL
+      return yeni
+    }),
   oynatDegistir: () => set((s) => ({ oynatiliyor: !s.oynatiliyor })),
   hizAyarla: (hiz) => set({ hiz }),
 }))
@@ -256,6 +258,21 @@ export function useGeriSayim() {
     if (!alan || !f || !c) return null
     const i = Math.min(Math.max(0, Math.round(t)), f.length - 1)
     return geriSayim(f, c, i, alan.dt_hours)
+  }, [alan, f, c, t])
+}
+
+/**
+ * t anından sonraki batış ve doğuşlar, Güneş ve Dünya için ayrı ayrı
+ * (hesap.js gecisler); veri yoksa null.
+ * @returns {null | {gunes: {sonrakiBatis, sonrakiDogus}, dunya: {sonrakiBatis, sonrakiDogus}}}
+ */
+export function useGecisler() {
+  const t = useDurum((s) => s.t)
+  const { alan, f, c } = useGorunurluk()
+  return useMemo(() => {
+    if (!alan || !f || !c) return null
+    const i = Math.min(Math.max(0, Math.round(t)), f.length - 1)
+    return { gunes: gecisler(f, i, alan.dt_hours), dunya: gecisler(c, i, alan.dt_hours) }
   }, [alan, f, c, t])
 }
 

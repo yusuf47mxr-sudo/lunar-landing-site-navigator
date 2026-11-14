@@ -81,32 +81,50 @@ export function guc(f, sunAlt, eta, S, yonelim, cikti) {
 
 // --- 5.5 Geri sayım -------------------------------------------------------
 
-/** t'den ileri, koşulun ilk sağlandığı indekse kadar geçen adım; yoksa null. */
-function ilkGecis(dizi, t, aranan0) {
+/**
+ * t anından sonraki ilk batış (dizi > 0 → 0) ve ilk doğuş (0 → dizi > 0).
+ * Cisim şu an görünüyorsa önce batış, sonra doğuş gelir; görünmüyorsa tersi.
+ * f (Güneş) ve c (Dünya/iletişim) dizilerinin ikisi için de kullanılır.
+ * @param {ArrayLike<number>} dizi
+ * @param {number} t   başlangıç indeksi
+ * @param {number} dt  adım (saat)
+ * @returns {{sonrakiBatis: number|null, sonrakiDogus: number|null}} saat; veri
+ *          aralığında o geçiş yoksa null
+ */
+export function gecisler(dizi, t, dt = 1) {
+  let sonrakiBatis = null
+  let sonrakiDogus = null
+  let gorunuyor = dizi[t] > 0
   for (let k = t + 1; k < dizi.length; k++) {
-    if ((dizi[k] > 0) !== aranan0) return k - t
+    const simdi = dizi[k] > 0
+    if (simdi === gorunuyor) continue
+    gorunuyor = simdi
+    if (simdi) {
+      if (sonrakiDogus === null) sonrakiDogus = (k - t) * dt
+    } else if (sonrakiBatis === null) sonrakiBatis = (k - t) * dt
+    if (sonrakiBatis !== null && sonrakiDogus !== null) break
   }
-  return null
+  return { sonrakiBatis, sonrakiDogus }
 }
 
 /**
- * t anından ileriye geri sayım (saat). Geçiş yoksa ilgili değer null.
+ * t anından ileriye geri sayım (saat): şu anki duruma göre sıradaki geçiş.
+ * Görünen cisim için batış, görünmeyen için doğuş; geçiş yoksa null.
  * @returns {{gunesGorunuyor: boolean, gunBatimi: number|null, gunDogumu: number|null,
  *            dunyaGorunuyor: boolean, dunyaBatisi: number|null, dunyaDogusu: number|null}}
  */
 export function geriSayim(f, c, t, dt = 1) {
   const gunesGorunuyor = f[t] > 0
   const dunyaGorunuyor = c[t] > 0
-  const gunesAdim = ilkGecis(f, t, gunesGorunuyor)
-  const dunyaAdim = ilkGecis(c, t, dunyaGorunuyor)
-  const saat = (adim) => (adim === null ? null : adim * dt)
+  const gunes = gecisler(f, t, dt)
+  const dunya = gecisler(c, t, dt)
   return {
     gunesGorunuyor,
-    gunBatimi: gunesGorunuyor ? saat(gunesAdim) : null,
-    gunDogumu: gunesGorunuyor ? null : saat(gunesAdim),
+    gunBatimi: gunesGorunuyor ? gunes.sonrakiBatis : null,
+    gunDogumu: gunesGorunuyor ? null : gunes.sonrakiDogus,
     dunyaGorunuyor,
-    dunyaBatisi: dunyaGorunuyor ? saat(dunyaAdim) : null,
-    dunyaDogusu: dunyaGorunuyor ? null : saat(dunyaAdim),
+    dunyaBatisi: dunyaGorunuyor ? dunya.sonrakiBatis : null,
+    dunyaDogusu: dunyaGorunuyor ? null : dunya.sonrakiDogus,
   }
 }
 
