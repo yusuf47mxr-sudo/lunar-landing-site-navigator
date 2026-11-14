@@ -1,6 +1,6 @@
 // 3B arazi verisini veri paketinden public/veri/3b/ altına çıkarır.
 //
-// Kullanım: node scripts/ucBoyutVeriHazirla.mjs <paket>/web/data
+// Kullanım: npm run veri:3b [-- <paket>/web/data]   (varsayılan veri_kaynak/planb/web/data)
 //
 // Girdi (paket, docs/VERI_SOZLESMESI.md):
 //   terrain_<id>.json  { site_id, n: 201, spacing_m: 50, dem, z0_m, dz_m[n*n] }
@@ -13,53 +13,22 @@
 // Yalnız seçili alanınki yüklenir (uc/veri.js).
 //
 // Alan → paket kimliği eşlemesi, sırayla:
-//   1. bolgeler.json kaydındaki "id" (paketin sites.json kimliği; 26 alanlı liste)
-//   2. aşağıdaki ESLEME tablosu (dosya adına göre)
-//   3. paketteki sites.json'da koordinatı KOORDINAT_TOLERANS içindeki site
+//   1. bolgeler.json kaydındaki "id" (paketin sites.json kimliği; gercekVeriDonustur yazar)
+//   2. paketteki sites.json'da koordinatı KOORDINAT_TOLERANS içindeki site
+// bolgeler.json'da karşılığı olmayan eski 3B alan dosyaları silinir.
 // Eşlenemeyen alan atlanır ve listelenir; kullanılmayan paket siteleri de yazılır.
 //
 // Ayrıca sonraki adımlar için olduğu gibi kopyalanır (public/veri/3b/):
 //   moon/ (renk ve yükseklik dokuları), dem_south_400m.bin/.json, artemis_regions.geo.json
 
-import { copyFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const KOK = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const CIKTI = path.join(KOK, 'public', 'veri', '3b')
 
-/** bolgeler.json dosya adı (uzantısız) → paketteki site_id */
-const ESLEME = {
-  peak_near_cabeus_b: 'a3_peak_near_cabeus_b',
-  haworth: 'a3_haworth',
-  malapert_massif: 'a3_malapert_massif',
-  mons_mouton: 'a3_mons_mouton',
-  mons_mouton_plateau: 'a3_mons_mouton_plateau',
-  nobile_rim_1: 'a3_nobile_rim_1',
-  nobile_rim_2: 'a3_nobile_rim_2',
-  de_gerlache_rim_2: 'a3_de_gerlache_rim_2',
-  slater_plain: 'a3_slater_plain',
-  apollo_11: 'apollo11',
-  apollo_12: 'apollo12',
-  apollo_14: 'apollo14',
-  apollo_15: 'apollo15',
-  apollo_16: 'apollo16',
-  apollo_17: 'apollo17',
-  im_1_odysseus: 'im1_odysseus',
-  im_2_athena: 'im2_actual',
-  blue_ghost_1: 'blueghost1',
-  change_3: 'change3',
-  change_4: 'change4',
-  change_5: 'change5',
-  change_6: 'change6',
-  chandrayaan_3: 'chandrayaan3',
-  slim: 'slim',
-}
 
-const paket = process.argv[2]
-if (!paket) {
-  console.error('Kullanım: node scripts/ucBoyutVeriHazirla.mjs <paket>/web/data')
-  process.exit(1)
-}
+const paket = path.resolve(process.argv[2] ?? path.join(KOK, 'veri_kaynak', 'planb', 'web', 'data'))
 
 const okuJson = async (dosya) => JSON.parse(await readFile(dosya, 'utf8'))
 const varMi = (dosya) => readFile(dosya).then(() => true, () => false)
@@ -77,8 +46,6 @@ const paketSiteleri = (await varMi(path.join(paket, 'sites.json')))
 function kimlikBul(b) {
   if (b.id && paketSiteleri.some((s) => s.id === b.id)) return { id: b.id, yol: 'id' }
   if (b.id) return { id: b.id, yol: 'id' } // sites.json yoksa yine de dene
-  const kok = b.file.replace(/\.json$/, '')
-  if (ESLEME[kok]) return { id: ESLEME[kok], yol: 'tablo' }
   const yakin = paketSiteleri.find(
     (s) => Math.abs(s.lat - b.lat) <= KOORDINAT_TOLERANS && boylamFarki(s.lon, b.lon) <= KOORDINAT_TOLERANS,
   )
@@ -136,13 +103,22 @@ for (const b of bolgeler) {
   yazilan++
   const nl = neverLit ? neverLit.values.reduce((a, v) => a + v, 0) : '-'
   console.log(
-    `${b.file.padEnd(28)} ← ${id.padEnd(24)} (${yol.padEnd(9)}) ${(metin.length / 1024).toFixed(0).padStart(4)} kB  never_lit: ${nl}`,
+    `${b.file.padEnd(28)} ← ${id.padEnd(24)} (${yol}) ${(metin.length / 1024).toFixed(0).padStart(4)} kB  never_lit: ${nl}`,
   )
 }
 console.log(`\n${yazilan}/${bolgeler.length} alan, toplam ${(toplam / 1024).toFixed(0)} kB → ${CIKTI}`)
 if (atlanan.length) console.warn('ATLANAN:\n  ' + atlanan.join('\n  '))
 const bos = paketSiteleri.map((s) => s.id).filter((id) => !kullanilan.has(id))
 if (bos.length) console.log(`Pakette olup bolgeler.json'da karşılığı olmayan siteler: ${bos.join(', ')}`)
+
+// --- bolgeler.json'da olmayan eski alan dosyalarını sil ---------------------
+const KOPYA_ADLARI = new Set(['dem_south_400m.json', 'artemis_regions.geo.json'])
+const gecerli = new Set(bolgeler.map((b) => b.file))
+for (const ad of await readdir(CIKTI)) {
+  if (!ad.endsWith('.json') || gecerli.has(ad) || KOPYA_ADLARI.has(ad)) continue
+  await unlink(path.join(CIKTI, ad))
+  console.log(`silindi: ${ad}`)
+}
 
 // --- Sonraki adımlar için olduğu gibi kopyalanan dosyalar -------------------
 const KOPYALAR = ['dem_south_400m.bin', 'dem_south_400m.json', 'artemis_regions.geo.json']

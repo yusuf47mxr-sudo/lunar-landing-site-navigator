@@ -7,8 +7,8 @@
 // Varsayılan yükleyici tarayıcıda fetch kullanır. Node betikleri
 // `yukleyiciAyarla` ile dosya sisteminden okuyan bir yükleyici verir.
 
-const ZAMAN_ALANLARI = ['sun_alt', 'sun_az', 'earth_alt', 'earth_az']
-const EFEMERIS_ALANLARI = ['sun_sub_lat', 'sun_sub_lon', 'earth_sub_lat', 'earth_sub_lon']
+const ZAMAN_ALANLARI = ['sun_alt', 'sun_az', 'earth_alt', 'earth_az', 'sun_au']
+const EFEMERIS_ALANLARI = ['sun_sub_lat', 'sun_sub_lon', 'earth_sub_lat', 'earth_sub_lon', 'sun_au']
 
 const tabanYol = () => {
   const taban = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
@@ -66,13 +66,13 @@ export function alanHazirla(ham) {
   for (const [hm, dizi] of Object.entries(ham.horizon)) {
     alan.horizon[hm] = Float32Array.from(dizi)
   }
-  for (const k of ZAMAN_ALANLARI) alan[k] = Float32Array.from(ham[k])
+  for (const k of ZAMAN_ALANLARI) if (ham[k]) alan[k] = Float32Array.from(ham[k])
   return alan
 }
 
 function efemerisHazirla(ham) {
   const e = { ...ham }
-  for (const k of EFEMERIS_ALANLARI) e[k] = Float32Array.from(ham[k])
+  for (const k of EFEMERIS_ALANLARI) if (ham[k]) e[k] = Float32Array.from(ham[k])
   return e
 }
 

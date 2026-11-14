@@ -75,7 +75,8 @@ function sayiEki(n, ek = YONELME) {
 
 /** Adın son sözcüğü: sayıysa { sayi }, değilse ses bilgisi { kalin, unluSon, sertSon }. */
 function sonSozcuk(ad) {
-  const son = ad.trim().split(/[\s-]+/).pop()
+  // Sondaki noktalama atlanır: "IM-2 Athena (iniş)" → "iniş"
+  const son = ad.trim().replace(/[^\p{L}\d]+$/u, '').split(/[\s-]+/).pop()
   if (/^\d+$/.test(son)) return { sayi: Number(son) }
   const k = son.toLowerCase()
   const unluler = k.match(UNLU)

@@ -50,7 +50,7 @@ export default function DisaAktar({ className = '' }) {
     const horizon = alan.horizon[String(p.hm)]
     const f = fDizisi(alan, horizon)
     const c = cDizisi(alan, horizon, p.epsilon)
-    const P = guc(f, alan.sun_alt, p.eta, p.S, p.yonelim)
+    const P = guc(f, alan.sun_alt, p.eta, p.S, p.yonelim, alan.sun_au ?? null)
     indir(dosyaAdi, csvUret(alan, f, c, P, bas, son))
   }
 

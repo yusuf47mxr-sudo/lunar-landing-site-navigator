@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "veri:uret": "node scripts/sahteVeriUret.mjs",
+    "veri:donustur": "node scripts/gercekVeriDonustur.mjs",
     "veri:ozet": "node scripts/ozetUret.mjs",
     "veri:3b": "node scripts/ucBoyutVeriHazirla.mjs"
   },

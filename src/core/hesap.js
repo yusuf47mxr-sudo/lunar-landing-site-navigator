@@ -3,40 +3,69 @@
 // Fonksiyonlar isteğe bağlı bir `cikti` dizisi alır; verilirse yeni
 // bellek ayrılmaz, sonuç onun içine yazılır.
 
-export const GUNES_YARICAP = 0.266 // derece (ρ)
-export const GUNES_CAP = 2 * GUNES_YARICAP // 0.532
-export const P0 = 1361 // W/m²
+// Tanımlar veri paketiyle (Plan B, web/js/model.js ve pipeline/physics.py) aynıdır:
+//   f        ufkun üstünde kalan Güneş diski oranı (daire dilimi), yarıçap Güneş uzaklığından
+//   aydınlık f > 0.5 — geri sayım, en uzun karanlık ve "Güneş görünür" bu eşikle
+//   güç      P0 · (1 AB / uzaklık)² · η · S · f · yön çarpanı
+
+/** Ortalama Güneş açısal yarıçapı (°); uzaklık bilinmiyorsa (model.js SUN_R_DEG). */
+export const GUNES_YARICAP = 0.2666
+export const P0 = 1361 // W/m², 1 AB'de
+/** Aydınlık eşiği: f bundan büyükse Güneş "görünür" (diskin yarısından fazlası ufkun üstünde). */
+export const AYDINLIK_ESIGI = 0.5
 
 const DERECE = Math.PI / 180
+const R_GUNES_KM = 695700
+const AB_KM = 149597870.7
+
+/** Güneş'in açısal yarıçapı (°), uzaklık AB cinsinden: asin(R☉ / d). */
+export function gunesYaricapi(au) {
+  return au ? Math.asin(R_GUNES_KM / (au * AB_KM)) / DERECE : GUNES_YARICAP
+}
+
+/**
+ * Ufkun üstünde kalan disk oranı (daire dilimi). d = (yükseklik − ufuk) / ρ.
+ * model.js diskFraction ile aynı.
+ */
+export function diskOrani(yukseklik, ufuk, rho) {
+  const d = Math.max(-1, Math.min(1, (yukseklik - ufuk) / rho))
+  return 1 - (Math.acos(d) - d * Math.sqrt(1 - d * d)) / Math.PI
+}
 
 const diziHazirla = (cikti, n) => (cikti && cikti.length === n ? cikti : new Float32Array(n))
 
 // --- 5.7 Ufuk okuma -------------------------------------------------------
 
 /**
- * Ufuk profilinden H(A): iki komşu derece arasında döngüsel doğrusal ara değer.
- * @param {ArrayLike<number>} horizon 360 eleman, 0°'dan 1° adımla
+ * Ufuk profilinden H(A): komşu iki örnek arasında döngüsel doğrusal ara değer.
+ * Profil 0°'dan başlar, n = horizon.length eşit adımla (adım 360/n; veride
+ * n = 720, 0.5°). model.js horizonAt ile aynı. Ufku okuyan her yer bunu kullanır.
+ * @param {ArrayLike<number>} horizon n eleman
  * @param {number} azimut derece (herhangi bir değer; [0, 360)'a indirgenir)
  */
 export function ufukOku(horizon, azimut) {
+  const n = horizon.length
   let a = azimut % 360
   if (a < 0) a += 360
-  const i0 = Math.floor(a)
-  const kesir = a - i0
-  const h0 = horizon[i0 % 360] // a 359.9999…→ i0 = 359; güvenlik için mod
-  const h1 = horizon[(i0 + 1) % 360]
+  const x = (a / 360) * n
+  const i0 = Math.floor(x)
+  const kesir = x - i0
+  const h0 = horizon[i0 % n] // a 359.9999… için güvenlik
+  const h1 = horizon[(i0 + 1) % n]
   return h0 + (h1 - h0) * kesir
 }
 
 // --- 5.2 Güneş diskinin görünen oranı -------------------------------------
 
-/** f(t) ∈ [0, 1] */
-export function gunesOrani(sunAlt, sunAz, horizon, cikti) {
+/**
+ * f(t) ∈ [0, 1]: ufkun üstünde kalan disk oranı (daire dilimi).
+ * @param {ArrayLike<number>|null} sunAu  Güneş uzaklığı (AB), her adım için; null ise ortalama yarıçap
+ */
+export function gunesOrani(sunAlt, sunAz, horizon, sunAu = null, cikti) {
   const n = sunAlt.length
   const f = diziHazirla(cikti, n)
   for (let k = 0; k < n; k++) {
-    const v = (sunAlt[k] + GUNES_YARICAP - ufukOku(horizon, sunAz[k])) / GUNES_CAP
-    f[k] = v <= 0 ? 0 : v >= 1 ? 1 : v
+    f[k] = diskOrani(sunAlt[k], ufukOku(horizon, sunAz[k]), gunesYaricapi(sunAu ? sunAu[k] : null))
   }
   return f
 }
@@ -57,24 +86,17 @@ export function iletisimDurumu(earthAlt, earthAz, horizon, epsilon, cikti) {
 
 /**
  * P(t) [W]. yonelim: 'izleyen' | 'yatay' | 'dikey'.
- * Yatay/dikey panelde negatif sonuç 0 alınır.
+ * Yatay/dikey panelde negatif sonuç 0 alınır. sunAu verilirse × (1 AB / uzaklık)².
  */
-export function guc(f, sunAlt, eta, S, yonelim, cikti) {
+export function guc(f, sunAlt, eta, S, yonelim, sunAu = null, cikti) {
   const n = f.length
   const P = diziHazirla(cikti, n)
   const k0 = P0 * eta * S
-  if (yonelim === 'yatay') {
-    for (let k = 0; k < n; k++) {
-      const v = k0 * f[k] * Math.sin(sunAlt[k] * DERECE)
-      P[k] = v > 0 ? v : 0
-    }
-  } else if (yonelim === 'dikey') {
-    for (let k = 0; k < n; k++) {
-      const v = k0 * f[k] * Math.cos(sunAlt[k] * DERECE)
-      P[k] = v > 0 ? v : 0
-    }
-  } else {
-    for (let k = 0; k < n; k++) P[k] = k0 * f[k]
+  for (let k = 0; k < n; k++) {
+    const yon = yonelim === 'yatay' ? Math.sin(sunAlt[k] * DERECE) : yonelim === 'dikey' ? Math.cos(sunAlt[k] * DERECE) : 1
+    const au = sunAu ? sunAu[k] : 1
+    const v = (k0 * f[k] * yon) / (au * au)
+    P[k] = v > 0 ? v : 0
   }
   return P
 }
@@ -82,21 +104,22 @@ export function guc(f, sunAlt, eta, S, yonelim, cikti) {
 // --- 5.5 Geri sayım -------------------------------------------------------
 
 /**
- * t anından sonraki ilk batış (dizi > 0 → 0) ve ilk doğuş (0 → dizi > 0).
+ * t anından sonraki ilk batış (dizi > esik → ≤ esik) ve ilk doğuş (tersi).
  * Cisim şu an görünüyorsa önce batış, sonra doğuş gelir; görünmüyorsa tersi.
- * f (Güneş) ve c (Dünya/iletişim) dizilerinin ikisi için de kullanılır.
+ * f (Güneş, esik AYDINLIK_ESIGI) ve c (Dünya, esik 0) için kullanılır.
  * @param {ArrayLike<number>} dizi
  * @param {number} t   başlangıç indeksi
  * @param {number} dt  adım (saat)
+ * @param {number} esik görünürlük eşiği: dizi[k] > esik
  * @returns {{sonrakiBatis: number|null, sonrakiDogus: number|null}} saat; veri
  *          aralığında o geçiş yoksa null
  */
-export function gecisler(dizi, t, dt = 1) {
+export function gecisler(dizi, t, dt = 1, esik = 0) {
   let sonrakiBatis = null
   let sonrakiDogus = null
-  let gorunuyor = dizi[t] > 0
+  let gorunuyor = dizi[t] > esik
   for (let k = t + 1; k < dizi.length; k++) {
-    const simdi = dizi[k] > 0
+    const simdi = dizi[k] > esik
     if (simdi === gorunuyor) continue
     gorunuyor = simdi
     if (simdi) {
@@ -114,9 +137,9 @@ export function gecisler(dizi, t, dt = 1) {
  *            dunyaGorunuyor: boolean, dunyaBatisi: number|null, dunyaDogusu: number|null}}
  */
 export function geriSayim(f, c, t, dt = 1) {
-  const gunesGorunuyor = f[t] > 0
+  const gunesGorunuyor = f[t] > AYDINLIK_ESIGI
   const dunyaGorunuyor = c[t] > 0
-  const gunes = gecisler(f, t, dt)
+  const gunes = gecisler(f, t, dt, AYDINLIK_ESIGI)
   const dunya = gecisler(c, t, dt)
   return {
     gunesGorunuyor,
@@ -157,8 +180,8 @@ export function olcutler(f, c, P, tL, D, dt, w1 = 1, w2 = 1, w3 = 1) {
 
   const fBar = fTop / adim
   const cBar = cTop / adim
-  const tauMax = enUzunSifir(f, tL, son).adim * dt
-  const sigmaMax = enUzunSifir(c, tL, son).adim * dt
+  const tauMax = enUzunKosu(f, tL, son, AYDINLIK_ESIGI).adim * dt
+  const sigmaMax = enUzunKosu(c, tL, son, 0).adim * dt
   return {
     fBar,
     cBar,
@@ -178,17 +201,17 @@ function gorevAraligi(n, tL, D, dt) {
 }
 
 /**
- * [bas, son) içinde dizi[k] === 0 olan en uzun ardışık dizi.
- * Eşit uzunlukta birden çok dizi varsa ilki. Hiç yoksa { bas: null, adim: 0 }.
- * olcutler() (tauMax, sigmaMax) ve enUzunAraliklar() bunu ortak kullanır.
+ * [bas, son) içinde dizi[k] <= esik olan en uzun ardışık dizi (karanlık: f ≤ 0.5;
+ * iletişim kesintisi: c ≤ 0). Eşit uzunlukta birden çok dizi varsa ilki.
+ * Hiç yoksa { bas: null, adim: 0 }. olcutler() ve enUzunAraliklar() ortak kullanır.
  */
-function enUzunSifir(dizi, bas, son) {
+function enUzunKosu(dizi, bas, son, esik) {
   let kosuBas = 0
   let kosu = 0
   let enBas = null
   let enAdim = 0
   for (let k = bas; k < son; k++) {
-    if (dizi[k] === 0) {
+    if (dizi[k] <= esik) {
       if (kosu === 0) kosuBas = k
       if (++kosu > enAdim) {
         enAdim = kosu
@@ -200,7 +223,7 @@ function enUzunSifir(dizi, bas, son) {
 }
 
 /**
- * Görev aralığında en uzun karanlık (f == 0) ve en uzun iletişim kesintisi
+ * Görev aralığında en uzun karanlık (f ≤ 0.5) ve en uzun iletişim kesintisi
  * (c == 0). bas: dizideki başlangıç indeksi (yoksa null), uzunluk: saat.
  * Uzunluklar olcutler().tauMax / sigmaMax ile aynıdır.
  * @returns {null | {karanlik: {bas, uzunluk}, kesinti: {bas, uzunluk}}}
@@ -208,8 +231,8 @@ function enUzunSifir(dizi, bas, son) {
 export function enUzunAraliklar(f, c, tL, D, dtHours) {
   const aralik = gorevAraligi(f.length, tL, D, dtHours)
   if (!aralik) return null
-  const k = enUzunSifir(f, tL, aralik.son)
-  const s = enUzunSifir(c, tL, aralik.son)
+  const k = enUzunKosu(f, tL, aralik.son, AYDINLIK_ESIGI)
+  const s = enUzunKosu(c, tL, aralik.son, 0)
   return {
     karanlik: { bas: k.bas, uzunluk: k.adim * dtHours },
     kesinti: { bas: s.bas, uzunluk: s.adim * dtHours },

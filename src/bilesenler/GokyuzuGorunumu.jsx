@@ -28,7 +28,7 @@ const ARAZI_OPAK = 0.8 // arkasındaki cisim %20 görünür
 const KUBBE_GOLGE_OPAK = 0.25 // kubbe istisnası: f = 0 iken Güneş diski
 const HALKA_KALINLIK = 2 // c = 0 iken Dünya halkasının kenarı (px)
 
-/** f(t) > 0 ile aynı koşul (hesap.js gunesOrani): diskin bir kısmı ufkun üstünde. */
+/** f(t) > 0 ile aynı koşul (hesap.js gunesOrani): diskin bir kısmı ufkun üstünde (ortalama yarıçapla). */
 const gunesGorunur = (hz, az, alt) => !hz || alt + GUNES_YARICAP > ufukOku(hz, az)
 /** c(t) = 1 ile aynı koşul (hesap.js iletisimDurumu). */
 const dunyaBagli = (hz, az, alt, eps) => !hz || alt > ufukOku(hz, az) + eps
@@ -54,7 +54,7 @@ const isaretli = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(Math.roun
 
 /**
  * @param {object} props
- * @param {ArrayLike<number>} props.horizon  360 eleman, derece
+ * @param {ArrayLike<number>} props.horizon  n eleman (veride 720, 0.5° adım), derece; ufukOku ile okunur
  * @param {number} props.sunAlt
  * @param {number} props.sunAz
  * @param {number} props.earthAlt
@@ -194,7 +194,7 @@ export default function GokyuzuGorunumu({
     izCiz(ctx, izEkr(p.earthTrail), R.iletisim, gx, gy)
 
     // 5. Cisimler — önce Güneş, sonra Dünya: Ay'dan bakınca Dünya önde durur
-    const hz = p.horizon && p.horizon.length === 360 ? p.horizon : null
+    const hz = p.horizon?.length ? p.horizon : null
     if (konum) {
       cisimCiz(ctx, ekr(konum.sunAz), konum.sunAlt, GUNES_R, R.gunes, { parlama: true }, gx, gy)
       const halka = !dunyaBagli(hz, konum.earthAz, konum.earthAlt, p.epsilon)
@@ -203,8 +203,11 @@ export default function GokyuzuGorunumu({
 
     if (hz) {
       // 6. Arazi: H(A)'nın altı dolu; cisimlerin ÜSTÜNE çizilir
+      // Profil, ufuk dizisinin kendi çözünürlüğünde (adım 360/n) çizilir
+      const n = hz.length
       const profil = (ek_ = 0) => {
-        for (let sx = 0; sx <= 360; sx++) {
+        for (let k = 0; k <= n; k++) {
+          const sx = (k * 360) / n
           const x = gx(sx)
           const y = yKirp(gy(ufukOku(hz, gercek(sx)) + ek_))
           sx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
@@ -626,11 +629,12 @@ function kubbeKenarXY(g, az, r) {
 
 const isaretli1 = (v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}°`
 
-/** H(A) gibi 360 elemanlı bir profilden kapalı eğri çizer (alt = fn(az)). */
-function kapaliEgri(ctx, g, fn) {
-  for (let az = 0; az < 360; az++) {
+/** Azimutun fonksiyonu olan bir profilden kapalı eğri çizer (alt = fn(az)); n örnek, adım 360/n. */
+function kapaliEgri(ctx, g, fn, n) {
+  for (let k = 0; k < n; k++) {
+    const az = (k * 360) / n
     const [x, y] = kubbeXY(g, az, fn(az))
-    az === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
+    k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)
   }
   ctx.closePath()
 }
@@ -638,7 +642,7 @@ function kapaliEgri(ctx, g, fn) {
 function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
   const g = { cx: w / 2, cy: h / 2, Rk: Math.max(10, Math.min(w, h) / 2 - KUBBE_PAY), altMin: kubbeAltMin(p.kutup) }
   const { cx, cy, Rk, altMin } = g
-  const hz = p.horizon && p.horizon.length === 360 ? p.horizon : null
+  const hz = p.horizon?.length ? p.horizon : null
   const TAM = Math.PI * 2
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -683,10 +687,11 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
   if (hz) {
     // Arazi halkası: dış kenar (altMin) ile H(A) arası dolu; altMin'in altındaki
     // H kenarda kalır. İçerideki cisimlerin ÜSTÜNE çizilir.
-    const profil = (az) => Math.max(hz[az], altMin)
+    const n = hz.length
+    const profil = (az) => Math.max(ufukOku(hz, az), altMin)
     ctx.beginPath()
     ctx.arc(cx, cy, Rk, 0, TAM)
-    kapaliEgri(ctx, g, profil)
+    kapaliEgri(ctx, g, profil, n)
     ctx.fillStyle = saydam(R.yuzeyAcik, ARAZI_OPAK)
     ctx.fill('evenodd')
 
@@ -694,7 +699,7 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
     ctx.save()
     ctx.beginPath()
     ctx.arc(cx, cy, Rk, 0, TAM)
-    kapaliEgri(ctx, g, profil)
+    kapaliEgri(ctx, g, profil, n)
     ctx.clip('evenodd')
     sifirCemberi(ctx, g, R)
     ctx.restore()
@@ -702,7 +707,7 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
     ctx.strokeStyle = R.cizgi
     ctx.lineWidth = 1.5
     ctx.beginPath()
-    kapaliEgri(ctx, g, profil)
+    kapaliEgri(ctx, g, profil, n)
     ctx.stroke()
 
     // İletişim eşiği H(A) + ε
@@ -710,7 +715,7 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
     ctx.lineWidth = 1
     ctx.setLineDash([4, 4])
     ctx.beginPath()
-    kapaliEgri(ctx, g, (az) => Math.max(hz[az] + p.epsilon, altMin))
+    kapaliEgri(ctx, g, (az) => Math.max(ufukOku(hz, az) + p.epsilon, altMin), n)
     ctx.stroke()
     ctx.setLineDash([])
   }

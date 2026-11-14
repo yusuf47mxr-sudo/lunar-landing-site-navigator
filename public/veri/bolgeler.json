@@ -1,123 +1,219 @@
 [
   {
-    "site": "Peak near Cabeus B",
+    "site": "Nobile Rim 2",
     "kategori": "artemis",
-    "aciklama": "Artemis III aday bölgesi",
-    "lat": -82.2,
-    "lon": 326,
-    "file": "peak_near_cabeus_b.json"
-  },
-  {
-    "site": "Haworth",
-    "kategori": "artemis",
-    "aciklama": "Artemis III aday bölgesi",
-    "lat": -87.5,
-    "lon": 355,
-    "file": "haworth.json"
-  },
-  {
-    "site": "Malapert Massif",
-    "kategori": "artemis",
-    "aciklama": "Artemis III aday bölgesi",
-    "lat": -86,
-    "lon": 2.7,
-    "file": "malapert_massif.json"
+    "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "lat": -83.57026,
+    "lon": 58.40644,
+    "file": "a3_nobile_rim_2.json",
+    "id": "a3_nobile_rim_2",
+    "kaynak": "Plan B scan inside USGS region polygon (1600 pts, 500 m, slope<10 deg, score=Sun%+Earth%-dark/noEarth share)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
   },
   {
     "site": "Mons Mouton",
     "kategori": "artemis",
-    "aciklama": "Artemis III aday bölgesi",
-    "lat": -84.6,
-    "lon": 31,
-    "file": "mons_mouton.json"
+    "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "lat": -85.47775,
+    "lon": 31.28605,
+    "file": "a3_mons_mouton.json",
+    "id": "a3_mons_mouton",
+    "kaynak": "Plan B scan inside USGS region polygon (1024 pts, 500 m, slope<10 deg, score=Sun%+Earth%-dark/noEarth share)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
   },
   {
-    "site": "Mons Mouton Plateau",
+    "site": "Malapert Massif",
     "kategori": "artemis",
-    "aciklama": "Artemis III aday bölgesi",
-    "lat": -84.3,
-    "lon": 28,
-    "file": "mons_mouton_plateau.json"
-  },
-  {
-    "site": "Nobile Rim 1",
-    "kategori": "artemis",
-    "aciklama": "Artemis III aday bölgesi",
-    "lat": -85.4,
-    "lon": 38,
-    "file": "nobile_rim_1.json"
-  },
-  {
-    "site": "Nobile Rim 2",
-    "kategori": "artemis",
-    "aciklama": "Artemis III aday bölgesi",
-    "lat": -84.8,
-    "lon": 60,
-    "file": "nobile_rim_2.json"
+    "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "lat": -85.96708,
+    "lon": 357.7749,
+    "file": "a3_malapert_massif.json",
+    "id": "a3_malapert_massif",
+    "kaynak": "Plan B scan inside USGS region polygon (1764 pts, 500 m, slope<10 deg, score=Sun%+Earth%-dark/noEarth share)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
   },
   {
     "site": "de Gerlache Rim 2",
     "kategori": "artemis",
-    "aciklama": "Artemis III aday bölgesi",
-    "lat": -88.5,
-    "lon": 290,
-    "file": "de_gerlache_rim_2.json"
+    "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "lat": -88.44309,
+    "lon": 292.08307,
+    "file": "a3_de_gerlache_rim_2.json",
+    "id": "a3_de_gerlache_rim_2",
+    "kaynak": "Plan B scan inside USGS region polygon (1600 pts, 500 m, slope<10 deg, score=Sun%+Earth%-dark/noEarth share)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
+  },
+  {
+    "site": "Mons Mouton Plateau",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "lat": -84.56381,
+    "lon": 39.41683,
+    "file": "a3_mons_mouton_plateau.json",
+    "id": "a3_mons_mouton_plateau",
+    "kaynak": "Plan B scan inside USGS region polygon (1900 pts, 1526 m, slope<10 deg, score=Sun%+Earth%-dark/noEarth share)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
   },
   {
     "site": "Slater Plain",
     "kategori": "artemis",
-    "aciklama": "Artemis III aday bölgesi",
-    "lat": -88.1,
-    "lon": 105,
-    "file": "slater_plain.json"
+    "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "lat": -87.23527,
+    "lon": 127.24334,
+    "file": "a3_slater_plain.json",
+    "id": "a3_slater_plain",
+    "kaynak": "Plan B scan inside USGS region polygon (1600 pts, 500 m, slope<10 deg, score=Sun%+Earth%-dark/noEarth share)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
+  },
+  {
+    "site": "Peak near Cabeus B",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "lat": -83.48365,
+    "lon": 291.7351,
+    "file": "a3_peak_near_cabeus_b.json",
+    "id": "a3_peak_near_cabeus_b",
+    "kaynak": "Plan B scan inside USGS region polygon (1600 pts, 500 m, slope<10 deg, score=Sun%+Earth%-dark/noEarth share)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
+  },
+  {
+    "site": "Nobile Rim 1",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "lat": -85.00925,
+    "lon": 38.0062,
+    "file": "a3_nobile_rim_1.json",
+    "id": "a3_nobile_rim_1",
+    "kaynak": "Plan B scan inside USGS region polygon (1600 pts, 500 m, slope<10 deg, score=Sun%+Earth%-dark/noEarth share)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
+  },
+  {
+    "site": "Haworth",
+    "kategori": "artemis",
+    "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "lat": -86.32223,
+    "lon": 336.81826,
+    "file": "a3_haworth.json",
+    "id": "a3_haworth",
+    "kaynak": "Plan B scan inside USGS region polygon (1444 pts, 781 m, slope<10 deg, score=Sun%+Earth%-dark/noEarth share)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
   },
   {
     "site": "Apollo 11",
     "kategori": "apollo",
     "aciklama": "İlk insanlı iniş, 1969",
-    "lat": 0.674,
-    "lon": 23.473,
-    "file": "apollo_11.json"
-  },
-  {
-    "site": "Apollo 12",
-    "kategori": "apollo",
-    "aciklama": "Oceanus Procellarum, 1969",
-    "lat": -3.012,
-    "lon": 336.578,
-    "file": "apollo_12.json"
-  },
-  {
-    "site": "Apollo 14",
-    "kategori": "apollo",
-    "aciklama": "Fra Mauro, 1971",
-    "lat": -3.645,
-    "lon": 342.529,
-    "file": "apollo_14.json"
-  },
-  {
-    "site": "Apollo 15",
-    "kategori": "apollo",
-    "aciklama": "Hadley-Apennine, 1971",
-    "lat": 26.132,
-    "lon": 3.634,
-    "file": "apollo_15.json"
-  },
-  {
-    "site": "Apollo 16",
-    "kategori": "apollo",
-    "aciklama": "Descartes, 1972",
-    "lat": -8.973,
-    "lon": 15.5,
-    "file": "apollo_16.json"
+    "lat": 0.67416,
+    "lon": 23.47314,
+    "file": "apollo11.json",
+    "id": "apollo11",
+    "kaynak": "NASA NSSDC Apollo landing site coordinates, LM (Wagner et al. 2017, Icarus 283; DE421 ME)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
   },
   {
     "site": "Apollo 17",
     "kategori": "apollo",
     "aciklama": "Taurus-Littrow, 1972",
-    "lat": 20.191,
-    "lon": 30.772,
-    "file": "apollo_17.json"
+    "lat": 20.1911,
+    "lon": 30.7723,
+    "file": "apollo17.json",
+    "id": "apollo17",
+    "kaynak": "NASA NSSDC Apollo landing site coordinates, LM (Wagner et al. 2017, Icarus 283; DE421 ME)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
+  },
+  {
+    "site": "Apollo 12",
+    "kategori": "apollo",
+    "aciklama": "Oceanus Procellarum, 1969",
+    "lat": -3.0128,
+    "lon": 336.5781,
+    "file": "apollo12.json",
+    "id": "apollo12",
+    "kaynak": "NASA NSSDC Apollo landing site coordinates, LM (Wagner et al. 2017, Icarus 283; DE421 ME)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
+  },
+  {
+    "site": "Apollo 14",
+    "kategori": "apollo",
+    "aciklama": "Fra Mauro, 1971",
+    "lat": -3.64589,
+    "lon": 342.52806,
+    "file": "apollo14.json",
+    "id": "apollo14",
+    "kaynak": "NASA NSSDC Apollo landing site coordinates, LM (Wagner et al. 2017, Icarus 283; DE421 ME)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
+  },
+  {
+    "site": "Apollo 15",
+    "kategori": "apollo",
+    "aciklama": "Hadley-Apennine, 1971",
+    "lat": 26.13239,
+    "lon": 3.6333,
+    "file": "apollo15.json",
+    "id": "apollo15",
+    "kaynak": "NASA NSSDC Apollo landing site coordinates, LM (Wagner et al. 2017, Icarus 283; DE421 ME)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
+  },
+  {
+    "site": "Apollo 16",
+    "kategori": "apollo",
+    "aciklama": "Descartes, 1972",
+    "lat": -8.9734,
+    "lon": 15.5011,
+    "file": "apollo16.json",
+    "id": "apollo16",
+    "kaynak": "NASA NSSDC Apollo landing site coordinates, LM (Wagner et al. 2017, Icarus 283; DE421 ME)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
+  },
+  {
+    "site": "IM-2 Athena (hedef)",
+    "kategori": "clps",
+    "aciklama": "Mons Mouton, 2025 · hedeflenen nokta",
+    "lat": -84.78,
+    "lon": 29.13,
+    "file": "im2_target.json",
+    "id": "im2_target",
+    "kaynak": "LROC featured image 1401 (intended IM-2 site)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
+  },
+  {
+    "site": "IM-2 Athena (iniş)",
+    "kategori": "clps",
+    "aciklama": "Mons Mouton, 2025 · gerçek iniş noktası",
+    "lat": -84.7906,
+    "lon": 29.1957,
+    "file": "im2_actual.json",
+    "id": "im2_actual",
+    "kaynak": "LROC featured image 1408 (Athena on the surface)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
+  },
+  {
+    "site": "CP-22",
+    "kategori": "clps",
+    "aciklama": "Mons Mouton platosu, CLPS aday noktası",
+    "lat": -84.496,
+    "lon": 31.588,
+    "file": "cp22_prospect.json",
+    "id": "cp22_prospect",
+    "kaynak": "Thermal modeling of the lunar South Pole, PSS 2024 (doi:10.1016/j.pss.2024.105969)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
   },
   {
     "site": "IM-1 Odysseus",
@@ -125,70 +221,94 @@
     "aciklama": "Malapert A yakını, 2024",
     "lat": -80.13,
     "lon": 1.44,
-    "file": "im_1_odysseus.json"
-  },
-  {
-    "site": "IM-2 Athena",
-    "kategori": "clps",
-    "aciklama": "Mons Mouton, 2025",
-    "lat": -84.8,
-    "lon": 29.2,
-    "file": "im_2_athena.json"
+    "file": "im1_odysseus.json",
+    "id": "im1_odysseus",
+    "kaynak": "NASA NSSDC lunar_artifact_impacts table (LROC-derived)",
+    "arazi": "terrain",
+    "arazi_cozunurluk_m": null
   },
   {
     "site": "Blue Ghost 1",
     "kategori": "clps",
     "aciklama": "Mare Crisium, 2025",
-    "lat": 18.56,
+    "lat": 18.562,
     "lon": 61.81,
-    "file": "blue_ghost_1.json"
-  },
-  {
-    "site": "Chang'e 3",
-    "kategori": "uluslararasi",
-    "aciklama": "Mare Imbrium, Çin, 2013",
-    "lat": 44.12,
-    "lon": 340.49,
-    "file": "change_3.json"
-  },
-  {
-    "site": "Chang'e 4",
-    "kategori": "uluslararasi",
-    "aciklama": "Uzak yüz, Çin, 2019",
-    "lat": -45.44,
-    "lon": 177.6,
-    "file": "change_4.json"
-  },
-  {
-    "site": "Chang'e 5",
-    "kategori": "uluslararasi",
-    "aciklama": "Mons Rümker yakını, Çin, 2020",
-    "lat": 43.06,
-    "lon": 308.08,
-    "file": "change_5.json"
-  },
-  {
-    "site": "Chang'e 6",
-    "kategori": "uluslararasi",
-    "aciklama": "Uzak yüz, Çin, 2024",
-    "lat": -41.63,
-    "lon": 206.01,
-    "file": "change_6.json"
+    "file": "blueghost1.json",
+    "id": "blueghost1",
+    "kaynak": "NASA NSSDC lunar_artifact_impacts table (LROC-derived)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
   },
   {
     "site": "Chandrayaan-3",
     "kategori": "uluslararasi",
     "aciklama": "Güney kutbu yakını, Hindistan, 2023",
-    "lat": -69.37,
+    "lat": -69.3741,
     "lon": 32.32,
-    "file": "chandrayaan_3.json"
+    "file": "chandrayaan3.json",
+    "id": "chandrayaan3",
+    "kaynak": "LROC featured image 1314",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 237
+  },
+  {
+    "site": "Chang'e 4",
+    "kategori": "uluslararasi",
+    "aciklama": "Uzak yüz, Çin, 2019",
+    "lat": -45.4561,
+    "lon": 177.5885,
+    "file": "change4.json",
+    "id": "change4",
+    "kaynak": "LROC featured image 1100 (NAC DTM)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
+  },
+  {
+    "site": "Chang'e 6",
+    "kategori": "uluslararasi",
+    "aciklama": "Uzak yüz, Çin, 2024",
+    "lat": -41.6385,
+    "lon": 206.0148,
+    "file": "change6.json",
+    "id": "change6",
+    "kaynak": "NASA NSSDC lunar_artifact_impacts table (LROC-derived)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
   },
   {
     "site": "SLIM",
     "kategori": "uluslararasi",
     "aciklama": "Shioli krateri, Japonya, 2024",
-    "lat": -13.3,
-    "lon": 25.25,
-    "file": "slim.json"
+    "lat": -13.316,
+    "lon": 25.251,
+    "file": "slim.json",
+    "id": "slim",
+    "kaynak": "NASA NSSDC lunar_artifact_impacts table (LROC-derived)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
+  },
+  {
+    "site": "Chang'e 3",
+    "kategori": "uluslararasi",
+    "aciklama": "Mare Imbrium, Çin, 2013",
+    "lat": 44.1214,
+    "lon": 340.4883,
+    "file": "change3.json",
+    "id": "change3",
+    "kaynak": "NASA NSSDC lunar_artifact_impacts table (LROC-derived)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
+  },
+  {
+    "site": "Chang'e 5",
+    "kategori": "uluslararasi",
+    "aciklama": "Mons Rümker yakını, Çin, 2020",
+    "lat": 43.0576,
+    "lon": 308.0839,
+    "file": "change5.json",
+    "id": "change5",
+    "kaynak": "NASA NSSDC lunar_artifact_impacts table (LROC-derived)",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
   }
 ]

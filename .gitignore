@@ -11,3 +11,6 @@ goruntu/
 
 # Veri paketi arşivleri (public/veri/3b içine işlenir; arşivin kendisi depoya girmez)
 planb_veri_paketi*.zip
+
+# Açılmış veri paketi (scripts/gercekVeriDonustur.mjs okur)
+veri_kaynak/

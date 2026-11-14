@@ -48,7 +48,7 @@ for (const { site } of bolgeler) {
 
   for (const hm of DIREKLER) {
     const horizon = alan.horizon[String(hm)]
-    gunesOrani(alan.sun_alt, alan.sun_az, horizon, f)
+    gunesOrani(alan.sun_alt, alan.sun_az, horizon, alan.sun_au ?? null, f)
     iletisimDurumu(alan.earth_alt, alan.earth_az, horizon, EPSILON, c)
 
     const hmOzeti = {}

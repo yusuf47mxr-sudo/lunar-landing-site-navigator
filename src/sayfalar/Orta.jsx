@@ -16,7 +16,6 @@ import OzelKoordinat from '../bilesenler/OzelKoordinat.jsx'
 import ParametrePaneli from '../bilesenler/ParametrePaneli.jsx'
 import SayisalOzet from '../bilesenler/SayisalOzet.jsx'
 import ZamanCizelgesiKutusu from '../bilesenler/ZamanCizelgesiKutusu.jsx'
-import VeriUyarisi from '../bilesenler/VeriUyarisi.jsx'
 import ZamanKaydirici from '../bilesenler/ZamanKaydirici.jsx'
 import { useBolgeler, useSeciliAlanVerisi } from '../durum/store.js'
 
@@ -46,7 +45,6 @@ export default function Orta() {
               {alan?.site ?? ' '}
               {kayit?.aciklama && <span className="text-metin-solgun/70"> · {kayit.aciklama}</span>}
             </p>
-            <VeriUyarisi className="mt-2" />
           </div>
           <ModDegistirici className="ml-auto" />
         </header>

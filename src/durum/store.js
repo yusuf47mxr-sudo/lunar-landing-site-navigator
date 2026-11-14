@@ -17,6 +17,7 @@ import {
 } from '../core/veri.js'
 import { ozelNoktaOlustur } from '../core/ozelNokta.js'
 import {
+  AYDINLIK_ESIGI,
   enUzunAraliklar,
   gecisler,
   geriSayim,
@@ -228,7 +229,7 @@ function goruKaydi(alan, horizon) {
 /** Güneş diskinin görünen oranı f(t), önbellekli. */
 export function fDizisi(alan, horizon) {
   const k = goruKaydi(alan, horizon)
-  if (!k.f) k.f = gunesOrani(alan.sun_alt, alan.sun_az, horizon)
+  if (!k.f) k.f = gunesOrani(alan.sun_alt, alan.sun_az, horizon, alan.sun_au ?? null)
   return k.f
 }
 
@@ -274,7 +275,7 @@ export function useGecisler() {
   return useMemo(() => {
     if (!alan || !f || !c) return null
     const i = Math.min(Math.max(0, Math.round(t)), f.length - 1)
-    return { gunes: gecisler(f, i, alan.dt_hours), dunya: gecisler(c, i, alan.dt_hours) }
+    return { gunes: gecisler(f, i, alan.dt_hours, AYDINLIK_ESIGI), dunya: gecisler(c, i, alan.dt_hours) }
   }, [alan, f, c, t])
 }
 
@@ -369,7 +370,7 @@ export function useOlcutler() {
     [alan, horizon, p.epsilon],
   )
   const P = useMemo(
-    () => (alan && f ? guc(f, alan.sun_alt, p.eta, p.S, p.yonelim) : null),
+    () => (alan && f ? guc(f, alan.sun_alt, p.eta, p.S, p.yonelim, alan.sun_au ?? null) : null),
     [alan, f, p.eta, p.S, p.yonelim],
   )
   const sonuc = useMemo(

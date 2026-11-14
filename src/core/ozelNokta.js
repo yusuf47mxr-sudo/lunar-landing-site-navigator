@@ -3,6 +3,7 @@
 // Arazi hesaba katılmaz: bütün ufuk dizileri 0, sonuç `yaklasik: true`.
 
 import { altAzDizi } from './efemeris.js'
+import { UFUK_YON_SAYISI } from './sabitler.js'
 
 export const OZEL_NOKTA_UYARISI =
   'Arazi hesaba katılmadı — ufuk düz kabul edildi. Gerçek değerler farklı olabilir.'
@@ -29,7 +30,7 @@ export function ozelNoktaOlustur(lat, lon, efemeris) {
   const dunya = altAzDizi(lat, boylam, efemeris.earth_sub_lat, efemeris.earth_sub_lon)
 
   const horizon = {}
-  for (const hm of DIREK_YUKSEKLIKLERI) horizon[String(hm)] = new Float32Array(360)
+  for (const hm of DIREK_YUKSEKLIKLERI) horizon[String(hm)] = new Float32Array(UFUK_YON_SAYISI)
 
   return {
     site: ozelNoktaAdi(lat, boylam),
@@ -44,6 +45,7 @@ export function ozelNoktaOlustur(lat, lon, efemeris) {
     sun_az: gunes.az,
     earth_alt: dunya.alt,
     earth_az: dunya.az,
+    sun_au: efemeris.sun_au ?? null,
     yaklasik: true,
   }
 }

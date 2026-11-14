@@ -4,10 +4,9 @@
 
 **NASA Space Apps Challenge 2026 — "Landing Site Navigator"**
 
-> ⚠️ **Veri durumu: ŞU AN SAHTE VERİ.** Uygulamadaki bütün alan dosyaları
-> test için üretilmiştir: fiziksel olarak tutarlıdır ama gerçek efemeris ya da
-> gerçek arazi değildir. Arayüz bunu her sayfanın başlığı altında da söyler.
-> Ayrıntı için [Veri durumu ve kaynaklar](#veri-durumu-ve-kaynaklar) bölümüne bakın.
+> **Veri:** NAIF SPICE (DE440) efemerisi ve LRO LOLA / SLDEM2015 arazisinden
+> hesaplanmış ufuk profilleri; 26 iniş alanı, 2027 yılı, saatlik. Ayrıntı ve
+> doğrulama: [Veri kaynakları ve doğrulama](#veri-kaynakları-ve-doğrulama).
 
 Ay'da seçilen bir iniş alanında ve tarihte Güneş ile Dünya'nın ufka göre
 nerede durduğunu gösteren bir web uygulaması. Quickmap, Moon Trek ve JPL
@@ -34,7 +33,7 @@ abartı (1× / 2× / 5×) ve tam ekran (F / ESC). three.js yalnız 3B seçilince
 indirilir.
 
 Liste Artemis III aday bölgelerini, Apollo alanlarını, CLPS görevlerini ve
-diğer ülkelerin iniş alanlarını içerir (24 alan). Kullanıcı kendi koordinatını
+diğer ülkelerin iniş alanlarını içerir (26 alan). Kullanıcı kendi koordinatını
 da girebilir; bu durumda arazi düz kabul edilir ve sonuç "yaklaşık" diye
 işaretlenir.
 
@@ -61,16 +60,17 @@ Node.js 20.19+ ya da 22.12+ gerekir (Vite 8).
 ```bash
 npm install          # bağımlılıklar
 npm run dev          # geliştirme sunucusu (http://localhost:5173)
-npm run veri:uret    # sahte veriyi public/veri/ altına yeniden üretir
+npm run veri:donustur # veri paketinden public/veri/ (alanlar, bolgeler, efemeris)
 npm run veri:ozet    # ısı haritası özetini (ozet.json) yeniden hesaplar
-npm run veri:3b -- <paket>/web/data   # 3B arazi dosyalarını (public/veri/3b/) veri paketinden üretir
+npm run veri:3b      # 3B arazi dosyalarını (public/veri/3b/) veri paketinden üretir
 npm run build        # üretim derlemesi → dist/
 npm run preview      # derlemeyi yerelde sunar
 ```
 
-`public/veri/` altındaki dosyalar depoda hazır gelir; `veri:uret` ve
-`veri:ozet` yalnızca veri değiştiğinde gerekir. `veri:ozet` her zaman
-`veri:uret`'ten (ya da gerçek dosyalar konduktan) sonra çalıştırılmalıdır.
+`public/veri/` altındaki dosyalar depoda hazır gelir; veri betikleri yalnızca
+veri paketi değiştiğinde gerekir. Paket (`planb_veri_paketi_v4_*.zip`)
+`veri_kaynak/planb/` altına açılır (ikisi de depoya girmez); sonra sırayla
+`veri:donustur`, `veri:ozet`, `veri:3b`.
 
 Uygulama tamamen tarayıcıda çalışır; sunucu tarafı yoktur. `dist/` klasörü
 herhangi bir statik barındırmaya (Vercel, GitHub Pages) konabilir.
@@ -82,67 +82,64 @@ JSON yapılarını bilir:
 
 | Dosya | İçerik |
 |---|---|
-| `bolgeler.json` | Alan listesi: ad, kategori, açıklama, enlem, boylam, dosya adı |
-| `<alan>.json` | Bir alan için ufuk profilleri (3 direk yüksekliği × 360 azimut) ve bir yıllık saatlik Güneş/Dünya yükseklik ve azimutu |
-| `efemeris.json` | Güneş ve Dünya'nın Ay üzerindeki alt-noktaları (özel koordinat için) |
+| `bolgeler.json` | Alan listesi: ad, kategori, açıklama, enlem, boylam, dosya adı, koordinat kaynağı, arazi türü |
+| `<alan>.json` | Bir alan için ufuk profilleri (3 direk yüksekliği × 720 azimut, 0.5°) ve bir yıllık saatlik Güneş/Dünya yükseklik ve azimutu, Güneş uzaklığı |
+| `efemeris.json` | Güneş ve Dünya'nın Ay üzerindeki alt-noktaları ve Güneş uzaklığı (özel koordinat için) |
 | `ozet.json` | Isı haritası için önceden hesaplanmış dönem ölçütleri |
 | `3b/<alan>.json` | 3B sahne: 201 × 201 yükseklik ızgarası (50 m, merkeze göre) ve kutup alanlarında 31 × 31 "hiç Güneş almayan" hücre haritası |
 
 Açılar derece, azimut kuzeyden saat yönünde `[0, 360)`, zaman adımı 1 saat.
 
-**Gerçek veri geldiğinde ne değişir:**
+## Veri kaynakları ve doğrulama
 
-1. Gerçek dosyalar aynı adlarla `public/veri/` altına konur (sahtelerin
-   üstüne).
-2. `npm run veri:ozet` çalıştırılır.
-3. `src/core/sabitler.js` içinde `VERI_KAYNAGI = 'gercek'` yapılır; sahte
-   veri uyarısı kalkar.
-
-Arayüz kodunda başka bir değişiklik gerekmez.
-
-## Veri durumu ve kaynaklar
-
-**Şu an:** `scripts/sahteVeriUret.mjs`, Güneş ve Dünya alt-noktalarını basit
-periyodik modellerle (29.53 günlük güneş günü, Dünya'nın yaklaşık 27 günlük
-librasyonu) üretir. Ufuk profilleri de uydurmadır: her alan için bir taban
-yüksekliği ve birkaç tümsek. Sonuç, fiziksel olarak tutarlı davranır (kutupta
-ufukta sürünen Güneş, gökte neredeyse sabit duran Dünya, uzak yüzde hiç
-görünmeyen Dünya), ama **sayılar gerçek görev planlaması için kullanılamaz**.
-Alan koordinatları da yaklaşıktır ve doğrulanmalıdır.
-
-**İstisna — 3B arazi gerçektir:** `public/veri/3b/` altındaki yükseklik
-ızgaraları ekibin veri paketinden (`scripts/ucBoyutVeriHazirla.mjs`) gelir:
-kutup alanlarında LOLA/PGDA 5–20 m DEM, diğerlerinde SLDEM2015 (~118 m).
-"Hiç Güneş almayan" hücreler de aynı paketin 18.6 yıllık taramasıdır. Gökteki
-Güneş ve Dünya ile 2B ufuk profilleri ise hâlâ sahtedir; bu yüzden 3B'de yakın
-arazi ile uzak ufuk şeridi her zaman birebir tutarlı değildir. Gerçek efemeris
-ve ufuk gelince tutarlılık kendiliğinden sağlanır.
-
-**Planlanan kaynaklar:**
+Bütün veri ekibin **Plan B veri paketinden (v4, 14 Kasım 2026)** gelir;
+`scripts/gercekVeriDonustur.mjs` onu bu uygulamanın veri sözleşmesine çevirir.
+Güneş ve Dünya konumları paketin, Python hattıyla birebir doğrulanmış
+`web/js/model.js` kütüphanesiyle hesaplanır (formül kopyalanmaz).
 
 | Kaynak | Kullanım |
 |---|---|
-| [NASA NAIF SPICE](https://naif.jpl.nasa.gov/naif/) — DE440 gezegen efemerisi, Ay çerçevesi `MOON_ME` | Güneş ve Dünya'nın her alandan yüksekliği ve azimutu; `efemeris.json` için `subpnt` ile alt-noktalar |
-| [LRO LOLA](https://pds-geosciences.wustl.edu/missions/lro/lola.htm) sayısal yükseklik modeli (DEM) | Her alan ve direk yüksekliği için 360° ufuk profili |
-| [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) | 3B Ay küresinin dokusu (3B görünüm eklenirse) |
+| [NASA NAIF SPICE](https://naif.jpl.nasa.gov/naif/) — DE440, Ay çerçevesi `MOON_ME_DE440_ME421`, ışık zamanı + yıldız sapması | Güneş yönü, Dünya vektörü, Güneş uzaklığı (saatlik). JPL Horizons ile fark 0.000° |
+| [LRO LOLA](https://pds-geosciences.wustl.edu/missions/lro/lola.htm) — kutupta 20 m / 80 m (bazı alanlarda PGDA 104 5 m) | Kutup alanlarında 720 yönlü ufuk (0, 2, 10 m direk), 3B arazi, "18 yılda hiç Güneş almayan" hücreler |
+| SLDEM2015 (≈ 118 m; Chandrayaan-3 için LOLA ≈ 237 m) | Kutup dışı alanlarda ufuk ve 3B arazi; arayüzde "Arazi ~118 m çözünürlükte." notu |
+| NASA NSSDC, LROC, USGS, makaleler | Alan koordinatları (`bolgeler.json` "kaynak") |
+| [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) — NASA's Scientific Visualization Studio | Ay dokusu (`public/veri/3b/moon/`, 3B Ay küresi için) |
+
+**Tanımlar (paketle aynı):** Güneş diskinin görünen oranı `f` daire dilimidir,
+yarıçap Güneş uzaklığından; `f > 0.5` "aydınlık"; Dünya görünür = merkezi ufkun
+en az ε üstünde; güç `× (1 AB / uzaklık)²`.
+
+**Doğrulama** (dönüştürülmüş veri + `hesap.js`, paketin referans değerleriyle):
+
+| Kontrol | Sonuç |
+|---|---|
+| Güneş %, Dünya %, en uzun karanlık, en uzun Dünya'sız (5 senaryo, 2027) | paketle aynı (Güneş % farkı ≤ 0.01 puan) |
+| Geri sayım (17 referans olay, SPICE 1 dk) | 17/17 ±1 saat içinde |
+| Ufuk | 720 yön (0.5°), paketle aynı; Güneş kutupta ufukta sürünürken `el − H` yalnızca birkaç yüzde bir derece |
+
+**Bilinen sınırlar** (paketin veri sözleşmesinden): kutup dışı ufuklar ~118 m
+DEM'e dayanır, küçük tepeler görünmez; Dünya görünürlüğü yalnız geometridir
+(yer istasyonu, bağlantı bütçesi yok); özel koordinatta arazi düz kabul edilir.
 
 ## Formüller
 
 Bütün hesaplar tarayıcıda yapılır. Ayrıntı:
 [CLAUDE.md bölüm 5](CLAUDE.md#5-hesap-formülleri).
 
-- **Alt-noktadan yükseklik ve azimut:** küresel trigonometri; saat açısı
-  `H = λ − λ_s` (özel koordinat ve sahte veri üreteci için).
-- **Güneş diskinin görünen oranı:**
-  `f = clamp((h☉ + 0.266° − H(A☉)) / 0.532°, 0, 1)`; `H(A)` o azimuttaki
-  ufuk yüksekliği (komşu dereceler arasında doğrusal ara değer).
+- **Yükseklik ve azimut:** paketin `model.js` `basis/azel`'i (yerel doğu-
+  kuzey-yukarı tabanı; Dünya için gözlemci konumu zemin + direk). Özel
+  koordinatta alt-noktadan küresel trigonometri (`H = λ − λ_s`).
+- **Güneş diskinin görünen oranı (daire dilimi):**
+  `d = clamp((h☉ − H(A☉)) / ρ, −1, 1)`, `f = 1 − (acos d − d·√(1 − d²)) / π`;
+  `ρ = asin(R☉ / uzaklık)`, `H(A)` o azimuttaki ufuk yüksekliği (komşu
+  dereceler arasında doğrusal ara değer). Aydınlık: `f > 0.5`.
 - **İletişim:** `c = 1` eğer `h⊕ > H(A⊕) + ε`, değilse `0` (ε varsayılan 2°).
-- **Anlık güç:** `P = 1361 · η · S · f`, yatay panelde `× sin h☉`, dikey
-  panelde `× cos h☉`.
+- **Anlık güç:** `P = 1361 · (1 AB / uzaklık)² · η · S · f`, yatay panelde
+  `× sin h☉`, dikey panelde `× cos h☉`.
 - **Geri sayım:** seçili andan ileri doğru `f` ve `c` dizilerinde ilk
   geçişe kadar geçen saat.
 - **Görev ölçütleri** (`[tL, tL + D]`): ortalama `f` ve `c`, en uzun
-  karanlık, en uzun iletişim kesintisi, toplam enerji
+  karanlık (`f ≤ 0.5`), en uzun iletişim kesintisi, toplam enerji
   `E = Σ P · Δt`, puan
   `w1 · f̄ + w2 · c̄ − w3 · (en uzun karanlık / görev süresi)`.
 
@@ -198,11 +195,13 @@ CSV export). A 3D local scene (react-three-fiber) shows the real LOLA terrain
 of the selected site with the Sun's light and shadows, a far-horizon ring,
 Earth, permanently shadowed cells, a compass, camera modes and fullscreen.
 
-> **Data status: the app currently runs on SYNTHETIC data** — physically
-> consistent but not real ephemeris or horizon profiles. The 3D terrain
-> heights are real (LOLA / SLDEM2015). Planned sources are NASA NAIF
-> SPICE (DE440, `MOON_ME` frame), LRO LOLA DEM horizon profiles and, if a 3D
-> view is added, the NASA CGI Moon Kit.
+> **Data:** NASA NAIF SPICE (DE440, `MOON_ME_DE440_ME421`) ephemeris and
+> horizon profiles ray-traced on LRO LOLA (polar, 5–20 m) and SLDEM2015
+> (~118 m) terrain, from the team's validated data package; 26 sites, 2027,
+> hourly. Visible solar-disc fraction, lit threshold (f > 0.5), Earth margin
+> and power follow the package definitions. Validated against the package's
+> reference values (all five 2027 scenarios match; 17/17 rise/set events within
+> one hour).
 
 Run with `npm install` and `npm run dev`; build with `npm run build`.
 Built with React, Vite, Tailwind CSS, Zustand, Framer Motion and d3-geo.

@@ -63,7 +63,8 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
     [alan, anlik.t],
   )
 
-  const aciklama = alan && bolgeler ? bolgeler.find((b) => b.site === alan.site)?.aciklama : undefined
+  const kayit = alan && bolgeler ? bolgeler.find((b) => b.site === alan.site) : undefined
+  const aciklama = kayit?.aciklama
   const hazir = alan && anlik.horizon && f && c
 
   return (
@@ -112,6 +113,12 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
       {istenen === '3b' && ucBoyutHata && (
         <p className="mt-2 text-xs text-metin-solgun" data-3b-not="">
           3B görünüm açılamadı ({ucBoyutHata.message}); panorama gösteriliyor.
+        </p>
+      )}
+      {/* Kutup dışı alanlarda ufuk küresel DEM'e dayanır (SLDEM2015 ≈ 118 m; Chandrayaan-3 LOLA ≈ 237 m) */}
+      {kayit?.arazi === 'terrain_global' && (
+        <p className="mt-2 text-xs tracking-wide text-metin-solgun/80" data-arazi-notu="">
+          Arazi ~{kayit.arazi_cozunurluk_m ?? 118} m çözünürlükte.
         </p>
       )}
       {anlik.yaklasik && <p className="mt-3 text-sm text-uyari">{OZEL_NOKTA_UYARISI}</p>}

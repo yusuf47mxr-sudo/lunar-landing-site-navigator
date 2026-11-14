@@ -64,7 +64,6 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     disaAktar.js      CSV metni ve dosya adı (İleri)
     ozelNokta.js      Özel koordinat için yaklaşık veri üretimi
     veri.js           JSON yükleme ve önbellekleme
-    sahteVeri.js      Test için fiziksel olarak gerçekçi veri üretimi
     sabitler.js       Fiziksel sabitler ve varsayılan parametreler (VARSAYILAN)
   /bilesenler
     GokyuzuGorunumu.jsx
@@ -98,7 +97,6 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     ZamanCizelgesiKutusu.jsx  Depoya bağlı zaman çizelgesi
     SayisalOzet.jsx       Anlık ve görev aralığı sayıları; kip='tam' İleri özeti
     DisaAktar.jsx         CSV indirme (İleri)
-    VeriUyarisi.jsx       Sahte veri notu (sabitler.js VERI_KAYNAGI)
     tuval.js              Canvas bileşenlerinin ortak yardımcıları
   /sayfalar
     Giris.jsx
@@ -110,18 +108,19 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
   App.jsx
   main.jsx
 /scripts
-  sahteVeriUret.mjs   Test verisini public/veri/ altına yazar
-  ozetUret.mjs        hesap.js ile ozet.json üretir
-  ucBoyutVeriHazirla.mjs  Veri paketindeki terrain_*/grid_* → public/veri/3b/
+  gercekVeriDonustur.mjs  Veri paketi → public/veri/ (alanlar, bolgeler, efemeris)  npm run veri:donustur
+  ozetUret.mjs        hesap.js ile ozet.json üretir                              npm run veri:ozet
+  ucBoyutVeriHazirla.mjs  Veri paketindeki terrain_*/grid_* → public/veri/3b/    npm run veri:3b
 /public
   /veri
-    bolgeler.json     Bütün alanların listesi
-    efemeris.json     Güneş ve Dünya alt-noktaları (bütün alanlar için ortak)
-    malapert_massif.json
-    apollo_11.json
-    ...
+    bolgeler.json     Bütün alanların listesi (26)
+    efemeris.json     Güneş ve Dünya alt-noktaları + Güneş uzaklığı (bütün alanlar için ortak)
+    a3_malapert_massif.json
+    apollo11.json
+    ...               dosya adı = paketin site kimliği (sites.json "id")
     ozet.json         Isı haritası için önceden hesaplanmış özet
-    /3b               3B arazi: alan dosyasıyla aynı ad (malapert_massif.json …)
+    /3b               3B arazi: alan dosyasıyla aynı ad; moon/, dem_south_400m, artemis_regions
+/veri_kaynak/planb    Veri paketi açılmış hâli (.gitignore'da; zip de depoya girmez)
 ```
 
 **Kural:** Üç sayfa aynı bileşenleri kullanır. Bileşen kodu asla
@@ -132,25 +131,28 @@ dizildiği değişir.
 
 ## 4. Veri Sözleşmesi
 
-Arayüz **sadece** aşağıdaki yapıları bilir. Hem sahte veri üreteci hem
-gerçek veri hattı bu yapıları birebir üretir.
+Arayüz **sadece** aşağıdaki yapıları bilir. Hepsini
+`scripts/gercekVeriDonustur.mjs` veri paketinden üretir (bölüm 13).
 
 ### 4.1 Alan dosyası — `<dosya_adi>.json`
 
-Her alan için bir dosya. Dosya adı: küçük harf, boşluk yerine `_`,
-Türkçe karakter ve kesme işareti yok (`malapert_massif.json`,
-`apollo_11.json`, `change_4.json`).
+Her alan için bir dosya. Dosya adı paketin site kimliği: küçük harf,
+`_` ile (`a3_malapert_massif.json`, `apollo11.json`, `change4.json`).
+Arayüz adı asla dosya adından türetmez; `bolgeler.json` "file" esastır.
 
 ```json
 {
   "site": "Malapert Massif",
-  "lat": -86.0,
-  "lon": 2.7,
+  "name_package": "Malapert Massif (best point)",
+  "id": "a3_malapert_massif",
+  "lat": -85.96708,
+  "lon": 357.7749,
+  "ground_m": 4985.7,
   "mast_heights_m": [0, 2, 10],
   "horizon": {
-    "0":  [2.1, 2.3, 2.4, "... 360 eleman"],
-    "2":  [1.9, 2.1, 2.2, "... 360 eleman"],
-    "10": [1.4, 1.6, 1.7, "... 360 eleman"]
+    "0":  [2.1, 2.3, 2.4, "... 720 eleman (0.5° adım)"],
+    "2":  [1.9, 2.1, 2.2, "... 720 eleman"],
+    "10": [1.4, 1.6, 1.7, "... 720 eleman"]
   },
   "t0": "2027-01-01T00:00:00Z",
   "dt_hours": 1,
@@ -158,9 +160,18 @@ Türkçe karakter ve kesme işareti yok (`malapert_massif.json`,
   "sun_alt":   [2.1, 2.0, 1.8, "... n eleman"],
   "sun_az":    [147.2, 148.9, "... n eleman"],
   "earth_alt": [-1.2, -1.1, "... n eleman"],
-  "earth_az":  [31.5, 31.6, "... n eleman"]
+  "earth_az":  [31.5, 31.6, "... n eleman"],
+  "sun_au":    [0.98332, "... n eleman, Güneş uzaklığı (AB)"]
 }
 ```
+
+`sun_alt/az` ve `earth_alt/az` paketin `model.js` `basis/azel` fonksiyonlarıyla
+hesaplanır (efemeris indeksi 1464 = 2027-01-01). Dünya için gözlemci konumu
+zemin + direk yüksekliğidir (topografik paralaks); 0/2/10 m direkler arası fark
+en fazla 1.3·10⁻⁶° olduğu için tek dizi (2 m) saklanır. `horizon` paketin
+720 elemanlı (0.5°) profilidir, olduğu gibi. `site` arayüzdeki kısa ad
+(§10); paketin adı `name_package`'da. Ad yalnız gösterim ve `ozet.json`
+anahtarıdır; dosya ve 3B eşleşmesi paket kimliğine (`id`) bağlıdır.
 
 ### 4.2 Alan listesi — `bolgeler.json`
 
@@ -170,14 +181,24 @@ Türkçe karakter ve kesme işareti yok (`malapert_massif.json`,
     "site": "Apollo 11",
     "kategori": "apollo",
     "aciklama": "İlk insanlı iniş, 1969",
-    "lat": 0.674,
-    "lon": 23.473,
-    "file": "apollo_11.json"
+    "lat": 0.6734,
+    "lon": 23.4731,
+    "file": "apollo11.json",
+    "id": "apollo11",
+    "kaynak": "NASA NSSDC …",
+    "arazi": "terrain_global",
+    "arazi_cozunurluk_m": 118
   }
 ]
 ```
 
-`kategori` değerleri: `artemis`, `apollo`, `clps`, `uluslararasi`.
+`kategori` değerleri: `artemis`, `apollo`, `clps`, `uluslararasi`. Paketteki
+gruptan: Artemis III → `artemis`; South pole missions → `clps`; Apollo →
+`apollo`; Other missions → Blue Ghost 1 `clps`, diğerleri `uluslararasi`.
+`kaynak` koordinatın kaynağı (sites.json `source`). `arazi`: `terrain` (kutup
+LOLA/PGDA 5–20 m) ya da `terrain_global` (SLDEM2015 ≈ 118 m; Chandrayaan-3
+LOLA ≈ 237 m → `arazi_cozunurluk_m`). `terrain_global` alanlarda gökyüzü
+kutusunun altında solgun not: "Arazi ~118 m çözünürlükte."
 
 ### 4.3 Ortak efemeris — `efemeris.json`
 
@@ -193,13 +214,15 @@ yüzey noktası), `MOON_ME` çerçevesinde. Bütün alanlar için ortaktır.
   "sun_sub_lat":   [1.2, "... n eleman"],
   "sun_sub_lon":   [178.4, "... n eleman, [0, 360)"],
   "earth_sub_lat": [-3.1, "... n eleman"],
-  "earth_sub_lon": [4.7, "... n eleman, [-180, 180)"]
+  "earth_sub_lon": [4.7, "... n eleman, [-180, 180)"],
+  "sun_au":        [0.98332, "... n eleman"]
 }
 ```
 
-Gerçek veride SPICE `subpnt` fonksiyonuyla üretilir. Dünya için bu yöntem
-paralaks yüzünden en fazla yaklaşık 0.3° hata verir; özel koordinat zaten
-"yaklaşık" işaretli olduğu için kabul edilebilir.
+Paketin `ephem_hourly.json` vektörlerinden (Ay merkezinden Güneş yönü ve
+Dünya vektörü, `MOON_ME_DE440_ME421`) hesaplanır. Alt-nokta Ay merkezine göredir;
+Dünya için paralaks yüzünden en fazla yaklaşık 0.3° hata verir; özel koordinat
+zaten "yaklaşık" işaretli olduğu için kabul edilebilir.
 
 ### 4.4 Özet — `ozet.json`
 
@@ -259,10 +282,12 @@ dışı alanlarda `null`. Sahne eksenleri: +x doğu, −z kuzey, +y yukarı, met
 
 - Bütün açılar **derece** (radyan değil)
 - Azimut: `0°` = kuzey, saat yönünde artar, aralık `[0, 360)`
-- `horizon` dizileri `0°` azimuttan başlar, `1°` adımla ilerler, 360 eleman
+- `horizon` dizileri `0°` azimuttan başlar, `0.5°` adımla ilerler, 720 eleman
+  (`sabitler.js` `UFUK_YON_SAYISI`); kod uzunluk varsaymaz, `ufukOku` ile okur
 - Yükseklik: ufuk düzleminden yukarısı pozitif
 - Zaman dizileri düzgün aralıklı; `t0` ve `dt_hours` ile hesaplanır
-- Sayılar 2 ondalığa yuvarlanır
+- Ondalık: yükseklik/azimut 4, ufuk 3, `sun_au` 6 basamak (Güneş ufukta
+  sürünürken `el − H` yalnızca birkaç yüzde bir derecedir)
 
 ---
 
@@ -284,15 +309,21 @@ az    = atan2(dogu, kuzey)  → dereceye çevir → [0, 360)
 ```
 
 Bu fonksiyon `altAz(phi, lam, subLat, subLon) → { alt, az }` olarak
-dışa aktarılır. Hem sahte veri üreteci hem özel koordinat bunu kullanır.
+dışa aktarılır. Özel koordinat bunu kullanır.
 
 ### 5.2 Güneş diskinin görünen oranı
 
-ρ = 0.266° (Güneş açısal yarıçapı):
+Ufkun üstünde kalan disk oranı — **daire dilimi** (paketin `diskFraction`'ı).
+Güneş'in açısal yarıçapı uzaklıktan: `ρ = asin(695 700 km / (sun_au · 1 AB))`
+(0.262°–0.272°; `sun_au` yoksa 0.2666°):
 
 ```
-f(t) = clamp( (sun_alt[t] + 0.266 - H(sun_az[t])) / 0.532, 0, 1 )
+d    = clamp( (sun_alt[t] - H(sun_az[t])) / ρ, -1, 1 )
+f(t) = 1 - (acos(d) - d·√(1 - d²)) / π
 ```
+
+**Aydınlık = `f > 0.5`** (disk merkezi ufkun üstünde). Geri sayım, en uzun
+karanlık ve "Güneş görünür" bu eşikle. `f_bar` (Güneş %) yine f'nin ortalamasıdır.
 
 ### 5.3 İletişim durumu
 
@@ -304,12 +335,12 @@ c(t) = earth_alt[t] > H(earth_az[t]) + epsilon  ?  1 : 0
 
 ### 5.4 Anlık güç
 
-P0 = 1361 W/m², η = verim, S = alan:
+P0 = 1361 W/m² (1 AB'de), η = verim, S = alan, `k = (1 / sun_au)²`:
 
 ```
-P(t) = 1361 * eta * S * f(t)                    // Güneş'i izleyen panel
-P(t) = 1361 * eta * S * f(t) * sin(sun_alt)     // yatay panel
-P(t) = 1361 * eta * S * f(t) * cos(sun_alt)     // dikey panel
+P(t) = 1361 * k * eta * S * f(t)                    // Güneş'i izleyen panel
+P(t) = 1361 * k * eta * S * f(t) * sin(sun_alt)     // yatay panel
+P(t) = 1361 * k * eta * S * f(t) * cos(sun_alt)     // dikey panel
 ```
 
 Yatay ve dikey panelde sonuç negatifse 0 alınır.
@@ -319,10 +350,10 @@ Yatay ve dikey panelde sonuç negatifse 0 alınır.
 `t` anından ileriye doğru tarama:
 
 ```
-Güneş şu an görünüyorsa (f[t] > 0):
-    gunBatimi   = f'nin ilk kez 0 olduğu indeks - t      (saat)
+Güneş şu an görünüyorsa (f[t] > 0.5):
+    gunBatimi   = f'nin ilk kez ≤ 0.5 olduğu indeks - t      (saat)
 Görünmüyorsa:
-    gunDogumu   = f'nin ilk kez > 0 olduğu indeks - t
+    gunDogumu   = f'nin ilk kez > 0.5 olduğu indeks - t
 
 Dünya şu an görünüyorsa (c[t] == 1):
     dunyaBatisi = c'nin ilk kez 0 olduğu indeks - t
@@ -332,7 +363,7 @@ Görünmüyorsa:
 Veri aralığında geçiş yoksa: null → arayüzde "veri aralığında değişmiyor"
 ```
 
-Tarama tek yerdedir: `gecisler(dizi, t, dt) → { sonrakiBatis, sonrakiDogus }`
+Tarama tek yerdedir: `gecisler(dizi, t, dt, esik) → { sonrakiBatis, sonrakiDogus }`
 (saat veya null). `geriSayim` bunu kullanır; İleri özeti dört değeri de gösterir.
 
 Sonuç saat cinsinden döner; arayüz `3 g 7 sa` biçiminde gösterir.
@@ -344,7 +375,7 @@ Sonuç saat cinsinden döner; arayüz `3 g 7 sa` biçiminde gösterir.
 ```
 f_bar     = ortalama(f)
 c_bar     = ortalama(c)
-tau_max   = f == 0 olan en uzun ardışık dizi (saat)
+tau_max   = f ≤ 0.5 olan en uzun ardışık dizi (saat)
 sigma_max = c == 0 olan en uzun ardışık dizi (saat)
 E         = toplam(P) * dt
 puan      = w1*f_bar + w2*c_bar - w3*(tau_max / (D*24))
@@ -352,9 +383,12 @@ puan      = w1*f_bar + w2*c_bar - w3*(tau_max / (D*24))
 
 ### 5.7 Ufuk okuma
 
-Azimut kesirli olabilir; iki komşu derece arasında doğrusal ara değer.
-Dizi döngüseldir: `H(359.5°)` için `horizon[359]` ile `horizon[0]`
-arasında ara değer alınır.
+`ufukOku(horizon, az)` — tek fonksiyon; gökyüzü görünümü (panorama ve
+kubbe), hesaplar (f, c), ısı haritası özeti, karşılaştırma ve 3B ufuk aynı
+fonksiyonu kullanır. `n = horizon.length`, adım `360/n` (veride 720 → 0.5°).
+Komşu iki örnek arasında doğrusal ara değer; dizi döngüseldir: `H(359.7°)`
+için `horizon[719]` ile `horizon[0]` arasında ara değer alınır. Paketin
+`model.js` `horizonAt`'ı ile aynı.
 
 ### 5.8 Özel koordinat (`ozelNokta.js`)
 
@@ -390,9 +424,9 @@ sadece diziler yeniden taranır.
   seciliAlan: 'Malapert Massif',
   ozelNokta: null,          // { lat, lon } veya null
   karsilastirma: [],        // en fazla 3 alan adı
-  t: 120,                   // zaman dizisindeki indeks (6. gün; alan değişince korunur)
-                            // Malapert'te Dünya batışına 11 sa: Earthset açılışta görünür
-  tL: 0,                    // iniş tarihi indeksi (1 Ocak; t bu görevin içinde)
+  t: 610,                   // zaman dizisindeki indeks: 26 Ocak 10:00 UTC (alan değişince korunur)
+                            // Malapert'te Güneş ve Dünya görünür (≈ 53° ayrık), Earthset 16 sa, gün batımı 61 sa
+  tL: 0,                    // iniş tarihi indeksi (1 Ocak; t bu 30 günlük görevin içinde)
   D: 30,                    // görev süresi (gün) — sadece 7, 30, 90 veya 180
 
   // Mühendislik parametreleri
@@ -494,54 +528,59 @@ genişlikli) rakam ayarı. Sayılar değişirken genişlik oynamamalı.
 
 ## 10. İniş Alanları
 
-**Koordinatlar yaklaşıktır ve hafızadan yazılmıştır.** Özellikle Artemis
-bölgeleri NASA'nın yayımladığı haritadan doğrulanmalıdır. Gerçek veri
-geldiğinde JSON dosyalarındaki değerler esastır. Boylamlar `[0, 360)`
-aralığında, doğu yönünde artan.
+26 alan; koordinat ve kaynak paketin `sites.json` dosyasından
+(`bolgeler.json` "kaynak": LROC, NSSDC, USGS, makale). Ad ve açıklama
+`scripts/gercekVeriDonustur.mjs` içindeki `AD` / `ACIKLAMA` tablolarındadır
+(eşleme paket kimliğiyle). Boylamlar `[0, 360)`, doğu yönünde artan.
 
 ### Artemis III aday bölgeleri (kategori: `artemis`)
 
-| Bölge | Enlem | Boylam |
-|---|---|---|
-| Peak near Cabeus B | −82.2° | 326.0° |
-| Haworth | −87.5° | 355.0° |
-| Malapert Massif | −86.0° | 2.7° |
-| Mons Mouton | −84.6° | 31.0° |
-| Mons Mouton Plateau | −84.3° | 28.0° |
-| Nobile Rim 1 | −85.4° | 38.0° |
-| Nobile Rim 2 | −84.8° | 60.0° |
-| de Gerlache Rim 2 | −88.5° | 290.0° |
-| Slater Plain | −88.1° | 105.0° |
+Açıklama hepsinde: "Artemis III aday bölgesi · bölgedeki en iyi nokta" (nokta,
+bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
+
+| Ad | Kimlik | Enlem | Boylam |
+|---|---|---|---|
+| Peak near Cabeus B | `a3_peak_near_cabeus_b` | −83.48° | 291.74° |
+| Haworth | `a3_haworth` | −86.32° | 336.82° |
+| Malapert Massif | `a3_malapert_massif` | −85.97° | 357.77° |
+| Mons Mouton | `a3_mons_mouton` | −85.48° | 31.29° |
+| Mons Mouton Plateau | `a3_mons_mouton_plateau` | −84.56° | 39.42° |
+| Nobile Rim 1 | `a3_nobile_rim_1` | −85.01° | 38.01° |
+| Nobile Rim 2 | `a3_nobile_rim_2` | −83.57° | 58.41° |
+| de Gerlache Rim 2 | `a3_de_gerlache_rim_2` | −88.44° | 292.08° |
+| Slater Plain | `a3_slater_plain` | −87.24° | 127.24° |
 
 ### Apollo (kategori: `apollo`)
 
-| Görev | Enlem | Boylam | Açıklama |
-|---|---|---|---|
-| Apollo 11 | 0.674° | 23.473° | İlk insanlı iniş, 1969 |
-| Apollo 12 | −3.012° | 336.578° | Oceanus Procellarum, 1969 |
-| Apollo 14 | −3.645° | 342.529° | Fra Mauro, 1971 |
-| Apollo 15 | 26.132° | 3.634° | Hadley-Apennine, 1971 |
-| Apollo 16 | −8.973° | 15.500° | Descartes, 1972 |
-| Apollo 17 | 20.191° | 30.772° | Taurus-Littrow, 1972 |
+| Ad | Kimlik | Açıklama |
+|---|---|---|
+| Apollo 11 | `apollo11` | İlk insanlı iniş, 1969 |
+| Apollo 12 | `apollo12` | Oceanus Procellarum, 1969 |
+| Apollo 14 | `apollo14` | Fra Mauro, 1971 |
+| Apollo 15 | `apollo15` | Hadley-Apennine, 1971 |
+| Apollo 16 | `apollo16` | Descartes, 1972 |
+| Apollo 17 | `apollo17` | Taurus-Littrow, 1972 |
 
-### CLPS (kategori: `clps`)
+### CLPS ve güney kutbu görevleri (kategori: `clps`)
 
-| Görev | Enlem | Boylam | Açıklama |
-|---|---|---|---|
-| IM-1 Odysseus | −80.13° | 1.44° | Malapert A yakını, 2024 |
-| IM-2 Athena | −84.8° | 29.2° | Mons Mouton, 2025 |
-| Blue Ghost 1 | 18.56° | 61.81° | Mare Crisium, 2025 |
+| Ad | Kimlik | Açıklama |
+|---|---|---|
+| IM-1 Odysseus | `im1_odysseus` | Malapert A yakını, 2024 |
+| IM-2 Athena (hedef) | `im2_target` | Mons Mouton, 2025 · hedeflenen nokta |
+| IM-2 Athena (iniş) | `im2_actual` | Mons Mouton, 2025 · gerçek iniş noktası |
+| CP-22 | `cp22_prospect` | Mons Mouton platosu, CLPS aday noktası |
+| Blue Ghost 1 | `blueghost1` | Mare Crisium, 2025 |
 
 ### Uluslararası (kategori: `uluslararasi`)
 
-| Görev | Enlem | Boylam | Açıklama |
-|---|---|---|---|
-| Chang'e 3 | 44.12° | 340.49° | Mare Imbrium, Çin, 2013 |
-| Chang'e 4 | −45.44° | 177.60° | Uzak yüz, Çin, 2019 |
-| Chang'e 5 | 43.06° | 308.08° | Mons Rümker yakını, Çin, 2020 |
-| Chang'e 6 | −41.63° | 206.01° | Uzak yüz, Çin, 2024 |
-| Chandrayaan-3 | −69.37° | 32.32° | Güney kutbu yakını, Hindistan, 2023 |
-| SLIM | −13.3° | 25.25° | Shioli krateri, Japonya, 2024 |
+| Ad | Kimlik | Açıklama |
+|---|---|---|
+| Chang'e 3 | `change3` | Mare Imbrium, Çin, 2013 |
+| Chang'e 4 | `change4` | Uzak yüz, Çin, 2019 |
+| Chang'e 5 | `change5` | Mons Rümker yakını, Çin, 2020 |
+| Chang'e 6 | `change6` | Uzak yüz, Çin, 2024 |
+| Chandrayaan-3 | `chandrayaan3` | Güney kutbu yakını, Hindistan, 2023 |
+| SLIM | `slim` | Shioli krateri, Japonya, 2024 |
 
 **Kutup sınırı:** `|lat| >= 75°` olan alanlar "kutup alanı" sayılır.
 
@@ -551,8 +590,9 @@ aralığında, doğu yönünde artan.
 
 - **Her adımda git commit at.** Çalışan her hâl kaydedilir.
 - **Bir seferde bir bileşen.** Çok sayıda dosya aynı anda değiştirilmez.
-- **Sahte veriyle geliştir.** `sahteVeri.js` gerçek verinin yerine geçer;
-  gerçek dosyalar gelince sadece `veri.js` içindeki yol değişir.
+- **Veri yalnız paketten.** `public/veri/` elle düzenlenmez; paket
+  değişince `npm run veri:donustur && npm run veri:ozet && npm run veri:3b`.
+  Her sayının kaynağı veri sözleşmesinde (paket `docs/VERI_SOZLESMESI.md`).
 - **Eksen sınırları alana göre.** Gökyüzü görünümünde yükseklik ekseni:
   kutup alanları için `−15°…+15°`, diğerleri için `−90°…+90°`. Bir alan
   içinde eksen sabittir, zaman ilerledikçe oynamaz. Azimut her zaman
@@ -579,9 +619,9 @@ aralığında, doğu yönünde artan.
   testiyle** örter, elle gizleme yok (sacak, yüksek kameradan da örtmeyi
   korur). Disk ve küreler kameradan sabit açısal boyutta çizilir. Güneş halesi
   kamera→Güneş ışınında, zeminin ötesinde: yalnız gökyüzüne karşı görünür,
-  Güneş sırtın arkasındayken silüeti belli eder. Yakın arazi (gerçek LOLA)
-  sahte ufuk verisiyle birebir tutarlı olmayabilir — gerçek ufuk gelince
-  kendiliğinden tutarlı olur. Düşey abartı yalnız araziye uygulanır (ufuk ve
+  Güneş sırtın arkasındayken silüeti belli eder. Yakın arazi (LOLA 50 m
+  ızgara) ile uzak ufuk (paketin 20 m / 80 m ışın izlemesi) aynı DEM'den gelir
+  ama farklı çözünürlükte; küçük farklar olabilir. Düşey abartı yalnız araziye uygulanır (ufuk ve
   sacak açısal gerçektir). Güneş ışığı `f` ile ölçeklenir; ortam ışığı
   bilerek çok zayıf (yerden kipte "Ay'da hava olmadığı için gölgeler tam
   karanlık." notu). `f ≤ 0.5` iken üstte "Güneş ufkun altında" ya da "Güneş
@@ -596,9 +636,6 @@ aralığında, doğu yönünde artan.
   Isı haritası `ozet.json`'dan beslenir.
 - **Yaklaşık veri işaretlenir.** `yaklasik: true` olan her alanda uyarı
   görünür. Kullanıcıyı yanıltabilecek hiçbir sonuç uyarısız gösterilmez.
-  Bütün veri sahteyken (`sabitler.js`: `VERI_KAYNAGI = 'sahte'`) üç sayfanın
-  başlığı altında `VeriUyarisi` görünür; gerçek veri gelince sabit
-  `'gercek'` yapılır, başka bir şey değişmez.
 
 ---
 
@@ -607,7 +644,7 @@ aralığında, doğu yönünde artan.
 Süre biterse listenin sonundakiler eksik kalır, gerisi ayakta durur.
 
 1. İskelet (Vite + React + Tailwind, koyu tema) ✓
-2. Efemeris + sahte veri üreteci
+2. Efemeris + veri (gerçek veri paketi v4, `gercekVeriDonustur.mjs`) ✓
 3. Hesap modülü (geri sayım ve özel nokta dahil) + durum deposu
 4. Gökyüzü görünümü ← **en kritik parça**
 5. Temel sayfa (geri sayım + Ay–Dünya kartı dahil)
@@ -622,3 +659,28 @@ Süre biterse listenin sonundakiler eksik kalır, gerisi ayakta durur.
 **Not:** 3B küre bütün alanları tek bakışta gösterebilen tek görünüm
 (kutup haritası sadece kutup alanlarını gösterir). Zaman kalırsa
 önemlidir, ama asıl bilgi 2B gökyüzü görünümündedir.
+
+---
+
+## 13. Veri Kaynakları ve Doğrulama
+
+Kaynak: ekibin veri paketi **Plan B v4 (14 Kasım 2026)**, `veri_kaynak/planb/`
+altına açılır. Ayrıntı ve her sayının kaynağı paketin `docs/VERI_SOZLESMESI.md`
+ve `docs/FIZIK_VE_DENKLEMLER.md` dosyalarında.
+
+- **Efemeris:** NAIF SPICE, DE440, `MOON_ME_DE440_ME421`, ışık zamanı +
+  yıldız sapması düzeltmeli; JPL Horizons ile 0.000°. Saatlik, 2026-11 → 2030.
+- **Ufuk:** kutupta LOLA (15 km'ye kadar 20 m, 250 km'ye kadar 80 m; bazı
+  alanlarda PGDA 104 5 m), kutup dışında SLDEM2015 (≈ 118 m); 720 yön, Ay
+  eğriliği dahil, direk 0/2/10 m.
+- **Hesap:** paketin `web/js/model.js`'i Python hattıyla birebir
+  (`node web/test/model_check.js`); olay zamanları SPICE 1 dk ile ≤ 0.1 dk
+  (`event_check.js`). Dönüştürücü az/el'i model.js ile hesaplar.
+
+Doğrulama (dönüştürme sonrası, `hesap.js` ile; 2027 içindeki referans senaryolar):
+
+| Kontrol | Sonuç |
+|---|---|
+| Güneş % (ort. f), Dünya %, en uzun karanlık, en uzun Dünya'sız — 5 senaryo | paketle aynı (Güneş % farkı ≤ 0.01 puan, yuvarlama) |
+| Geri sayım, 17 referans olay (SPICE 1 dk) | 17/17 ±1 saat içinde (en büyük 0.94 sa; saatlik örnekleme) |
+| Ufuk çözünürlüğü | 720 yön şart: 360'a inceltince Güneş'in ufukta süründüğü saatlerde (`el − H` ≈ ±0.02°) durum çeviriyor, 5 olay tutmuyordu |
