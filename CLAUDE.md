@@ -83,7 +83,19 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     ModDegistirici.jsx    Temel / Orta / İleri geçişi
     Secenekler.jsx        Parçalı düğme (tek seçim)
     AkanSayi.jsx          Değişirken akan sayı
-    GokyuzuKutusu.jsx     Depoya bağlı gökyüzü görünümü + uyarı (+ Panorama/Kubbe düğmesi)
+    GokyuzuKutusu.jsx     Depoya bağlı gökyüzü görünümü + uyarı (Panorama / Kubbe / 3B düğmesi)
+    /uc                   3B yerel sahne (react-three-fiber); yalnız 3B seçilince yüklenir
+      AraziSahnesi.jsx    Canvas, HUD, kamera düğmeleri, düşey abartı, tam ekran, hata → panorama
+      Arazi.jsx           LOLA arazi ağı (201×201, 50 m), never_lit örtüsü, taban
+      UfukSeridi.jsx      Uzak ufuk duvarı: her azimutta R·tan(H(az)); rozetle aynı örtme
+      Gok.jsx             Güneş ışığı + Bloom'lu disk, Dünya (c=0: halka), earthshine, yıldızlar
+      Pusula.jsx          Yer halkası, kuzey oku, Dünya yönü; harf noktaları
+      EkranEtiketleri.jsx Sahne noktalarını DOM etiketlerine izdüşürür (drei Html yerine)
+      Kamera.jsx          Yerden / kuş bakışı / Güneş'e bak / Dünya'ya bak; 1 sn geçiş
+      TamEkran.jsx        Fullscreen API (+ sahte yedek), F/ESC, 3 sn solan katman
+      Iskelet.jsx         Yüklenirken iskelet (three içermez)
+      veri.js             public/veri/3b/ yükleme, yükseklik ara değeri
+      sahne.js            Eksenler, uzaklıklar, yön vektörü
     ZamanCizelgesiKutusu.jsx  Depoya bağlı zaman çizelgesi
     SayisalOzet.jsx       Anlık ve görev aralığı sayıları; kip='tam' İleri özeti
     DisaAktar.jsx         CSV indirme (İleri)
@@ -101,6 +113,7 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
 /scripts
   sahteVeriUret.mjs   Test verisini public/veri/ altına yazar
   ozetUret.mjs        hesap.js ile ozet.json üretir
+  ucBoyutVeriHazirla.mjs  Veri paketindeki terrain_*/grid_* → public/veri/3b/
 /public
   /veri
     bolgeler.json     Bütün alanların listesi
@@ -109,6 +122,7 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     apollo_11.json
     ...
     ozet.json         Isı haritası için önceden hesaplanmış özet
+    /3b               3B arazi: alan dosyasıyla aynı ad (malapert_massif.json …)
 ```
 
 **Kural:** Üç sayfa aynı bileşenleri kullanır. Bileşen kodu asla
@@ -220,7 +234,29 @@ için tarayıcıda hesaplanır.
 Anahtarlar: önce direk yüksekliği `hm` (0, 2, 10), sonra görev süresi
 `D` (7, 30, 90, 180 gün). Görev yıl sonunu aşan hücreler `null` olur.
 
-### 4.5 Birim ve yön kuralları
+### 4.5 3B arazi — `3b/<dosya_adi>.json`
+
+`scripts/ucBoyutVeriHazirla.mjs` ile veri paketinden üretilir; yalnız seçili
+alanınki yüklenir (`bilesenler/uc/veri.js`). Gerçek LOLA/SLDEM arazisidir.
+
+```json
+{
+  "site": "Malapert Massif",
+  "source_id": "a3_malapert_massif",
+  "dem": "dem20_a3_malapert_massif.tif",
+  "n": 201,
+  "spacing_m": 50,
+  "z0_m": 4985.7,
+  "dz_m": ["... n·n eleman, merkez zemine göre metre, tam sayı"],
+  "never_lit": { "n": 31, "spacing_m": 100, "values": ["... 0/1, n·n"], "note": "..." }
+}
+```
+
+Sıra `k = j·n + i`; `j` güneyden kuzeye, `i` batıdan doğuya. `never_lit`
+3×3 km'lik merkez ızgaradır (18.6 yılda hiç Güneş almayan hücre = 1); kutup
+dışı alanlarda `null`. Sahne eksenleri: +x doğu, −z kuzey, +y yukarı, metre.
+
+### 4.6 Birim ve yön kuralları
 
 - Bütün açılar **derece** (radyan değil)
 - Azimut: `0°` = kuzey, saat yönünde artar, aralık `[0, 360)`
@@ -533,6 +569,18 @@ aralığında, doğu yönünde artan.
   bir çizgi ve "0°" etiketiyle ayrıca gösterilir. Arazi dış kenardan H(A)'ya
   kadar halka, iletişim eşiği H(A)+ε kesikli çizgi. Kenar dışı işaret (nokta +
   "−2.7°") yalnızca `alt < altMin` iken çizilir.
+- **3B sahne.** Temel'de varsayılan görünüm 3B, Orta/İleri'de panorama;
+  üçünde de Panorama / Kubbe / 3B düğmesi var. three.js yalnız 3B
+  seçilince iner (React.lazy); WebGL yoksa ya da sahne hata verirse kutu
+  kendiliğinden panoramaya döner ve not gösterir. Uzak ufuk şeridi
+  `R·tan(H(az))` ile 2B görünümle aynı örtmeyi verir; yakın arazi (gerçek
+  LOLA) sahte ufuk verisiyle birebir tutarlı olmayabilir — gerçek ufuk
+  gelince kendiliğinden tutarlı olur. Düşey abartı yalnız araziye uygulanır
+  (şerit açısal gerçektir). Güneş ışığı `f` ile ölçeklenir; `f ≤ 0.5` iken
+  üstte "Güneş ufkun altında" ya da "Güneş uzaktaki arazinin arkasında" notu.
+  Güneş diski yalnız `sunAlt + ρ > 0` iken çizilir. Tam ekranda
+  `ZamanKaydirici` ikinci kez çizilir; oynatma döngüsünü yalnız sayfadaki
+  sürer (`surucu={false}`).
 - **Türkçe isimlendirme.** Bileşen ve değişken adları Türkçe; JSON alan
   adları İngilizce (veri sözleşmesi öyle kararlaştırıldı).
 - **Dosya boyutu.** Her alan ayrı JSON; sadece seçili alan yüklenir.
@@ -559,7 +607,7 @@ Süre biterse listenin sonundakiler eksik kalır, gerisi ayakta durur.
 8. Isı haritası
 9. Yan yana karşılaştırma
 10. İleri sayfa
-11. 3B Ay küresi
+11. 3B yerel sahne (arazi, Güneş, Dünya; sunumun ana görseli) ✓ — 3B Ay küresi hâlâ açık
 12. Giriş ekranı
 
 **Not:** 3B küre bütün alanları tek bakışta gösterebilen tek görünüm

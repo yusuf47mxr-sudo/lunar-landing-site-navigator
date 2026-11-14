@@ -25,6 +25,14 @@ Challenge'ın dört sorusuna hızlıca cevap verir:
 | **Zamanlama:** Gün batımına ve Dünya batışına (Earthset) ne kadar kaldı? | Her sayfada görünen geri sayım; 24 saatin altında uyarı renginde |
 | **Karşılaştırma:** Başka bir alan ya da tarih seçilse ne değişir? | Isı haritası (alan × iniş haftası) ve yan yana karşılaştırma |
 
+**3B yerel sahne** (Temel modda varsayılan; diğerlerinde Panorama / Kubbe /
+3B düğmesi): seçili alanın 10 × 10 km'lik gerçek LOLA arazisi, Güneş'in
+yönlü ışığı ve gölgeleri, uzak ufuk şeridi (Güneş uzak dağın arkasına
+girince 3B'de de kaybolur), Dünya (bağlantı yokken içi boş halka), 18 yılda
+hiç Güneş almayan hücrelerin mavi örtüsü, pusula, dört kamera kipi, düşey
+abartı (1× / 2× / 5×) ve tam ekran (F / ESC). three.js yalnız 3B seçilince
+indirilir.
+
 Liste Artemis III aday bölgelerini, Apollo alanlarını, CLPS görevlerini ve
 diğer ülkelerin iniş alanlarını içerir (24 alan). Kullanıcı kendi koordinatını
 da girebilir; bu durumda arazi düz kabul edilir ve sonuç "yaklaşık" diye
@@ -55,6 +63,7 @@ npm install          # bağımlılıklar
 npm run dev          # geliştirme sunucusu (http://localhost:5173)
 npm run veri:uret    # sahte veriyi public/veri/ altına yeniden üretir
 npm run veri:ozet    # ısı haritası özetini (ozet.json) yeniden hesaplar
+npm run veri:3b -- <paket>/web/data   # 3B arazi dosyalarını (public/veri/3b/) veri paketinden üretir
 npm run build        # üretim derlemesi → dist/
 npm run preview      # derlemeyi yerelde sunar
 ```
@@ -77,6 +86,7 @@ JSON yapılarını bilir:
 | `<alan>.json` | Bir alan için ufuk profilleri (3 direk yüksekliği × 360 azimut) ve bir yıllık saatlik Güneş/Dünya yükseklik ve azimutu |
 | `efemeris.json` | Güneş ve Dünya'nın Ay üzerindeki alt-noktaları (özel koordinat için) |
 | `ozet.json` | Isı haritası için önceden hesaplanmış dönem ölçütleri |
+| `3b/<alan>.json` | 3B sahne: 201 × 201 yükseklik ızgarası (50 m, merkeze göre) ve kutup alanlarında 31 × 31 "hiç Güneş almayan" hücre haritası |
 
 Açılar derece, azimut kuzeyden saat yönünde `[0, 360)`, zaman adımı 1 saat.
 
@@ -99,6 +109,14 @@ yüksekliği ve birkaç tümsek. Sonuç, fiziksel olarak tutarlı davranır (kut
 ufukta sürünen Güneş, gökte neredeyse sabit duran Dünya, uzak yüzde hiç
 görünmeyen Dünya), ama **sayılar gerçek görev planlaması için kullanılamaz**.
 Alan koordinatları da yaklaşıktır ve doğrulanmalıdır.
+
+**İstisna — 3B arazi gerçektir:** `public/veri/3b/` altındaki yükseklik
+ızgaraları ekibin veri paketinden (`scripts/ucBoyutVeriHazirla.mjs`) gelir:
+kutup alanlarında LOLA/PGDA 5–20 m DEM, diğerlerinde SLDEM2015 (~118 m).
+"Hiç Güneş almayan" hücreler de aynı paketin 18.6 yıllık taramasıdır. Gökteki
+Güneş ve Dünya ile 2B ufuk profilleri ise hâlâ sahtedir; bu yüzden 3B'de yakın
+arazi ile uzak ufuk şeridi her zaman birebir tutarlı değildir. Gerçek efemeris
+ve ufuk gelince tutarlılık kendiliğinden sağlanır.
 
 **Planlanan kaynaklar:**
 
@@ -138,15 +156,15 @@ Bütün hesaplar tarayıcıda yapılır. Ayrıntı:
 | [Zustand](https://zustand.docs.pmnd.rs) | Durum yönetimi | MIT |
 | [Framer Motion](https://motion.dev) | Geçişler ve akan sayılar | MIT |
 | [d3-geo](https://d3js.org/d3-geo) | Kutup haritası (stereografik projeksiyon) | ISC |
+| [three](https://threejs.org), [@react-three/fiber](https://r3f.docs.pmnd.rs), [@react-three/drei](https://drei.docs.pmnd.rs) | 3B yerel sahne | MIT |
+| [postprocessing](https://pmndrs.github.io/postprocessing/), [@react-three/postprocessing](https://react-postprocessing.docs.pmnd.rs) | Bloom (Güneş) ve ACES ton eşlemesi | Zlib / MIT |
 | [Inter](https://rsms.me/inter/) (Google Fonts) | Yazı tipi | SIL Open Font License 1.1 |
 
 Grafikler (gökyüzü, zaman çizelgesi, ısı haritası) Canvas 2D ile elle
 çizilmiştir; hazır grafik kütüphanesi kullanılmaz.
 
-`package.json`'da kurulu ama henüz kullanılmayanlar: `three`,
-`@react-three/fiber`, `@react-three/drei`, `@react-three/postprocessing`
-(planlanan 3B Ay küresi için, hepsi MIT) ve `d3-scale` (ISC). Derlenen pakete
-girmezler.
+3B sahne ayrı bir parçadır (≈ 1 MB, gzip ≈ 280 kB) ve yalnız 3B seçilince
+indirilir; ana paket değişmez. `d3-scale` kurulu ama kullanılmıyor.
 
 ## Yapay zekâ kullanımı
 
@@ -176,10 +194,13 @@ direct radio contact (communication), how long until sunset and Earthset
 (timing), and how a different site or date compares (comparison). Three modes
 target different audiences: Basic (children and the curious), Intermediate
 (educators) and Advanced (mission planners, with engineering parameters and
-CSV export).
+CSV export). A 3D local scene (react-three-fiber) shows the real LOLA terrain
+of the selected site with the Sun's light and shadows, a far-horizon ring,
+Earth, permanently shadowed cells, a compass, camera modes and fullscreen.
 
 > **Data status: the app currently runs on SYNTHETIC data** — physically
-> consistent but not real ephemeris or terrain. Planned sources are NASA NAIF
+> consistent but not real ephemeris or horizon profiles. The 3D terrain
+> heights are real (LOLA / SLDEM2015). Planned sources are NASA NAIF
 > SPICE (DE440, `MOON_ME` frame), LRO LOLA DEM horizon profiles and, if a 3D
 > view is added, the NASA CGI Moon Kit.
 
