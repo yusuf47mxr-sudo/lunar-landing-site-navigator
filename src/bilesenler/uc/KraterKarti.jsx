@@ -222,7 +222,9 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
         {pencereTasar ? (
           <p className="pt-0.5 text-metin-solgun">{t('hata.pencereTasiyor')}.</p>
         ) : sonuc.hata && sonuc.guncel ? (
-          <p className="pt-0.5 text-uyari">{t('kraterKarti.hesaplanamadi', { hata: hataMetni(sonuc.hata, t) })}</p>
+          <p className="pt-0.5 text-uyari">
+            {sonuc.hata.kod === 'hata.inisHesaplanamadi' ? hataMetni(sonuc.hata, t) : t('kraterKarti.hesaplanamadi', { hata: hataMetni(sonuc.hata, t) })}
+          </p>
         ) : !deger ? (
           <p className="pt-0.5 text-metin-solgun">{t('kraterKarti.hesaplaniyor')}</p>
         ) : sifir ? (

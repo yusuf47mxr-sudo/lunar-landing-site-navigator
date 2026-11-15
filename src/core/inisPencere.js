@@ -12,6 +12,8 @@
 // 6 hücre ötesinin olasılık kütlesi ~1e-8 — sonuç landingNodes ile aynıdır
 // (scripts/inisDogrula.mjs).
 
+/** Rehber §9 varsayılanları (Haworth örneği ile aynı); batarya kartta seçilir. */
+export const INIS_VARSAYILAN = { sigmaM: 100, slopeMax: 10, batteryH: 50, bufferH: 24 }
 export const KOMSU_YARICAP = 6 // hücre; 6σ (σ = 100 m, aralık 100 m)
 export const ONERI_GUN = 14
 export const ONERI_ADIM_SAAT = 24

@@ -38,6 +38,7 @@ export default {
     dunyaIletisim: 'Dünya ile iletişim',
   },
   hata: {
+    inisHesaplanamadi: 'Başarı olasılığı şu an hesaplanamıyor.',
     yuklenemedi: '{dosya} yüklenemedi (HTTP {durum})',
     dosyaYok: 'bolgeler.json\'da "{site}" için "file" yok',
     pencereTasiyor: 'Pencere 2027 verisinin dışına taşıyor',

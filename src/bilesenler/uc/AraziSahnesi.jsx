@@ -19,6 +19,7 @@ import { ToneMappingMode } from 'postprocessing'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PCFShadowMap } from 'three'
 import { useDil } from '../../dil/index.js'
+import { TEST_KANCALARI } from '../../core/testKancalari.js'
 import { useBolgeler } from '../../durum/store.js'
 import Secenekler from '../Secenekler.jsx'
 import Arazi, { NEVER_LIT_RENK, zeminOlustur } from './Arazi.jsx'
@@ -49,7 +50,7 @@ function GelistirmeIzdusum() {
   const camera = useThree((s) => s.camera)
   const gl = useThree((s) => s.gl)
   useEffect(() => {
-    if (!import.meta.env.DEV) return
+    if (!TEST_KANCALARI) return
     window.__yerelIzdusum = (x, y, z) => {
       const v = camera.position.clone().set(x, y, z).project(camera)
       const r = gl.domElement.getBoundingClientRect()
@@ -252,7 +253,7 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
             <EkranEtiketleri noktalar={etiketler} ogeler={ogeler} />
             <Kamera komut={komut} zemin={zemin} sunAlt={sunAlt} sunAz={sunAz} earthAlt={earthAlt} earthAz={earthAz} acilisUcusu={acilisUcusu} />
             {golgeOlcumu && <GolgeOlcer onYavas={yavasSa} />}
-            {import.meta.env.DEV && <GelistirmeIzdusum />}
+            {TEST_KANCALARI && <GelistirmeIzdusum />}
             {kartNoktasi && <KartIzdusum nokta={kartNoktasi} kart={kartRef} />}
             <EffectComposer multisampling={4}>
               <Bloom luminanceThreshold={BLOOM_ESIK} luminanceSmoothing={0.3} mipmapBlur intensity={1.2} radius={0.7} />

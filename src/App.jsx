@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy, useEffect, useMemo } from 'react'
 import { useDil } from './dil/index.js'
 import { useDurum } from './durum/store.js'
 
@@ -35,7 +35,10 @@ function Yukleniyor() {
 export default function App() {
   const mod = useDurum((s) => s.mod)
   const anahtar = mod in YUKLEYICILER ? mod : 'temel'
-  const Sayfa = HAZIR[anahtar] ?? SAYFALAR[anahtar]
+  // Bileşen kimliği YALNIZ mod değişince seçilir. App başka nedenle (ör. dil)
+  // yeniden çizildiğinde HAZIR'a yeni düşmüş sayfaya geçilirse React bunu farklı
+  // bileşen sayar ve bütün sayfayı yeniden kurar (3B sahne, tam ekran sıfırlanır).
+  const Sayfa = useMemo(() => HAZIR[anahtar] ?? SAYFALAR[anahtar], [anahtar])
   const { dil, t } = useDil()
 
   // Sayfa başlığı ve <html lang> dile göre

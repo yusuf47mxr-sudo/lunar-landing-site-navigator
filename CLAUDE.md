@@ -66,8 +66,11 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     veri.js           JSON yükleme ve önbellekleme
     sabitler.js       Fiziksel sabitler ve varsayılan parametreler (VARSAYILAN)
     kutupDem.js       Güney kutbu 400 m DEM yükleyici (özel koordinat + 3B ortak önbellek)
-    planbModel.js     Paketin model.js'i (src/vendor/planb/, veri:donustur kopyalar); yalnız dinamik yüklenir
-    inisIsci.js       Krater kartının iniş olasılığı işçisi (Web Worker; model.js landingOdds + hourly)
+    planbModel.js     Paketin model.js'i (src/vendor/planb/, veri:donustur kopyalar); yalnız dinamik yüklenir.
+                      UMD: dev'de globalThis.Model, derlemede (Rolldown CJS sarar) module.exports → ikisi de okunur
+    inisHesap.js      İniş olasılığı hesabı (landingOdds + hourly); işçide ve yedek yolda ana iş parçacığında aynı kod
+    inisIsci.js       Web Worker: inisHesap.js'in ince sarmalayıcısı (new Worker(new URL(…), { type: 'module' }))
+    testKancalari.js  window.__durum / __yerelIzdusum: dev'de her zaman, derlemede yalnız "?test" adresiyle
     inisPencere.js    Hızlı pencere hesabı ve öneri taraması (işçi ve scripts/inisDogrula.mjs ortak)
     hata.js           hataOlustur(kod, params, ingilizce): kullanıcıya gösterilen hatalar dile bağımsız
   /dil
@@ -696,7 +699,9 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   seçili halka beyaz ve kalın): çap; güven skoru yüzde ("ML güven skoru: %22 (olasılık değil)") + çubuk; bu çaptaki
   tespitlerin isabet oranı (`accuracy.polar_GR1_complete` precision, 10–20 m /
   ≥ 20 m); hücre tehlikesi g (null → "bilinmiyor — gölge"); "Buraya inersen:
-  başarı %…" — paketin `landingOdds`'u bir Web Worker'da (`core/inisIsci.js`),
+  başarı %…" — paketin `landingOdds`'u bir Web Worker'da (`core/inisIsci.js`;
+  işçi başlamaz / hata verir / 60 sn yanıtsız kalırsa hesap sessizce ana iş
+  parçacığında `core/inisHesap.js` ile yapılır, gerçek hata yalnız konsola),
   hedef = kraterin 100 m hücresi, σ 100 m, eğim 10°, tampon 24 sa, ground =
   haz_frac (rehber §9). Kartta iki seçici (depoda, sayfalar arası korunur):
   pencere "14 gün (t'den)" (varsayılan; CLPS tipik görev süresi, bir Ay günü)

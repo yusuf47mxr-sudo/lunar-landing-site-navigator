@@ -33,6 +33,7 @@ export default {
     dunyaIletisim: 'Communication with Earth',
   },
   hata: {
+    inisHesaplanamadi: 'Landing odds cannot be computed right now.',
     yuklenemedi: '{dosya} could not be loaded (HTTP {durum})',
     dosyaYok: 'bolgeler.json has no "file" for "{site}"',
     pencereTasiyor: 'Window extends beyond the 2027 data',
