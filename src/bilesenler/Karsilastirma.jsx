@@ -12,6 +12,7 @@
 // ve sonuç cümlesi t'ye bağlı olmadığı için yerinde kalır.
 
 import { memo, useMemo, useState } from 'react'
+import { ozelNoktaNotu } from '../core/ozelNokta.js'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useShallow } from 'zustand/react/shallow'
 import { geriSayim, olcutler, panoramaMerkezi, tamSaatBicimle, yuzdeBicimle } from '../core/hesap.js'
@@ -431,7 +432,7 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
                     </select>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2">
                       <GorevGunu dt={dt} />
-                      {s.alan?.yaklasik && <span className="text-[11px] text-uyari">Arazi hesaba katılmadı</span>}
+                      {s.alan?.yaklasik && <span className="text-[11px] text-uyari">{ozelNoktaNotu(s.alan).kisa}</span>}
                     </div>
                   </>
                 )}

@@ -139,7 +139,10 @@ export default function OzelKoordinat({ className = '' }) {
           {hata.boylam}
         </p>
       )}
-      <p className="mt-2 text-xs text-metin-solgun">Arazi verisi yalnızca listedeki alanlar için var.</p>
+      <p className="mt-2 text-xs text-metin-solgun">
+        80°G'nin güneyinde ufuk 400 m kutup arazisinden kaba olarak hesaplanır; diğer yerlerde düz kabul edilir.
+        Doğru arazi yalnızca listedeki alanlarda var.
+      </p>
     </form>
   )
 }

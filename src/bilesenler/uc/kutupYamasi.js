@@ -17,6 +17,7 @@
 
 import { useEffect, useState } from 'react'
 import { BufferAttribute, BufferGeometry, SphereGeometry } from 'three'
+import { kutupDemYukle } from '../../core/kutupDem.js'
 import { AY_YARICAP_KM, DERECE, KURE_ABARTI, enlemBoylamVektoru } from './kure.js'
 
 export const YAMA_ENLEM = -80
@@ -26,33 +27,11 @@ const YAMA_DILIM = KURE_DILIM * 3
 const YAMA_HALKA = 240 // 10° / 240 ≈ 1.26 km
 const GECIS_DERECE = 4 // dış halkadan içe küresel → DEM geçişi (kabartma farkı sınırda seçilmesin)
 
-const tabanYol = () => {
-  const taban = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-  return `${taban.replace(/\/?$/, '/')}veri/3b/`
-}
-
-let demSozu = null
-/** Kutup DEM'i (Int16, metre, 1520×1520, 400 m, kutup stereografik); bir kez okunur. */
-function demYukle() {
-  if (!demSozu) {
-    demSozu = Promise.all([
-      fetch(tabanYol() + 'dem_south_400m.json').then((y) => y.json()),
-      fetch(tabanYol() + 'dem_south_400m.bin').then((y) => {
-        if (!y.ok) throw new Error(`Kutup DEM'i yüklenemedi (HTTP ${y.status})`)
-        return y.arrayBuffer()
-      }),
-    ])
-      .then(([bilgi, tampon]) => ({ ...bilgi, z: new Int16Array(tampon) }))
-      .catch((h) => {
-        demSozu = null
-        throw h
-      })
-  }
-  return demSozu
-}
+/** Kutup DEM'i: ortak yükleyici (core/kutupDem.js), özel koordinatla aynı önbellek. */
+const demYukle = kutupDemYukle
 
 /** model.js demSample ile aynı: enlem/boylam → DEM yüksekliği (m), çift doğrusal; dışında NaN. */
-function demOrnek(D, enlem, boylam) {
+export function demOrnek(D, enlem, boylam) {
   const R = AY_YARICAP_KM * 1000
   const rho = 2 * R * Math.tan(Math.PI / 4 + (enlem * DERECE) / 2)
   const x = rho * Math.sin(boylam * DERECE)

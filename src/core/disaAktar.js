@@ -2,6 +2,9 @@
 // Node'da da çalışır. İndirme işini DisaAktar.jsx yapar.
 
 export const CSV_SUTUNLARI = ['tarih_utc', 'sun_alt', 'sun_az', 'earth_alt', 'earth_az', 'f', 'c', 'P_W']
+import { ozelNoktaNotu } from './ozelNokta.js'
+
+/** Düz ufuklu özel nokta için CSV ilk satırı (kaba ufukta ozelNoktaNotu().csv). */
 export const YAKLASIK_YORUMU = '# Arazi hesaba katılmadı'
 
 /** Zaman adımının UTC damgası: "2027-01-01T00:00:00Z" */
@@ -21,7 +24,7 @@ const tarihUtc = (t0ms, k, dt) => new Date(t0ms + k * dt * 3600e3).toISOString()
 export function csvUret(alan, f, c, P, bas, son) {
   const t0ms = Date.parse(alan.t0)
   const satirlar = []
-  if (alan.yaklasik) satirlar.push(YAKLASIK_YORUMU)
+  if (alan.yaklasik) satirlar.push(ozelNoktaNotu(alan).csv)
   satirlar.push(CSV_SUTUNLARI.join(','))
   const b = Math.max(0, bas)
   const s = Math.min(alan.n, son)

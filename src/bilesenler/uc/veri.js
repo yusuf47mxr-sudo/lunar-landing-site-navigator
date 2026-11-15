@@ -8,6 +8,7 @@
 // Sahne eksenleri (three.js, Y yukarı): +x doğu, −z kuzey, +y yukarı. Birim metre.
 
 import { useEffect, useState } from 'react'
+import { kutupDemYukle } from '../../core/kutupDem.js'
 
 const tabanYol = () => {
   const taban = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
@@ -52,8 +53,47 @@ export function araziHazirla(ham) {
     enAz,
     enCok,
     neverLit: ham.never_lit ?? null,
+    ml: ham.ml ?? null, // { kraterler, foto, yari_m, m_px } — ML taraması olan 10 alanda
     duz: false,
   }
+}
+
+/**
+ * 80°G içi özel nokta: 400 m kutup DEM'inden 10×10 km kaba arazi (50 m'ye
+ * çift doğrusal). Kutup stereografik düzlemde yerel doğu = (cos λ, −sin λ),
+ * kuzey = (sin λ, cos λ) (kuzey kutuptan uzaklaşmaktır); ölçek kutup
+ * yakınında ≈ 1. Yükseklik merkeze göre (dz).
+ */
+export function kabaArazi(D, enlem, boylam) {
+  const n = 201
+  const adim = 50
+  const R = 1737400
+  const l = (boylam * Math.PI) / 180
+  const rho = 2 * R * Math.tan(Math.PI / 4 + (enlem * Math.PI) / 360)
+  const xs = rho * Math.sin(l)
+  const ys = rho * Math.cos(l)
+  const ornek = (x, y) => {
+    const c = (x - D.x0) / D.pixel_m - 0.5
+    const r = (D.y0 - y) / D.pixel_m - 0.5
+    const c0 = Math.min(D.width - 2, Math.max(0, Math.floor(c)))
+    const r0 = Math.min(D.height - 2, Math.max(0, Math.floor(r)))
+    const fx = Math.min(1, Math.max(0, c - c0))
+    const fy = Math.min(1, Math.max(0, r - r0))
+    const z = D.z
+    const w = D.width
+    return (z[r0 * w + c0] * (1 - fx) + z[r0 * w + c0 + 1] * fx) * (1 - fy) + (z[(r0 + 1) * w + c0] * (1 - fx) + z[(r0 + 1) * w + c0 + 1] * fx) * fy
+  }
+  const yari = ((n - 1) * adim) / 2
+  const dz = new Float32Array(n * n)
+  const z0 = ornek(xs, ys)
+  for (let j = 0; j < n; j++) {
+    const ku = j * adim - yari
+    for (let i = 0; i < n; i++) {
+      const do_ = i * adim - yari
+      dz[j * n + i] = ornek(xs + do_ * Math.cos(l) + ku * Math.sin(l), ys - do_ * Math.sin(l) + ku * Math.cos(l)) - z0
+    }
+  }
+  return { ...araziHazirla({ site: null, n, spacing_m: adim, dz_m: dz, never_lit: null }), kaba: true }
 }
 
 /** Arazi verisi olmayan alan (özel koordinat): düz 10 km plaka. */
@@ -83,6 +123,7 @@ export function yukseklik(arazi, x, z) {
 
 /**
  * Alan dosya adına göre arazi. dosya null → düz arazi (özel koordinat);
+ * "kaba:<enlem>,<boylam>" → 400 m DEM'den kaba arazi (80°G içi özel koordinat);
  * undefined → henüz bilinmiyor (bolgeler.json yüklenmedi), arazi null kalır.
  * @returns {{ arazi: object|null, hata: Error|null }}
  */
@@ -99,7 +140,12 @@ export function useArazi(dosya) {
     }
     let iptal = false
     setDurum({ dosya, arazi: null, hata: null })
-    araziYukle(dosya).then(
+    // "kaba:<enlem>,<boylam>" → 400 m DEM'den kaba arazi (80°G içi özel nokta)
+    const kaba = /^kaba:(-?[\d.]+),(-?[\d.]+)$/.exec(dosya)
+    const yukleme = kaba
+      ? kutupDemYukle().then((D) => kabaArazi(D, Number(kaba[1]), Number(kaba[2])))
+      : araziYukle(dosya)
+    yukleme.then(
       (arazi) => !iptal && setDurum({ dosya, arazi, hata: null }),
       (hata) => !iptal && setDurum({ dosya, arazi: null, hata }),
     )

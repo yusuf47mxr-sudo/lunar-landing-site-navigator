@@ -107,6 +107,11 @@ Güneş ve Dünya konumları paketin, Python hattıyla birebir doğrulanmış
 | SLDEM2015 (≈ 118 m; Chandrayaan-3 için LOLA ≈ 237 m) | Kutup dışı alanlarda ufuk ve 3B arazi; arayüzde "Arazi ~118 m çözünürlükte." notu |
 | NASA NSSDC, LROC, USGS, makaleler | Alan koordinatları (`bolgeler.json` "kaynak") |
 | [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) — NASA's Scientific Visualization Studio | 3B Ay küresinin renk dokusu (LROC WAC) ve yükseklik haritası (LOLA), `public/veri/3b/moon/`; arayüzde kredi yazılır |
+| LROC NAC kontrollü güney kutbu mozaiği, 1 m/px — **NASA/GSFC/Arizona State University** | Yerel sahnede "Fotoğraf" katmanı (10 alan, 3.1 km kare) |
+| Ekibin ML modeli (YOLOv8, 1 m LROC NAC); eğitim: **Boazman et al. 2024** (PSJ 5:279) ve **SomBench NAC (NASA–IBM, CC BY 4.0)** | "Küçük kraterler (ML)" (D ≥ 10 m) ve 100 m hücre "Tehlike" katmanları; kutupta ML 0.208 / uzman 0.198, hücre başına ±0.09; kalıcı gölgede görüntü yok → bilinmiyor |
+| Güney kutbu 400 m DEM (LOLA LDEM_80S_80MPP_ADJ) | 80°G içi özel koordinatta **kaba** ufuk ve 3B arazi (Güneş % ort. +8 puan fazla, RMSE 12) |
+
+*Not an official NASA product.*
 
 **Tanımlar (paketle aynı):** Güneş diskinin görünen oranı `f` daire dilimidir,
 yarıçap Güneş uzaklığından; `f > 0.5` "aydınlık"; Dünya görünür = merkezi ufkun
@@ -122,7 +127,10 @@ en az ε üstünde; güç `× (1 AB / uzaklık)²`.
 
 **Bilinen sınırlar** (paketin veri sözleşmesinden): kutup dışı ufuklar ~118 m
 DEM'e dayanır, küçük tepeler görünmez; Dünya görünürlüğü yalnız geometridir
-(yer istasyonu, bağlantı bütçesi yok); özel koordinatta arazi düz kabul edilir.
+(yer istasyonu, bağlantı bütçesi yok); özel koordinatta ufuk 80°G içinde
+kaba (400 m DEM), diğer yerlerde düz kabul edilir; ML kraterleri tek hücrede
+kabadır, aşınmış büyük (> ~50 m) kraterleri kaçırabilir ve kalıcı gölgede
+görüntü olmadığı için oralarda tehlike "bilinmiyor"dur.
 
 ## Formüller
 

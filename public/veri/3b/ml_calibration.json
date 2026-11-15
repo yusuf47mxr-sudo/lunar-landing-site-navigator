@@ -1,0 +1,18 @@
+{
+ "source": "pipeline/26_calibrate_complete.py -> data/ml/calibration_complete.json",
+ "polar": {
+  "chips": 9,
+  "ml": 0.208,
+  "labels": 0.198,
+  "mae": 0.092,
+  "spearman": 0.35
+ },
+ "nonpolar": {
+  "chips": 41,
+  "ml": 0.136,
+  "labels": 0.199,
+  "mae": 0.081,
+  "spearman": 0.49
+ },
+ "correction_applied": false
+}

@@ -4,6 +4,7 @@
 // t'ye abone değildir: oynatırken yeniden çizilmez.
 
 import { useState } from 'react'
+import { ozelNoktaNotu } from '../core/ozelNokta.js'
 import { useShallow } from 'zustand/react/shallow'
 import { csvDosyaAdi, csvUret, ozelDosyaAdi } from '../core/disaAktar.js'
 import { guc } from '../core/hesap.js'
@@ -76,7 +77,7 @@ export default function DisaAktar({ className = '' }) {
           {dosyaAdi && <span className="block text-metin-solgun/70">{son - bas} satır + başlık</span>}
         </p>
       )}
-      {alan?.yaklasik && <p className="mt-1 text-xs text-uyari">Dosyanın ilk satırı: “# Arazi hesaba katılmadı”</p>}
+      {alan?.yaklasik && <p className="mt-1 text-xs text-uyari">Dosyanın ilk satırı: “{ozelNoktaNotu(alan).csv}”</p>}
     </div>
   )
 }

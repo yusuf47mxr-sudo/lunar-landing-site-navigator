@@ -15,7 +15,7 @@
 //   efemeris.json  saatlik alt-noktalar (özel koordinat için) + sun_au + earth_dist_km
 // Eski alan dosyaları (bolgeler.json'da olmayan *.json) silinir.
 
-import { readdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
@@ -231,6 +231,12 @@ for (const ad of await readdir(CIKTI)) {
   await unlink(path.join(CIKTI, ad))
   console.log(`silindi: ${ad}`)
 }
+
+// --- Tarayıcı için model.js: paketteki sürüm olduğu gibi (özel koordinatta horizonFromDem) ---
+const VENDOR = path.join(KOK, 'src', 'vendor', 'planb')
+await mkdir(VENDOR, { recursive: true })
+await copyFile(MODEL_JS, path.join(VENDOR, 'model.js'))
+console.log(`kopyalandı: model.js → src/vendor/planb/model.js`)
 
 console.log(`\n${bolgeler.length} alan → ${CIKTI}`)
 console.log(`Dünya yüksekliği, direkler (0/2/10 m) arası en büyük fark: ${enBuyukParalaksFarki.toExponential(2)}°`)

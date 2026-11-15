@@ -9,7 +9,7 @@
 // varsayilan: ilk görünüm ('3b' Temel, 'otomatik' Orta/İleri).
 
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
-import { OZEL_NOKTA_UYARISI } from '../core/ozelNokta.js'
+import { ozelNoktaNotu } from '../core/ozelNokta.js'
 import { useAnlikDurum, useBolgeler, useGorunurluk } from '../durum/store.js'
 import GokyuzuGorunumu, { kubbeMi } from './GokyuzuGorunumu.jsx'
 import Secenekler from './Secenekler.jsx'
@@ -123,7 +123,11 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
           Arazi ~{kayit.arazi_cozunurluk_m ?? 118} m çözünürlükte.
         </p>
       )}
-      {anlik.yaklasik && <p className="mt-3 text-sm text-uyari">{OZEL_NOKTA_UYARISI}</p>}
+      {anlik.yaklasik && (
+        <p className="mt-3 text-sm text-uyari" data-ozel-uyari="">
+          {ozelNoktaNotu(anlik.alan).uzun}
+        </p>
+      )}
     </>
   )
 }

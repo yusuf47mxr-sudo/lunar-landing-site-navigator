@@ -18,6 +18,10 @@
 // bolgeler.json'da karşılığı olmayan eski 3B alan dosyaları silinir.
 // Eşlenemeyen alan atlanır ve listelenir; kullanılmayan paket siteleri de yazılır.
 //
+// v5 ML katmanı (10 alan): mlcraters_<id>.json → mlcraters_<file>, nac_<id>.png →
+// nac_<file adı>.png; 3B arazi dosyasına "ml" bilgisi eklenir (yalnız seçili alanınki
+// ve yalnız katman açılınca iner). ml_calibration.json olduğu gibi kopyalanır.
+//
 // Ayrıca sonraki adımlar için olduğu gibi kopyalanır (public/veri/3b/):
 //   moon/ (renk ve yükseklik dokuları), dem_south_400m.bin/.json, artemis_regions.geo.json
 
@@ -86,6 +90,36 @@ for (const b of bolgeler) {
     }
   }
 
+  // ML küçük krater taraması + NAC fotoğrafı (v5; yalnız taranan alanlar)
+  let ml = null
+  const mlDosya = path.join(paket, `mlcraters_${id}.json`)
+  if (await varMi(mlDosya)) {
+    const m = await okuJson(mlDosya)
+    const kok = b.file.replace(/\.json$/, '')
+    const krater = `mlcraters_${b.file}`
+    const foto = `nac_${kok}.png`
+    await writeFile(
+      path.join(CIKTI, krater),
+      JSON.stringify({
+        site: b.site,
+        source_id: id,
+        model: m.model,
+        conf: m.conf,
+        d_min_used_m: m.d_min_used_m,
+        foot_r_m: m.foot_r_m,
+        source: m.source,
+        frame: m.frame,
+        dark_rule: m.dark_rule,
+        // [doğu m, kuzey m, D m, güven] — ızgara merkezine göre
+        craters: m.craters.map(([e, n, D, g]) => [Math.round(e * 10) / 10, Math.round(n * 10) / 10, Math.round(D * 10) / 10, g]),
+        // 31×31, 100 m; k = j·31 + i (j güneyden kuzeye). haz_frac null = görüntü karanlık → bilinmiyor
+        node: { n: 31, spacing_m: 100, haz_frac: m.node.haz_frac, dens_km2: m.node.dens_km2, observable: m.node.observable },
+      }),
+    )
+    await copyFile(path.join(paket, m.texture.file), path.join(CIKTI, foto))
+    ml = { kraterler: krater, foto, yari_m: m.texture.half_extent_m, m_px: m.texture.m_per_px }
+  }
+
   const cikti = {
     site: b.site,
     source_id: id,
@@ -95,6 +129,7 @@ for (const b of bolgeler) {
     z0_m: arazi.z0_m,
     dz_m: arazi.dz_m.map((v) => Math.round(v)),
     never_lit: neverLit,
+    ml,
   }
   const hedef = path.join(CIKTI, b.file)
   const metin = JSON.stringify(cikti)
@@ -103,7 +138,7 @@ for (const b of bolgeler) {
   yazilan++
   const nl = neverLit ? neverLit.values.reduce((a, v) => a + v, 0) : '-'
   console.log(
-    `${b.file.padEnd(28)} ← ${id.padEnd(24)} (${yol}) ${(metin.length / 1024).toFixed(0).padStart(4)} kB  never_lit: ${nl}`,
+    `${b.file.padEnd(28)} ← ${id.padEnd(24)} (${yol}) ${(metin.length / 1024).toFixed(0).padStart(4)} kB  never_lit: ${nl}${ml ? '  + ML + NAC' : ''}`,
   )
 }
 console.log(`\n${yazilan}/${bolgeler.length} alan, toplam ${(toplam / 1024).toFixed(0)} kB → ${CIKTI}`)
@@ -112,8 +147,8 @@ const bos = paketSiteleri.map((s) => s.id).filter((id) => !kullanilan.has(id))
 if (bos.length) console.log(`Pakette olup bolgeler.json'da karşılığı olmayan siteler: ${bos.join(', ')}`)
 
 // --- bolgeler.json'da olmayan eski alan dosyalarını sil ---------------------
-const KOPYA_ADLARI = new Set(['dem_south_400m.json', 'artemis_regions.geo.json'])
-const gecerli = new Set(bolgeler.map((b) => b.file))
+const KOPYA_ADLARI = new Set(['dem_south_400m.json', 'artemis_regions.geo.json', 'ml_calibration.json'])
+const gecerli = new Set(bolgeler.flatMap((b) => [b.file, `mlcraters_${b.file}`]))
 for (const ad of await readdir(CIKTI)) {
   if (!ad.endsWith('.json') || gecerli.has(ad) || KOPYA_ADLARI.has(ad)) continue
   await unlink(path.join(CIKTI, ad))
@@ -121,7 +156,7 @@ for (const ad of await readdir(CIKTI)) {
 }
 
 // --- Sonraki adımlar için olduğu gibi kopyalanan dosyalar -------------------
-const KOPYALAR = ['dem_south_400m.bin', 'dem_south_400m.json', 'artemis_regions.geo.json']
+const KOPYALAR = ['dem_south_400m.bin', 'dem_south_400m.json', 'artemis_regions.geo.json', 'ml_calibration.json']
 for (const ad of KOPYALAR) {
   await copyFile(path.join(paket, ad), path.join(CIKTI, ad))
   console.log(`kopyalandı: ${ad}`)

@@ -65,6 +65,8 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     ozelNokta.js      Özel koordinat için yaklaşık veri üretimi
     veri.js           JSON yükleme ve önbellekleme
     sabitler.js       Fiziksel sabitler ve varsayılan parametreler (VARSAYILAN)
+    kutupDem.js       Güney kutbu 400 m DEM yükleyici (özel koordinat + 3B ortak önbellek)
+    planbModel.js     Paketin model.js'i (src/vendor/planb/, veri:donustur kopyalar); yalnız dinamik yüklenir
   /bilesenler
     GokyuzuGorunumu.jsx
     ZamanCizelgesi.jsx
@@ -89,6 +91,7 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
       ayDokulari.js       Renk 2k/4k, displacement ve normal haritası (16 bit yükseklikten)
       png16.js            16 bit gri PNG çözücü (DecompressionStream)
       kutupYamasi.js      80°G içi 400 m DEM yaması, 80°G'de kesik küre; dikişsiz geçiş
+      MlKatmanlari.jsx    v5 ML: NAC fotoğrafı (albedo), ML kraterleri (InstancedMesh), 100 m tehlike örtüsü
       kure.js             Enlem/boylam → küre vektörü, kamera duruşları
       HataSiniri.jsx      WebGL denetimi ve sahne hata sınırı (→ panorama)
       AraziSahnesi.jsx    Yerel sahne: Canvas, HUD, kamera düğmeleri, düşey abartı
@@ -127,7 +130,8 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     ...               dosya adı = paketin site kimliği (sites.json "id")
     ozet.json         Isı haritası için önceden hesaplanmış özet
     /3b               3B arazi: alan dosyasıyla aynı ad; moon/, dem_south_400m, artemis_regions
-/veri_kaynak/planb    Veri paketi açılmış hâli (.gitignore'da; zip de depoya girmez)
+/veri_kaynak/planb    Veri paketi açılmış hâli, v5 (.gitignore'da; zip de depoya girmez)
+/src/vendor/planb     model.js (paketten olduğu gibi; elle düzenlenmez)
 ```
 
 **Kural:** Üç sayfa aynı bileşenleri kullanır. Bileşen kodu asla
@@ -286,6 +290,18 @@ Sıra `k = j·n + i`; `j` güneyden kuzeye, `i` batıdan doğuya. `never_lit`
 3×3 km'lik merkez ızgaradır (18.6 yılda hiç Güneş almayan hücre = 1); kutup
 dışı alanlarda `null`. Sahne eksenleri: +x doğu, −z kuzey, +y yukarı, metre.
 
+**v5 ML katmanı** (10 alan: 7 Artemis bölgesi, IM-2 hedef/iniş, CP-22; Nobile
+Rim 2 ve Peak near Cabeus B 84°G'nin kuzeyinde, 1 m mozaik yok): 3B arazi
+dosyasında `"ml": { "kraterler": "mlcraters_<dosya>", "foto": "nac_<ad>.png",
+"yari_m": 1550, "m_px": 2 }` (yoksa `null`). `mlcraters_<dosya>`:
+`craters` = `[doğu m, kuzey m, D m, güven]` (ızgara merkezine göre),
+`node` = 31×31, 100 m hücre (`k = j·31 + i`, j güneyden kuzeye):
+`haz_frac` (iniş ayağının krater payı; `null` = görüntü karanlık → bilinmiyor),
+`dens_km2`, `observable`. `nac_*.png` kuzey yukarı, kenar 3100 m, merkez = ızgara
+merkezi = alan noktası = 3B arazinin merkezi (10 alanda 0 m fark doğrulandı).
+`ml_calibration.json`: ML'in uzman etiketlerine karşı hatası (kutup: ML 0.208 /
+uzman 0.198, kesit başına ±0.09). Yalnız seçili alanınki, katman açılınca iner.
+
 ### 4.6 Birim ve yön kuralları
 
 - Bütün açılar **derece** (radyan değil)
@@ -404,14 +420,18 @@ Kullanıcı listede olmayan bir koordinat girdiğinde:
 
 1. `efemeris.json` ve `altAz()` ile bütün zaman adımları için
    `sun_alt`, `sun_az`, `earth_alt`, `earth_az` hesaplanır
-2. Ufuk **düz** kabul edilir: bütün `horizon` dizileri 0
+2. Ufuk iki seviyeli (paket rehberi §5):
+   - **enlem ≤ −80°:** 400 m kutup DEM'inden **kaba ufuk** — paketin
+     `model.js` `horizonFromDem`'i, 0/2/10 m direk, 720 yön
+     (`ufukKaynagi: 'dem400'`). DEM ve model.js yalnız bu durumda dinamik iner.
+     Uyarı: **"Kaba tahmin: 400 m arazi; Güneş % ortalama +8 puan fazla
+     çıkabilir (RMSE 12)."** (rehber: +7.9 puan, RMSE 11.7). 3B'de arazi de
+     DEM'den 10×10 km kesilir, "kaba arazi" notu.
+   - **diğer yerler:** ufuk **düz** (bütün diziler 0, `ufukKaynagi: 'duz'`),
+     uyarı **"Arazi hesaba katılmadı — ufuk düz kabul edildi. Gerçek değerler
+     farklı olabilir."**
 3. Sonuç normal bir alan nesnesi gibi döner, ek olarak `yaklasik: true`
-4. Arayüz bu alanda her zaman görünür bir uyarı gösterir:
-   **"Arazi hesaba katılmadı — ufuk düz kabul edildi. Gerçek değerler
-   farklı olabilir."**
-
-Bu ileride önceden hesaplanmış bir ızgarayla değiştirilebilir; arayüz
-değişmez.
+4. Uyarılar tek yerden: `ozelNoktaNotu(alan)` → kısa etiket, uzun uyarı, CSV ilk satırı.
 
 ### 5.9 Performans
 
@@ -640,6 +660,19 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   geçişte yükseklik küreselden DEM'e, normal de kürenin normal haritasından
   geometrik normale karışır — dikiş görünmez. Uzak Dünya'nın gece yüzü çok
   soluk gri-mavi (zayıf öz ışıma).
+- **ML katmanları (v5, yerel sahne).** Yalnız ML'li 10 alanda üç düğme:
+  "Fotoğraf", "Küçük kraterler (ML)", "Tehlike" — varsayılan kapalı, tam
+  ekranda da. Fotoğraf arazinin ortasındaki 3.1 km'lik kareye serilir, 150 m'de
+  regolite yumuşak geçer; RENK (albedo) olarak kullanılır, gölgeyi sahnedeki
+  Güneş yapar (gömülü gölge yüzünden kontrast %50 azaltılır, ortalama regolit
+  tonuna eşlenir). Kraterler araziye eğimiyle oturan ince halkalar (D ≥ 20 m
+  varsayılan, "tümü (≥ 10 m)"); üzerine gelince "Krater, D ≈ 14 m". Tehlike:
+  100 m hücreler, g → şeffaf turuncu yoğunluk (bilinen her hücre soluk
+  başlar); `null` hücreler gri taralı "unknown — shadowed, ML can't see" —
+  **asla güvenli gösterilmez, hiçbir hücre yeşil değildir.** Açıklama kutusu
+  ML cümlesi (sayılar `ml_calibration.json`) ve krediler: "LROC NAC:
+  NASA/GSFC/Arizona State University", "Craters: Boazman et al. 2024; SomBench
+  NAC (NASA–IBM, CC BY 4.0)", "Not an official NASA product."
 - **3B sahne.** Temel'de varsayılan görünüm 3B, Orta/İleri'de panorama;
   üçünde de Panorama / Kubbe / 3B düğmesi var. three.js yalnız 3B
   seçilince iner (React.lazy); WebGL yoksa ya da sahne hata verirse kutu
@@ -703,8 +736,11 @@ Süre biterse listenin sonundakiler eksik kalır, gerisi ayakta durur.
 
 ## 13. Veri Kaynakları ve Doğrulama
 
-Kaynak: ekibin veri paketi **Plan B v4 (14 Kasım 2026)**, `veri_kaynak/planb/`
-altına açılır. Ayrıntı ve her sayının kaynağı paketin `docs/VERI_SOZLESMESI.md`
+Kaynak: ekibin veri paketi **Plan B v5 (15 Kasım 2026)**, `veri_kaynak/planb/`
+altına açılır. v5'te v4 verisi (sites, ephem, terrain, grid) bayt bayt aynı;
+v5 `model.js` ile `veri:donustur` çıktısı birebir aynı çıktı (git diff boş).
+v5'in yenisi: ML küçük krater taraması + NAC fotoğrafları (10 alan),
+`landingOdds`/`hdaOdds`/`roverRoute` (bu uygulamada henüz kullanılmıyor). Ayrıntı ve her sayının kaynağı paketin `docs/VERI_SOZLESMESI.md`
 ve `docs/FIZIK_VE_DENKLEMLER.md` dosyalarında.
 
 - **Efemeris:** NAIF SPICE, DE440, `MOON_ME_DE440_ME421`, ışık zamanı +

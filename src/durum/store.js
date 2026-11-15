@@ -15,7 +15,8 @@ import {
   ozetOnbellekte,
   ozetYukle,
 } from '../core/veri.js'
-import { ozelNoktaOlustur } from '../core/ozelNokta.js'
+import { kabaUfuklar, kabaUfukVar, ozelNoktaOlustur } from '../core/ozelNokta.js'
+import { kabaUfukAraclariOnbellekte, kabaUfukAraclariYukle } from '../core/kutupDem.js'
 import {
   AYDINLIK_ESIGI,
   enUzunAraliklar,
@@ -187,6 +188,9 @@ export function useOzet() {
 /**
  * Seçili alanın verisi. ozelNokta doluysa seçili alan yerine efemeris ve
  * ozelNoktaOlustur() ile yaklaşık bir alan üretir (alan.yaklasik === true).
+ * 80°G'nin güneyinde kutup DEM'i yüklenir ve kaba ufuk kullanılır
+ * (alan.ufukKaynagi 'dem400'); DEM gelene kadar sonuç yüklenmiyor sayılır,
+ * düz ufuklu ara sonuç gösterilmez. DEM yüklenemezse düz ufka düşülür.
  */
 export function useSeciliAlanVerisi() {
   const { seciliAlan, ozelNokta } = useDurum(
@@ -198,17 +202,25 @@ export function useSeciliAlanVerisi() {
 
   const lat = ozelNokta?.lat
   const lon = ozelNokta?.lon
+  const kabaGerek = ozel && kabaUfukVar(lat)
+  const { veri: araclar, hata: demHata, yukleniyor: demYukleniyor } = useYuklenen(
+    kabaGerek ? 'kabaUfuk' : null,
+    () => kabaUfukAraclariYukle(),
+    () => kabaUfukAraclariOnbellekte(),
+  )
   const ozelSonuc = useMemo(() => {
     if (!ozel || !efemeris) return { alan: null, hata: null }
+    if (kabaGerek && !araclar && !demHata) return { alan: null, hata: null } // DEM bekleniyor
     try {
-      return { alan: ozelNoktaOlustur(lat, lon, efemeris), hata: null }
+      const kaba = kabaGerek && araclar ? kabaUfuklar(araclar.Model, araclar.dem, lat, lon) : null
+      return { alan: ozelNoktaOlustur(lat, lon, efemeris, kaba), hata: null }
     } catch (hata) {
       return { alan: null, hata }
     }
-  }, [ozel, efemeris, lat, lon])
+  }, [ozel, efemeris, lat, lon, kabaGerek, araclar, demHata])
 
   if (!ozel) return liste
-  return { alan: ozelSonuc.alan, hata: efHata ?? ozelSonuc.hata, yukleniyor: efYukleniyor }
+  return { alan: ozelSonuc.alan, hata: efHata ?? ozelSonuc.hata, yukleniyor: efYukleniyor || demYukleniyor }
 }
 
 // --- f(t) ve c(t) önbelleği -------------------------------------------------
