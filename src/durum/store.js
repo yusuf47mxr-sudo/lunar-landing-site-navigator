@@ -35,6 +35,9 @@ export const GOREV_SURELERI = [7, 30, 90, 180]
 export const DIREK_YUKSEKLIKLERI = [0, 2, 10]
 export const YONELIMLER = ['izleyen', 'dikey', 'yatay']
 export const KARSILASTIRMA_EN_FAZLA = 3
+/** Krater kartında iniş penceresi: 't14' = seçili andan (t) 14 gün; 'gorev' = görev penceresi (tL, D). */
+export const KART_PENCERELERI = ['t14', 'gorev']
+export const KART_BATARYALARI = [50, 100, 200] // saat
 
 /** Karşılaştırmada seçili alanın yanında gösterilen alanlar (seçili alanın kendisi hariç). */
 export const karsilastirmaSutunlari = (s) =>
@@ -58,6 +61,11 @@ export const useDurum = create((set) => ({
   // tL (iniş indeksi), D (7/30/90/180 gün), hm (0/2/10 m), epsilon (°),
   // S (m²), eta, yonelim, w1, w2, w3
   ...VARSAYILAN,
+
+  // Krater kartı (3B, ML kraterleri): başarı olasılığının penceresi ve batarya.
+  // Depoda: sayfa / mod değişince ve kart yeniden açılınca korunur.
+  kartPencere: 't14',
+  kartBatarya: 50,
 
   // Oynatma
   oynatiliyor: false,
@@ -104,6 +112,8 @@ export const useDurum = create((set) => ({
       if ('tL' in yeni) yeni.t = yeni.tL
       return yeni
     }),
+  kartPencereSec: (kartPencere) => set((s) => ({ kartPencere: izinli(kartPencere, KART_PENCERELERI, s.kartPencere) })),
+  kartBataryaSec: (kartBatarya) => set((s) => ({ kartBatarya: izinli(kartBatarya, KART_BATARYALARI, s.kartBatarya) })),
   oynatDegistir: () => set((s) => ({ oynatiliyor: !s.oynatiliyor })),
   hizAyarla: (hiz) => set({ hiz }),
 }))

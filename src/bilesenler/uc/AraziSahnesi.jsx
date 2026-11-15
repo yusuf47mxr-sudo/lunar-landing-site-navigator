@@ -18,9 +18,7 @@ import { Bloom, EffectComposer, ToneMapping } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PCFShadowMap } from 'three'
-import { useShallow } from 'zustand/react/shallow'
-import { useBolgeler, useDurum } from '../../durum/store.js'
-import { gunBicimle } from '../ZamanKaydirici.jsx'
+import { useBolgeler } from '../../durum/store.js'
 import Secenekler from '../Secenekler.jsx'
 import Arazi, { NEVER_LIT_RENK, zeminOlustur } from './Arazi.jsx'
 import Gok from './Gok.jsx'
@@ -128,7 +126,6 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
   const [kraterTumu, setKraterTumu] = useState(false) // false: D ≥ 20 m; true: hepsi (≥ 10 m)
   const [seciliKrater, setSeciliKrater] = useState(null) // [doğu, kuzey, D, güven] — tıklanan krater
   const kartRef = useRef(null)
-  const { tL, D: gorevGun } = useDurum(useShallow((s) => ({ tL: s.tL, D: s.D })))
   const inis = useInisOlasiligi()
   const kapsayici = useRef(null)
   const kamera = (tip) => {
@@ -189,10 +186,10 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
     document.addEventListener('keydown', tus)
     return () => document.removeEventListener('keydown', tus)
   }, [seciliKrater])
-  // Kraterler açılınca iniş düğümlerini önceden hesapla (ilk tıklama hızlı olsun)
+  // Kraterler açılınca düğümlerin saatlik aydınlık / Dünya bitlerini arka planda hazırla
   useEffect(() => {
-    if (ml?.izgara && katman.krater && tL + gorevGun * 24 <= 8760) inis.hazirla(ml.izgara, tL, gorevGun)
-  }, [ml, katman.krater, tL, gorevGun, inis])
+    if (ml?.izgara && katman.krater) inis.hazirla(ml.izgara)
+  }, [ml, katman.krater, inis])
   const kartNoktasi = useMemo(() => (seciliKrater && arazi ? kraterNoktasi(arazi, abarti, seciliKrater) : null), [seciliKrater, arazi, abarti])
 
   // Fotoğraf ve tehlike arazi malzemesinin içinde (useKatmanShader): uniform'lar güncellenir
@@ -314,10 +311,7 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
           krater={seciliKrater}
           veri={mlVeri.veri}
           izgara={ml.izgara}
-          tL={tL}
-          D={gorevGun}
           inis={inis}
-          gunBicim={gunBicimle(new Date(Date.UTC(2027, 0, 1) + tL * 3600e3))}
           onKapat={() => setSeciliKrater(null)}
         />
       )}

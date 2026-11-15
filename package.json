@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "veri:donustur": "node scripts/gercekVeriDonustur.mjs",
     "veri:ozet": "node scripts/ozetUret.mjs",
-    "veri:3b": "node scripts/ucBoyutVeriHazirla.mjs"
+    "veri:3b": "node scripts/ucBoyutVeriHazirla.mjs",
+    "veri:inis": "node scripts/inisDogrula.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

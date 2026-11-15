@@ -67,6 +67,8 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     sabitler.js       Fiziksel sabitler ve varsayılan parametreler (VARSAYILAN)
     kutupDem.js       Güney kutbu 400 m DEM yükleyici (özel koordinat + 3B ortak önbellek)
     planbModel.js     Paketin model.js'i (src/vendor/planb/, veri:donustur kopyalar); yalnız dinamik yüklenir
+    inisIsci.js       Krater kartının iniş olasılığı işçisi (Web Worker; model.js landingOdds + hourly)
+    inisPencere.js    Hızlı pencere hesabı ve öneri taraması (işçi ve scripts/inisDogrula.mjs ortak)
   /bilesenler
     GokyuzuGorunumu.jsx
     ZamanCizelgesi.jsx
@@ -93,7 +95,7 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
       kutupYamasi.js      80°G içi 400 m DEM yaması, 80°G'de kesik küre; dikişsiz geçiş
       MlKatmanlari.jsx    v5 ML: NAC fotoğrafı, ML kraterleri (InstancedMesh, güven rengi), 100 m tehlike örtüsü
       KraterKarti.jsx     Tıklanan kraterin kartı (güven, isabet, g, "buraya inersen" başarı)
-      inisOlasiligi.js    İniş olasılığı işçisini yönetir (core/inisIsci.js: model.js landingNodes/landingOdds)
+      inisOlasiligi.js    İniş olasılığı işçisini yönetir (core/inisIsci.js)
       kure.js             Enlem/boylam → küre vektörü, kamera duruşları
       HataSiniri.jsx      WebGL denetimi ve sahne hata sınırı (→ panorama)
       AraziSahnesi.jsx    Yerel sahne: Canvas, HUD, kamera düğmeleri, düşey abartı
@@ -467,6 +469,10 @@ sadece diziler yeniden taranır.
   yonelim: 'izleyen' | 'dikey' | 'yatay',
   w1: 1, w2: 1, w3: 1,      // puan ağırlıkları
 
+  // Krater kartı (3B, ML kraterleri) — sayfalar arası korunur
+  kartPencere: 't14',       // 't14' = seçili andan (t) 14 gün; 'gorev' = görev penceresi (tL, D)
+  kartBatarya: 50,          // saat — 50, 100 veya 200
+
   // Oynatma
   oynatiliyor: false,
   hiz: 1,
@@ -678,16 +684,31 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   seçili halka beyaz ve kalın): çap; güven skoru + çubuk; bu çaptaki
   tespitlerin isabet oranı (`accuracy.polar_GR1_complete` precision, 10–20 m /
   ≥ 20 m); hücre tehlikesi g (null → "bilinmiyor — gölge"); "Buraya inersen:
-  başarı %…" — paketin `landingNodes` + `landingOdds`'u bir Web Worker'da
-  (`core/inisIsci.js`), hedef = kraterin 100 m hücresi, pencere = depodaki tL
-  ve D, σ 100 m, eğim 10°, batarya 50 sa, tampon 24 sa, ground = haz_frac
-  (rehber §9); düğümler alan + pencere başına önbellekte. Altında en büyük
-  başarısızlık payı (krater / eğim / uzun karanlık / iletişim kesintisi /
-  ızgara dışı). Bunun için `public/veri/3b/` altında 10 alanın `izgara_*`
-  (31×31 konum, eğim; ufuk Int16 `.bin`) ve 2027 efemeris dilimi
-  `efemeris_2027.json` (paketin ham vektörleri, birebir). Doğrulama: Haworth,
-  2027-10-11, 14 gün, merkez hücre → fizik %92.6, + ML %66.9 (rehberle aynı;
-  paketin ham dosyalarıyla fark 0).
+  başarı %…" — paketin `landingOdds`'u bir Web Worker'da (`core/inisIsci.js`),
+  hedef = kraterin 100 m hücresi, σ 100 m, eğim 10°, tampon 24 sa, ground =
+  haz_frac (rehber §9). Kartta iki seçici (depoda, sayfalar arası korunur):
+  pencere "14 gün (t'den)" (varsayılan; CLPS tipik görev süresi, bir Ay günü)
+  | "Görev penceresi (tL, D)"; batarya 50 / 100 / 200 sa (varsayılan 50).
+  Altında en büyük başarısızlık payı (krater / eğim / uzun karanlık /
+  iletişim kesintisi / ızgara dışı). Sonuç %0 ise gerekçe büyük ve açık yazılır
+  ("Uzun karanlık: 50 sa batarya bu pencerede yetmiyor") ve tek satır öneri:
+  aynı hücre için bu pencereden sonraki ilk ≥ %50 başarılı 14 günlük başlangıç
+  ("9 Eylül'de inersen: %58"); tıklanınca t oraya atlar ve pencere "14 gün
+  (t'den)"e geçer. Tarama GÜNLÜK adımla, en fazla 1 yıl (2027 sonu): Haworth'ta
+  ≥ %50 başlangıçlar ayda yalnız 1–5 günlük dar aralıklarda (Ağu–Ara) çıkar,
+  haftalık adım hepsini kaçırır.
+  Hız: landingNodes her pencerede 961 düğüm × saatleri baştan tarar; kart t ile
+  kaydığı ve öneri ~350 pencere denediği için `core/inisPencere.js` hedefin
+  ± 6 hücre (6σ) komşuluğundaki düğümlerin bütün yılın saatlik aydınlık / Dünya
+  bitlerini `Model.hourly` ile bir kez hesaplar (düğüm başına önbellek; kraterler
+  açılınca bütün ızgara arka planda, merkezden dışa), her pencerede en uzun
+  koşuları sayıp `landingOdds`'u olduğu gibi çağırır. Komşuluk dışı "başarısız"
+  sayılır (kütle ~1e-8). `npm run veri:inis` (scripts/inisDogrula.mjs) bunu
+  landingNodes ile karşılaştırır: fark ≤ 2e-10. Bunun için `public/veri/3b/`
+  altında 10 alanın `izgara_*` (31×31 konum, eğim; ufuk Int16 `.bin`) ve 2027
+  efemeris dilimi `efemeris_2027.json` (paketin ham vektörleri, birebir).
+  Doğrulama: Haworth, 2027-10-11, 14 gün, merkez hücre → fizik %92.6, + ML
+  %66.9 (rehberle aynı; paketin ham dosyalarıyla fark 0; kartta iki kipte de).
   Tehlike: 100 m hücreler, en fazla %55 saydamlık; g < 0.10 neredeyse saydam,
   0.10–0.30 açık turuncu, ≥ 0.30 koyu turuncu-kırmızı (sürekli). Hücre içinin
   %70'i kendi değerini birebir taşır, kenarda 30 m yumuşak geçiş. `null`

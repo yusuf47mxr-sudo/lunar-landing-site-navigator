@@ -30,16 +30,25 @@ export function useInisOlasiligi() {
       }
       return isci.current
     }
+    const iste = (tip, girdi) =>
+      new Promise((coz, red) => {
+        const istek = ++sira.current
+        bekleyen.current.set(istek, { coz, red })
+        al().postMessage({ tip, istek, ...girdi })
+      })
     return {
-      /** Düğümleri önceden hesapla (katman açılınca; ilk tıklama hızlı olsun). */
-      hazirla: (izgara, tL, D) => al().postMessage({ tip: 'hazirla', izgara, tL, D }),
-      /** @returns {Promise<{ pLow, outside, reasons, groundUnknown }>} */
-      hesapla: (izgara, tL, D, hedef, ground) =>
-        new Promise((coz, red) => {
-          const istek = ++sira.current
-          bekleyen.current.set(istek, { coz, red })
-          al().postMessage({ tip: 'hesapla', istek, izgara, tL, D, hedef, ground })
-        }),
+      /** Bütün düğümleri arka planda hazırla (kraterler açılınca; tıklama hızlı olsun). */
+      hazirla: (izgara) => al().postMessage({ tip: 'hazirla', izgara }),
+      /**
+       * @param {{ izgara, bas, gun, hedef: {i, j}, ground, batteryH }} girdi
+       * @returns {Promise<{ pLow, outside, reasons, groundUnknown }>}
+       */
+      hesapla: (girdi) => iste('hesapla', girdi),
+      /**
+       * Bas'tan sonraki ilk ≥ %50 başarılı 14 günlük başlangıç (günlük tarama, ≤ 1 yıl).
+       * @returns {Promise<{ t, pLow } | null>}
+       */
+      oneri: (girdi) => iste('oneri', girdi),
     }
   }, [])
 }
