@@ -26,12 +26,18 @@ const v = new Vector3()
 const PAY = 18 // kraterle kart arası (px)
 
 /** Canvas içinde: kraterin ekran konumunu kart öğesine yazar. */
-export function KartIzdusum({ nokta, kart }) {
+export function KartIzdusum({ nokta, kart, alttan = false }) {
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
   useFrame(() => {
     const el = kart.current
     if (!el || !nokta) return
+    if (alttan) {
+      // Telefon: kart alttan açılan panel, konumlandırma yok
+      el.style.visibility = 'visible'
+      el.style.transform = ''
+      return
+    }
     v.set(nokta[0], nokta[1], nokta[2]).project(camera)
     const gorunur = v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1
     el.style.visibility = gorunur ? 'visible' : 'hidden'
@@ -116,7 +122,8 @@ function KucukSecim({ secenekler, deger, onSec, etiket }) {
  * @param {string} props.izgara ızgara dosya kökü (izgara_<ad>)
  * @param {object} props.inis   useInisOlasiligi()
  */
-export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKapat }) {
+/** @param {boolean} [props.alttan]  telefon: kart sahnenin altından açılan panel (en çok %55) */
+export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKapat, alttan = false }) {
   const [e, n, cap, guven] = krater
   const hucre = kraterHucresi(veri.node, krater)
   const g = hucre ? veri.node.haz_frac[hucre.k] : undefined
@@ -163,8 +170,11 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
       data-krater-kart=""
       role="dialog"
       aria-label={t('kraterKarti.aria')}
-      className="pointer-events-auto absolute left-0 top-0 z-20 w-[264px] rounded-lg border border-cizgi bg-zemin/95 px-3 py-2.5 backdrop-blur-sm text-xs leading-snug text-metin shadow-lg"
-      style={{ visibility: 'hidden' }}
+      data-alttan={alttan ? '' : undefined}
+      className={`pointer-events-auto absolute z-30 border border-cizgi bg-zemin/95 px-3 py-2.5 backdrop-blur-sm text-xs leading-snug text-metin shadow-lg ${
+        alttan ? 'inset-x-0 bottom-0 max-h-[55%] overflow-y-auto overscroll-contain rounded-t-xl border-b-0' : 'left-0 top-0 w-[264px] rounded-lg'
+      }`}
+      style={{ visibility: alttan ? 'visible' : 'hidden' }}
     >
       <div className="flex items-start justify-between gap-2">
         <p className="text-sm">{t('kraterKarti.baslik', { cap: cap.toFixed(1) })}</p>

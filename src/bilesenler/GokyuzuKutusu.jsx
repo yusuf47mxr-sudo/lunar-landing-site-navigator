@@ -84,7 +84,8 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
           />
         </div>
       )}
-      <div className={`grid overflow-hidden rounded-2xl border border-cizgi ${className}`}>
+      {/* Telefonda (< 640 px) 3B daha uzun: yerel sahnenin denetimleri ve alt panelleri sığsın */}
+      <div className={`grid overflow-hidden rounded-2xl border border-cizgi ${className} ${ucBoyut ? 'max-sm:!h-[min(78svh,640px)] max-sm:min-h-[460px]' : ''}`}>
         {anlik.hata ? (
           <p className="p-6 text-uyari">{t('gokyuzuKutusu.veriYuklenemedi', { hata: hataMetni(anlik.hata, t) })}</p>
         ) : ucBoyut ? (
@@ -114,7 +115,9 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
       </div>
       {istenen === '3b' && ucBoyutHata && (
         <p className="mt-2 text-xs text-metin-solgun" data-3b-not="">
-          {t('gokyuzuKutusu.ucNot', { hata: hataMetni(ucBoyutHata, t) })}
+          {['ucBoyut.hata.webglYok', 'ucBoyut.hata.baglamKaybi'].includes(ucBoyutHata.kod)
+            ? t('gokyuzuKutusu.desteklenmiyor')
+            : t('gokyuzuKutusu.ucNot', { hata: hataMetni(ucBoyutHata, t) })}
         </p>
       )}
       {/* Kutup dışı alanlarda ufuk küresel DEM'e dayanır (SLDEM2015 ≈ 118 m; Chandrayaan-3 LOLA ≈ 237 m) */}

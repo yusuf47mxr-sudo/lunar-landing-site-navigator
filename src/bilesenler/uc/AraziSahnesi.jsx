@@ -16,9 +16,10 @@
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Bloom, EffectComposer, ToneMapping } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PCFShadowMap } from 'three'
 import { useDil } from '../../dil/index.js'
+import { hataOlustur } from '../../core/hata.js'
 import { TEST_KANCALARI } from '../../core/testKancalari.js'
 import { useBolgeler } from '../../durum/store.js'
 import Secenekler from '../Secenekler.jsx'
@@ -33,17 +34,13 @@ import KraterKarti, { KartIzdusum } from './KraterKarti.jsx'
 import { useInisOlasiligi } from './inisOlasiligi.js'
 import Pusula, { PUSULA_YARICAP, sahneEtiketleri } from './Pusula.jsx'
 import { ABARTILAR, KAMERA_UZAK, UFUK_YARICAP } from './sahne.js'
+import { BaglamBekcisi, FpsOlcer, useKalite, useTelefon } from './kalite.js'
 import { useArazi } from './veri.js'
 
 /** Bloom yalnız bunun üstündeki parlaklığı alır: Güneş diski (ton eşlemesiz, ~8). */
 const BLOOM_ESIK = 2.0
 const KARANLIK_ESIK = 0.5
 
-/** Gölge haritası: ilk ölçümde yavaşsa 2048'e iner; sayfa oturumu boyunca hatırlanır. */
-const GOLGE_IYI = 4096
-const GOLGE_HAFIF = 2048
-const FPS_ESIK = 40
-let golgeBoyutu = GOLGE_IYI
 
 /** Yalnız geliştirmede: test betikleri için sahne noktası → istemci pikseli. */
 function GelistirmeIzdusum() {
@@ -58,33 +55,6 @@ function GelistirmeIzdusum() {
     }
     return () => delete window.__yerelIzdusum
   }, [camera, gl])
-  return null
-}
-
-/**
- * İlk karelerden sonra (1. ile 3. saniye arası) fps'i bir kez ölçer; eşiğin
- * altındaysa onYavas(fps) çağırır. Arayüzde görünmez.
- */
-function GolgeOlcer({ onYavas }) {
-  const d = useRef({ ilk: null, bas: null, kare: 0, bitti: false })
-  useFrame(() => {
-    const o = d.current
-    if (o.bitti) return
-    const simdi = performance.now()
-    if (o.ilk === null) o.ilk = simdi
-    if (simdi - o.ilk < 1000) return
-    if (o.bas === null) {
-      o.bas = simdi
-      return
-    }
-    o.kare++
-    if (simdi - o.bas >= 2000) {
-      o.bitti = true
-      const fps = (o.kare * 1000) / (simdi - o.bas)
-      if (import.meta.env.DEV) window.__golgeOlcum = { fps: Math.round(fps * 10) / 10 }
-      if (fps < FPS_ESIK) onYavas(fps)
-    }
-  })
   return null
 }
 
@@ -142,16 +112,12 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
     if (hata) onHata?.(hata)
   }, [hata, onHata])
 
-  const [golgeBoyut, setGolgeBoyut] = useState(golgeBoyutu)
-  const golgeOlcumu = golgeBoyutu === GOLGE_IYI // zaten düşürüldüyse yeniden ölçme
-  const yavasSa = useMemo(
-    () => () => {
-      golgeBoyutu = GOLGE_HAFIF
-      setGolgeBoyut(GOLGE_HAFIF)
-    },
-    [],
-  )
-  if (import.meta.env.DEV && typeof window !== 'undefined') window.__golgeBoyut = golgeBoyut
+  // Kalite profili (kalite.js): gölge haritası / DPR / Bloom cihaza ve ilk fps ölçümüne göre
+  const kalite = useKalite()
+  const telefon = useTelefon()
+  const [aciklamaAcik, setAciklamaAcik] = useState(false)
+  const golgeBoyut = kalite.golge
+  const baglamKayboldu = useCallback(() => onHata?.(hataOlustur('ucBoyut.hata.baglamKaybi', {}, 'WebGL context lost')), [onHata])
 
   // Zemin modeli: arazi + etek + şerit + sacak; kamera da buna kenetlenir
   const zemin = useMemo(() => (arazi ? zeminOlustur(arazi, abarti, horizon) : null), [arazi, abarti, horizon])
@@ -219,147 +185,10 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
   const kameraSecenekleri = KAMERA_KIPLERI.map((k) => ({ deger: k, etiket: t(`sahne.kamera.${k}`) }))
   const neverLitVar = !!arazi?.neverLit && arazi.neverLit.values.some((v) => v === 1)
 
-  return (
-    <div ref={kapsayici} className="relative h-full w-full overflow-hidden bg-zemin" data-yerel-sahne="">
-      {!arazi ? (
-        <Iskelet metin={t(hata ? 'sahne.yuklenemedi' : 'sahne.yukleniyor')} />
-      ) : (
-        <HataSiniri onHata={onHata}>
-          <Canvas
-            shadows={{ type: PCFShadowMap }}
-            dpr={[1, 2]}
-            camera={{ fov: FOV.kus, near: 0.5, far: KAMERA_UZAK, position: [0, 30000, 4000] }}
-            gl={{ antialias: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true }}
-            style={{ position: 'absolute', inset: 0 }}
-          
-            onPointerMissed={() => setSeciliKrater(null)}
-          >
-            <color attach="background" args={['#02030a']} />
-            <Gok
-              sunAlt={sunAlt}
-              sunAz={sunAz}
-              earthAlt={earthAlt}
-              earthAz={earthAz}
-              f={f}
-              c={c}
-              golgeYari={golgeYari}
-              golgeBoyut={golgeBoyut}
-            />
-            <Arazi arazi={arazi} abarti={abarti} zemin={zemin} katman={katmanShader} />
-            <Pusula arazi={arazi} abarti={abarti} yaricap={PUSULA_YARICAP[kip]} aracGorunur={kip !== 'yerden'} />
-            {ml && katman.krater && kraterler.length > 0 && (
-              <MlKraterler arazi={arazi} abarti={abarti} kraterler={kraterler} secili={seciliKrater} onSec={setSeciliKrater} />
-            )}
-            <EkranEtiketleri noktalar={etiketler} ogeler={ogeler} />
-            <Kamera komut={komut} zemin={zemin} sunAlt={sunAlt} sunAz={sunAz} earthAlt={earthAlt} earthAz={earthAz} acilisUcusu={acilisUcusu} />
-            {golgeOlcumu && <GolgeOlcer onYavas={yavasSa} />}
-            {TEST_KANCALARI && <GelistirmeIzdusum />}
-            {kartNoktasi && <KartIzdusum nokta={kartNoktasi} kart={kartRef} />}
-            <EffectComposer multisampling={4}>
-              <Bloom luminanceThreshold={BLOOM_ESIK} luminanceSmoothing={0.3} mipmapBlur intensity={1.2} radius={0.7} />
-              <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-            </EffectComposer>
-          </Canvas>
-        </HataSiniri>
-      )}
-
-      {/* Sahne etiketleri: konumları EkranEtiketleri her karede yazar */}
-      {arazi && (
-        <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden" aria-hidden="true" data-etiketler="">
-          {etiketler.map((e) => (
-            <div
-              key={e.id}
-              data-etiket={e.id}
-              ref={(el) => {
-                if (el) ogeler.current[e.id] = el
-                else delete ogeler.current[e.id]
-              }}
-              className={`absolute left-0 top-0 select-none whitespace-nowrap leading-tight opacity-0 ${e.sinif}`}
-            >
-              {e.ok ? (
-                <span className="flex items-center gap-1.5">
-                  <svg data-ok="" viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
-                    <path d="M2 8h10M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  <span>
-                    {e.metin}
-                    {e.ikinci && <span className="block text-[10px] opacity-80">{e.ikinci}</span>}
-                  </span>
-                </span>
-              ) : (
-                e.metin
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Üst orta: karanlık notu */}
-      {arazi && karanlik && (
-        <p
-          data-karanlik-not=""
-          className={`pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-xs tracking-wide text-metin-solgun ${hud}`}
-        >
-          <span className="rounded-md bg-zemin/70 px-2 py-1">{karanlikNot}</span>
-        </p>
-      )}
-
-      {/* Tıklanan kraterin kartı (konumunu KartIzdusum yazar) */}
-      {seciliKrater && mlVeri.veri && katman.krater && (
-        <KraterKarti
-          kartRef={kartRef}
-          krater={seciliKrater}
-          veri={mlVeri.veri}
-          izgara={ml.izgara}
-          inis={inis}
-          onKapat={() => setSeciliKrater(null)}
-        />
-      )}
-
-      {/* Sol alt: (ML katmanları) (yerden notu) kamera ve düşey abartı */}
-      <div className={`absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2 ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
-        {ml && (
-          <div role="group" aria-label={t('sahne.mlKatmanlari')} data-ml-dugmeler="" className="flex w-full flex-wrap items-center gap-1.5">
-            {['foto', 'krater', 'tehlike'].map((ad) => (
-              <button
-                key={ad}
-                type="button"
-                aria-pressed={katman[ad]}
-                onClick={() => katmanDegistir(ad)}
-                className={`rounded-md border px-2.5 py-1 text-xs tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60 ${
-                  katman[ad] ? 'border-gunes/70 bg-yuzey-acik text-metin' : 'border-cizgi bg-zemin/70 text-metin-solgun hover:text-metin'
-                }`}
-              >
-                {t(`sahne.katman.${ad}`)}
-              </button>
-            ))}
-            {katman.krater && (
-              <Secenekler
-                secenekler={[
-                  { deger: false, etiket: 'D ≥ 20 m' },
-                  { deger: true, etiket: t('sahne.kraterTumu') },
-                ]}
-                deger={kraterTumu}
-                onSec={setKraterTumu}
-                etiket={t('sahne.kraterBoyutu')}
-                kucuk
-                className="bg-zemin/70"
-              />
-            )}
-          </div>
-        )}
-        {kip === 'yerden' && (
-          <p data-yerden-not="" className="pointer-events-none w-full text-[11px] tracking-wide text-metin-solgun">
-            {t('sahne.yerdenNot')}
-          </p>
-        )}
-        <Secenekler secenekler={kameraSecenekleri} deger={komut.tip === 'foto' ? 'kus' : komut.tip} onSec={kamera} etiket={t('sahne.kamera.etiket')} kucuk className="bg-zemin/70" />
-        <Secenekler secenekler={ABARTI_SECENEKLERI} deger={abarti} onSec={setAbarti} etiket={t('sahne.abarti')} kucuk className="bg-zemin/70" />
-        {kutup && abarti === 1 && <span className="text-[11px] text-metin-solgun">{t('sahne.abartiOneri')}</span>}
-      </div>
-
-      {/* Sağ alt: açıklamalar */}
-      <div className={`pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-1 text-[11px] text-metin-solgun ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
+  // Sağ alt açıklama içeriği (masaüstünde köşede, telefonda alt panelde)
+  const aciklamaVar = neverLitVar || !!arazi?.duz || !!arazi?.kaba || mlAcik
+  const aciklamaIcerigi = (
+    <>
         {neverLitVar && (
           <span className="flex items-center gap-1.5 rounded-md bg-zemin/70 px-2 py-0.5">
             <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: NEVER_LIT_RENK, opacity: 0.7 }} />
@@ -418,7 +247,191 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
             </p>
           </div>
         )}
+    </>
+  )
+
+  return (
+    <div ref={kapsayici} className="relative h-full w-full overflow-hidden bg-zemin" data-yerel-sahne="">
+      {!arazi ? (
+        <Iskelet metin={t(hata ? 'sahne.yuklenemedi' : 'sahne.yukleniyor')} />
+      ) : (
+        <HataSiniri onHata={onHata}>
+          <Canvas
+            shadows={{ type: PCFShadowMap }}
+            dpr={[1, kalite.dpr]}
+            camera={{ fov: FOV.kus, near: 0.5, far: KAMERA_UZAK, position: [0, 30000, 4000] }}
+            gl={{ antialias: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true }}
+            style={{ position: 'absolute', inset: 0 }}
+          
+            onPointerMissed={() => setSeciliKrater(null)}
+          >
+            <color attach="background" args={['#02030a']} />
+            <Gok
+              sunAlt={sunAlt}
+              sunAz={sunAz}
+              earthAlt={earthAlt}
+              earthAz={earthAz}
+              f={f}
+              c={c}
+              golgeYari={golgeYari}
+              golgeBoyut={golgeBoyut}
+            />
+            <Arazi arazi={arazi} abarti={abarti} zemin={zemin} katman={katmanShader} />
+            <Pusula arazi={arazi} abarti={abarti} yaricap={PUSULA_YARICAP[kip]} aracGorunur={kip !== 'yerden'} />
+            {ml && katman.krater && kraterler.length > 0 && (
+              <MlKraterler arazi={arazi} abarti={abarti} kraterler={kraterler} secili={seciliKrater} onSec={setSeciliKrater} />
+            )}
+            <EkranEtiketleri noktalar={etiketler} ogeler={ogeler} />
+            <Kamera komut={komut} zemin={zemin} sunAlt={sunAlt} sunAz={sunAz} earthAlt={earthAlt} earthAz={earthAz} acilisUcusu={acilisUcusu} />
+            <FpsOlcer sahne="yerel" />
+            <BaglamBekcisi onKayip={baglamKayboldu} />
+            {TEST_KANCALARI && <GelistirmeIzdusum />}
+            {kartNoktasi && <KartIzdusum nokta={kartNoktasi} kart={kartRef} alttan={telefon} />}
+            {kalite.bloom ? (
+              <EffectComposer multisampling={4}>
+                <Bloom luminanceThreshold={BLOOM_ESIK} luminanceSmoothing={0.3} mipmapBlur intensity={1.2} radius={0.7} />
+                <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+              </EffectComposer>
+            ) : (
+              <EffectComposer multisampling={0}>
+                <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+              </EffectComposer>
+            )}
+          </Canvas>
+        </HataSiniri>
+      )}
+
+      {/* Sahne etiketleri: konumları EkranEtiketleri her karede yazar */}
+      {arazi && (
+        <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden" aria-hidden="true" data-etiketler="">
+          {etiketler.map((e) => (
+            <div
+              key={e.id}
+              data-etiket={e.id}
+              ref={(el) => {
+                if (el) ogeler.current[e.id] = el
+                else delete ogeler.current[e.id]
+              }}
+              className={`absolute left-0 top-0 select-none whitespace-nowrap leading-tight opacity-0 ${e.sinif}`}
+            >
+              {e.ok ? (
+                <span className="flex items-center gap-1.5">
+                  <svg data-ok="" viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+                    <path d="M2 8h10M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span>
+                    {e.metin}
+                    {e.ikinci && <span className="block text-[10px] opacity-80">{e.ikinci}</span>}
+                  </span>
+                </span>
+              ) : (
+                e.metin
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Üst orta: karanlık notu */}
+      {arazi && karanlik && (
+        <p
+          data-karanlik-not=""
+          className={`pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-xs tracking-wide text-metin-solgun ${hud}`}
+        >
+          <span className="rounded-md bg-zemin/70 px-2 py-1">{karanlikNot}</span>
+        </p>
+      )}
+
+      {/* Tıklanan kraterin kartı (konumunu KartIzdusum yazar) */}
+      {seciliKrater && mlVeri.veri && katman.krater && (
+        <KraterKarti
+          kartRef={kartRef}
+          alttan={telefon}
+          krater={seciliKrater}
+          veri={mlVeri.veri}
+          izgara={ml.izgara}
+          inis={inis}
+          onKapat={() => setSeciliKrater(null)}
+        />
+      )}
+
+      {/* Sol alt: (ML katmanları) (yerden notu) kamera ve düşey abartı */}
+      <div className={`absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2 ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
+        {ml && (
+          <div role="group" aria-label={t('sahne.mlKatmanlari')} data-ml-dugmeler="" className="flex w-full flex-wrap items-center gap-1.5">
+            {['foto', 'krater', 'tehlike'].map((ad) => (
+              <button
+                key={ad}
+                type="button"
+                aria-pressed={katman[ad]}
+                onClick={() => katmanDegistir(ad)}
+                className={`rounded-md border px-2.5 py-1 text-xs tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60 ${
+                  katman[ad] ? 'border-gunes/70 bg-yuzey-acik text-metin' : 'border-cizgi bg-zemin/70 text-metin-solgun hover:text-metin'
+                }`}
+              >
+                {t(`sahne.katman.${ad}`)}
+              </button>
+            ))}
+            {katman.krater && (
+              <Secenekler
+                secenekler={[
+                  { deger: false, etiket: 'D ≥ 20 m' },
+                  { deger: true, etiket: t('sahne.kraterTumu') },
+                ]}
+                deger={kraterTumu}
+                onSec={setKraterTumu}
+                etiket={t('sahne.kraterBoyutu')}
+                kucuk
+                className="bg-zemin/70"
+              />
+            )}
+          </div>
+        )}
+        {kip === 'yerden' && (
+          <p data-yerden-not="" className="pointer-events-none w-full text-[11px] tracking-wide text-metin-solgun">
+            {t('sahne.yerdenNot')}
+          </p>
+        )}
+        <Secenekler secenekler={kameraSecenekleri} deger={komut.tip === 'foto' ? 'kus' : komut.tip} onSec={kamera} etiket={t('sahne.kamera.etiket')} kucuk className="bg-zemin/70" />
+        <Secenekler secenekler={ABARTI_SECENEKLERI} deger={abarti} onSec={setAbarti} etiket={t('sahne.abarti')} kucuk className="bg-zemin/70" />
+        {kutup && abarti === 1 && <span className="text-[11px] text-metin-solgun">{t('sahne.abartiOneri')}</span>}
       </div>
+
+      {/* Sağ alt: açıklamalar. Telefonda (< 640 px) "ⓘ" düğmesiyle açılan alt panel:
+          sahneyi tamamen kapatmaz (en çok %50), kart açıkken gizlenir. */}
+      {telefon ? (
+        aciklamaVar &&
+        !seciliKrater &&
+        (aciklamaAcik ? (
+          <div
+            data-aciklama-panel=""
+            className={`absolute inset-x-0 bottom-0 z-30 flex max-h-[50%] flex-col rounded-t-xl border-t border-cizgi bg-zemin/95 text-[11px] text-metin-solgun shadow-lg backdrop-blur-sm ${hud}`}
+          >
+            <div className="flex items-center justify-between px-3 pt-1">
+              <span className="text-xs tracking-wide text-metin">{t('sahne.aciklamalar')}</span>
+              <button type="button" onClick={() => setAciklamaAcik(false)} aria-label={t('ortak.kapat')} className="rounded px-2 text-base text-metin-solgun hover:text-metin">
+                ×
+              </button>
+            </div>
+            <div className="flex flex-col items-end gap-1 overflow-y-auto px-3 pb-3 [&_[data-ml-aciklama]]:max-w-none">{aciklamaIcerigi}</div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            data-aciklama-ac=""
+            onClick={() => setAciklamaAcik(true)}
+            aria-label={t('sahne.aciklamalar')}
+            title={t('sahne.aciklamalar')}
+            className={`absolute right-3 top-14 z-20 grid place-items-center rounded-md border border-cizgi bg-zemin/70 text-sm text-metin-solgun hover:text-metin ${hud}`}
+          >
+            ⓘ
+          </button>
+        ))
+      ) : (
+        <div className={`pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col items-end gap-1 text-[11px] text-metin-solgun ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
+          {aciklamaIcerigi}
+        </div>
+      )}
 
     </div>
   )

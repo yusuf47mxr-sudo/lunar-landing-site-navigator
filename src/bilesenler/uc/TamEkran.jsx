@@ -58,6 +58,19 @@ export function useTamEkran(ref) {
     }
   }, [ref, tamEkran, sahte])
 
+  // Sahte tam ekran (iPhone: Fullscreen API yok): arka sayfa kaymasın, en üste dön
+  useEffect(() => {
+    if (!sahte) return
+    const html = document.documentElement
+    const eski = [html.style.overflow, document.body.style.overflow]
+    html.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = eski[0]
+      document.body.style.overflow = eski[1]
+    }
+  }, [sahte])
+
   // F: aç/kapat; ESC: sahte tam ekranı kapat (gerçek olanı tarayıcı kapatır)
   useEffect(() => {
     const tus = (e) => {

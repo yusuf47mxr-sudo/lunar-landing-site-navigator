@@ -134,7 +134,7 @@ export default function Gok({ sunAlt, sunAz, earthAlt, earthAz, f, c, golgeYari,
   // Gölge haritası boyutu değişince eski harita bırakılır; three yenisini kurar
   useEffect(() => {
     const golge = isik.current?.shadow
-    if (!golge) return
+    if (!golge || golgeBoyut <= 0) return // 0: gölge kapalı (zayıf cihaz; castShadow false)
     golge.mapSize.set(golgeBoyut, golgeBoyut)
     if (golge.map && golge.map.width !== golgeBoyut) {
       golge.map.dispose()
@@ -156,8 +156,8 @@ export default function Gok({ sunAlt, sunAz, earthAlt, earthAz, f, c, golgeYari,
         color={GUNES_RENK}
         intensity={GUNES_SIDDET * f}
         position={gunesYon.clone().multiplyScalar(ISIK_UZAKLIK)}
-        castShadow
-        shadow-mapSize={[golgeBoyut, golgeBoyut]}
+        castShadow={golgeBoyut > 0}
+        shadow-mapSize={[Math.max(golgeBoyut, 1), Math.max(golgeBoyut, 1)]}
         shadow-radius={4}
         shadow-bias={-0.00015}
         shadow-normalBias={3}

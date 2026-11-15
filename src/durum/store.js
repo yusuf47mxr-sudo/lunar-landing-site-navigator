@@ -43,9 +43,25 @@ export const KART_BATARYALARI = [50, 100, 200] // saat
 export const karsilastirmaSutunlari = (s) =>
   s.ozelNokta ? s.karsilastirma : s.karsilastirma.filter((x) => x !== s.seciliAlan)
 
-/** Arayüz dili: localStorage'da hatırlanır; ilk açılışta tarayıcı dili 'tr' ile başlıyorsa TR, değilse EN. */
+/**
+ * Adres parametreleri (jüri / paylaşım bağlantıları): ?dil=tr|en, ?mod=temel|orta|ileri,
+ * ?alan=<ad> (ör. ?alan=Haworth, ?alan=malapert_massif). localStorage'dan ÖNCE gelir;
+ * kaydedilmez (yalnız bu açılış). Geçersiz değer yok sayılır. ?alan, alan listesi
+ * yüklenince alanParametresiniCoz() ile gerçek ada eşlenir (App).
+ */
+export const URL_PARAM = (() => {
+  try {
+    return new URLSearchParams(globalThis.location?.search ?? '')
+  } catch {
+    return new URLSearchParams()
+  }
+})()
+
+/** Arayüz dili: ?dil, yoksa localStorage, yoksa tarayıcı dili ('tr…' → TR, değilse EN). */
 export const DIL_ANAHTARI = 'ay-navigator-dil'
 function ilkDil() {
+  const p = URL_PARAM.get('dil')?.toLowerCase()
+  if (p === 'tr' || p === 'en') return p
   try {
     const kayitli = globalThis.localStorage?.getItem(DIL_ANAHTARI)
     if (kayitli === 'tr' || kayitli === 'en') return kayitli
@@ -56,15 +72,33 @@ function ilkDil() {
   return tarayici.toLowerCase().startsWith('tr') ? 'tr' : 'en'
 }
 
+export const VARSAYILAN_ALAN = 'Malapert Massif'
+
+/** "Malapert Massif" / "malapert_massif" / "MALAPERT-MASSIF" → "malapertmassif" */
+const sadelestir = (s) => String(s ?? '').toLocaleLowerCase('en').normalize('NFD').replace(/[^a-z0-9]/g, '')
+
+/**
+ * Adres çubuğundaki ?alan değerini bolgeler.json'daki gerçek ada çevirir
+ * (site, site_en, dosya kökü ya da kimlik; büyük/küçük harf, boşluk, _ ve - fark etmez).
+ * Bulunamazsa varsayılan alan.
+ */
+export function alanParametresiniCoz(deger, bolgeler) {
+  if (!deger || !bolgeler?.length) return deger
+  if (bolgeler.some((b) => b.site === deger)) return deger
+  const s = sadelestir(deger)
+  const bulunan = bolgeler.find((b) => [b.site, b.site_en, b.id, b.file?.replace(/\.json$/, '')].some((x) => x && sadelestir(x) === s))
+  return bulunan?.site ?? VARSAYILAN_ALAN
+}
+
 const izinli = (deger, liste, eski) => (liste.includes(deger) ? deger : eski)
 
 export const useDurum = create((set) => ({
   // Mod ve dil
-  mod: 'temel',
+  mod: MODLAR.includes(URL_PARAM.get('mod')?.toLowerCase()) ? URL_PARAM.get('mod').toLowerCase() : 'temel',
   dil: ilkDil(), // 'tr' | 'en'
 
   // Bağımsız değişkenler
-  seciliAlan: 'Malapert Massif',
+  seciliAlan: URL_PARAM.get('alan') || VARSAYILAN_ALAN, // ?alan ham hâli; App listeyle eşler
   ozelNokta: null, // { lat, lon } veya null
   karsilastirma: [], // en fazla 3 alan adı
   // Zaman dizisindeki indeks. Alan değişince sıfırlanmaz (alanSec t'ye dokunmaz):
@@ -231,7 +265,9 @@ export function useSeciliAlanVerisi() {
     useShallow((s) => ({ seciliAlan: s.seciliAlan, ozelNokta: s.ozelNokta })),
   )
   const ozel = ozelNokta !== null
-  const liste = useAlanVerisi(ozel ? null : seciliAlan)
+  // ?alan ile gelen ham ad (ör. "haworth") listeyle eşlenmeden yüklenmez (App depoyu düzeltir)
+  const { bolgeler } = useBolgeler()
+  const liste = useAlanVerisi(ozel || !bolgeler ? null : alanParametresiniCoz(seciliAlan, bolgeler))
   const { efemeris, hata: efHata, yukleniyor: efYukleniyor } = useEfemeris(ozel)
 
   const lat = ozelNokta?.lat

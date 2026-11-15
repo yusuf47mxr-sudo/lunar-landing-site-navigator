@@ -10,14 +10,16 @@
 
 import { OrbitControls, Stars } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Quaternion, Vector3 } from 'three'
 import { useShallow } from 'zustand/react/shallow'
+import { hataOlustur } from '../../core/hata.js'
 import { INIS_ADIM_SAAT } from '../../core/sabitler.js'
 import { useDil } from '../../dil/index.js'
 import { useBolgeler, useDurum, useEfemeris, useOzet } from '../../durum/store.js'
 import { useAyDokulari } from './ayDokulari.js'
 import { HataSiniri } from './HataSiniri.jsx'
+import { BaglamBekcisi, FpsOlcer, useKalite } from './kalite.js'
 import Iskelet from './Iskelet.jsx'
 import { enlemBoylamVektoru, kameraDurusu, yakinBakis } from './kure.js'
 import { useKutupYamasi } from './kutupYamasi.js'
@@ -72,6 +74,7 @@ function Isiklar({ gunesYon, dunyaYon, dunyaRef }) {
  * yama tamamlar (kutupYamasi.js); değilse tam küre.
  */
 function Ay({ dokular, kutup }) {
+  const dilim = useKalite().kureDilim // zayıf cihazda düşük segment
   const malzeme = (
     <meshStandardMaterial
       map={dokular.renk}
@@ -91,7 +94,7 @@ function Ay({ dokular, kutup }) {
         </mesh>
       ) : (
         <mesh key="tam">
-          <sphereGeometry args={[1, 256, 128]} />
+          <sphereGeometry args={[1, ...dilim]} />
           {malzeme}
         </mesh>
       )}
@@ -285,7 +288,10 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
   const p = useDurum(
     useShallow((s) => ({ t: s.t, seciliAlan: s.seciliAlan, ozelNokta: s.ozelNokta, D: s.D, tL: s.tL, hm: s.hm, epsilon: s.epsilon })),
   )
-  const dokular = useAyDokulari(tamEkran)
+  const kalite = useKalite()
+  // 4k renk dokusu yalnız masaüstünde tam ekranda (telefon / tablet / zayıf cihaz: 2k)
+  const dokular = useAyDokulari(tamEkran && kalite.doku4k)
+  const baglamKayboldu = useCallback(() => onHata?.(hataOlustur('ucBoyut.hata.baglamKaybi', {}, 'WebGL context lost')), [onHata])
   useEffect(() => {
     if (dokular.hata) onHata?.(dokular.hata)
   }, [dokular.hata, onHata])
@@ -355,7 +361,7 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
       ) : (
         <HataSiniri onHata={onHata}>
           <Canvas
-            dpr={[1, 2]}
+            dpr={[1, kalite.dpr]}
             camera={{ fov: 35, near: 0.01, far: 2000, position: kameraDurusu(durus.enlem, durus.boylam, 'genel').toArray() }}
             gl={{ antialias: true, powerPreference: 'high-performance' }}
             style={{ position: 'absolute', inset: 0 }}
@@ -368,6 +374,8 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
             <Dunya dunyaRef={dunyaRef} />
             <KureKamera durus={durus} ucus={ucusHedefi} donus={donus} onVaris={onInis} />
             <IsaretIzdusumu noktalar={noktalar} ogeler={ogeler} seciliId={seciliId} />
+            <FpsOlcer sahne="kure" />
+            <BaglamBekcisi onKayip={baglamKayboldu} />
           </Canvas>
         </HataSiniri>
       )}
@@ -394,7 +402,7 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
                   type="button"
                   aria-label={t('kure.inisAria', { ad: adi })}
                   onClick={() => n.site && onUcus?.(n.site)}
-                  className={`pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full p-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60 ${
+                  className={`pointer-events-auto absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full p-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60 ${
                     secil ? 'text-gunes' : 'text-metin/75 hover:text-metin'
                   }`}
                 >
@@ -447,7 +455,7 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
           <p className={`pointer-events-none absolute bottom-3 right-3 z-10 text-[10px] text-metin-solgun/80 ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
             {t('kure.kredi')}
           </p>
-          <p className={`pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-[11px] tracking-wide text-metin-solgun ${hud}`}>
+          <p className={`pointer-events-none absolute inset-x-0 top-[4.25rem] z-10 px-3 text-center text-[11px] tracking-wide text-metin-solgun sm:top-3 ${hud}`}>
             {t('kure.ipucu')}
           </p>
         </>

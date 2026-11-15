@@ -113,6 +113,7 @@ export default {
     veriYuklenemedi: 'Could not load data: {hata}',
     ucAcilamadi: '3D could not start',
     ucNot: '3D view could not start ({hata}); showing panorama.',
+    desteklenmiyor: '3D is not supported on this device; showing panorama.',
     araziNotu: 'Terrain at ~{m} m resolution.',
   },
   zamanKaydirici: {
@@ -279,6 +280,7 @@ export default {
   },
   // --- 3B yerel sahne, ML katmanları, krater kartı, pusula ---
   sahne: {
+    aciklamalar: 'Legend & notes',
     kamera: {
       etiket: 'Camera',
       yerden: 'Ground',
@@ -391,6 +393,7 @@ export default {
     tamEkranCik: 'Exit full screen (Esc)',
     hata: {
       webglYok: 'WebGL not available',
+      baglamKaybi: 'WebGL context lost',
     },
   },
 }

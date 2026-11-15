@@ -3,16 +3,83 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ay İniş Alanı Navigatörü</title>
+    <title>Ay İniş Alanı Navigatörü · Lunar Landing Site Navigator</title>
+    <meta
+      name="description"
+      content="See where the Sun and Earth sit above the horizon at any lunar landing site and date: sunlight, power, direct-to-Earth contact and countdowns. NASA Space Apps Challenge 2026."
+    />
+    <meta name="theme-color" content="#070B14" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- Bağlantı önizlemesi (Open Graph / Twitter): İngilizce -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lunar Landing Site Navigator" />
+    <meta property="og:title" content="Lunar Landing Site Navigator" />
+    <meta
+      property="og:description"
+      content="Sunlight, power and Earth contact at 26 lunar landing sites, hour by hour through 2027 — in 2D and 3D. NASA Space Apps Challenge 2026."
+    />
+    <meta property="og:url" content="https://ay-inis-navigatoru.vercel.app/" />
+    <meta property="og:image" content="https://ay-inis-navigatoru.vercel.app/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Moon in 3D with lunar landing sites marked" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="tr_TR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Lunar Landing Site Navigator" />
+    <meta
+      name="twitter:description"
+      content="Sunlight, power and Earth contact at 26 lunar landing sites, hour by hour through 2027 — in 2D and 3D. NASA Space Apps Challenge 2026."
+    />
+    <meta name="twitter:image" content="https://ay-inis-navigatoru.vercel.app/og.png" />
+    <meta name="twitter:image:alt" content="The Moon in 3D with lunar landing sites marked" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* JS gelmeden görünen yükleme göstergesi (yavaş bağlantıda boş ekran kalmasın).
+         React ilk çizimde #root içeriğini değiştirir. */
+      html, body { background: #070B14; }
+      #ilk-yukleme {
+        min-height: 100vh; min-height: 100dvh; display: grid; place-items: center;
+        color: #8A97AC; font: 14px/1.4 Inter, system-ui, sans-serif; letter-spacing: 0.04em;
+      }
+      #ilk-yukleme .ay {
+        width: 56px; height: 56px; margin: 0 auto 14px; border-radius: 50%;
+        background: radial-gradient(circle at 35% 35%, #d6dbe2, #8b939f 70%);
+        box-shadow: inset -14px -6px 0 rgba(7, 11, 20, 0.55);
+        animation: ay-nabiz 1.6s ease-in-out infinite;
+      }
+      @keyframes ay-nabiz { 50% { opacity: 0.55; transform: scale(0.96); } }
+      @media (prefers-reduced-motion: reduce) { #ilk-yukleme .ay { animation: none; } }
+    </style>
   </head>
   <body class="bg-zemin text-metin font-sans antialiased">
-    <div id="root"></div>
+    <div id="root">
+      <div id="ilk-yukleme" role="status" aria-live="polite">
+        <div>
+          <div class="ay"></div>
+          <div id="ilk-yukleme-metin">Yükleniyor… · Loading…</div>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Yükleme metni ve <html lang> uygulamayla aynı kurala göre: ?dil, localStorage, tarayıcı dili
+      ;(function () {
+        var d = null
+        try { d = new URLSearchParams(location.search).get('dil') } catch (e) {}
+        if (d !== 'tr' && d !== 'en') { try { d = localStorage.getItem('ay-navigator-dil') } catch (e) {} }
+        if (d !== 'tr' && d !== 'en') d = /^tr/i.test(navigator.language || '') ? 'tr' : 'en'
+        document.documentElement.lang = d
+        document.getElementById('ilk-yukleme-metin').textContent = d === 'tr' ? 'Yükleniyor…' : 'Loading…'
+      })()
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

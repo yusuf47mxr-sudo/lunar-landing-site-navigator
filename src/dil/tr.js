@@ -118,6 +118,7 @@ export default {
     veriYuklenemedi: 'Veri yüklenemedi: {hata}',
     ucAcilamadi: '3B açılamadı',
     ucNot: '3B görünüm açılamadı ({hata}); panorama gösteriliyor.',
+    desteklenmiyor: '3B bu cihazda desteklenmiyor; panorama gösteriliyor.',
     araziNotu: 'Arazi ~{m} m çözünürlükte.',
   },
   zamanKaydirici: {
@@ -287,6 +288,7 @@ export default {
   // --- 3B yerel sahne, ML katmanları, krater kartı, pusula ---
   // 3B yerel sahne (AraziSahnesi)
   sahne: {
+    aciklamalar: 'Açıklamalar',
     kamera: {
       etiket: 'Kamera',
       yerden: 'Yerden',
@@ -404,6 +406,7 @@ export default {
     tamEkranCik: 'Tam ekrandan çık (ESC)',
     hata: {
       webglYok: 'WebGL yok',
+      baglamKaybi: 'WebGL bağlamı kayboldu',
     },
   },
 }

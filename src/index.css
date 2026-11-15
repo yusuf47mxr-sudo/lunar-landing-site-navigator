@@ -24,6 +24,19 @@ body {
   font-feature-settings: 'tnum' 1; /* sayılar tabular */
 }
 
+/* Telefon ve tablet (< 1024 px): dokunma hedefleri en az 40 px. Kaydırıcı (input range)
+   hariç: izi ince kalır, başparmağı zaten büyük. */
+@media (max-width: 1023px) {
+  button,
+  select,
+  summary {
+    min-height: 40px;
+  }
+  button {
+    min-width: 40px;
+  }
+}
+
 /* --- Zaman kaydırıcısı (ZamanKaydirici.jsx) ------------------------------ */
 .kaydirici {
   -webkit-appearance: none;

@@ -86,7 +86,7 @@ export default function UcBoyut({ anlik, f, c, onHata }) {
   return (
     <div
       ref={kapsayici}
-      className={`relative h-full w-full overflow-hidden bg-zemin ${sahte ? 'fixed inset-0 z-50' : ''}`}
+      className={`overflow-hidden bg-zemin ${sahte ? 'fixed inset-0 z-[100] h-[100dvh] w-screen' : 'relative h-full w-full'}`}
       data-3b-sahne=""
       data-seviye={seviye}
       data-tam-ekran={tamEkran ? '' : undefined}
@@ -135,14 +135,14 @@ export default function UcBoyut({ anlik, f, c, onHata }) {
         )}
       </nav>
 
-      {/* Sağ üst: büyüt/küçült */}
+      {/* Sağ üst: büyüt/küçült — tam ekranda da hep görünür (telefonda çıkış yolu kaybolmasın) */}
       <button
         type="button"
         onClick={degistir}
         aria-label={t(tamEkran ? 'ucBoyut.tamEkranCik' : 'ucBoyut.tamEkran')}
         title={t(tamEkran ? 'ucBoyut.tamEkranCik' : 'ucBoyut.tamEkran')}
         className={`absolute right-3 top-3 z-30 grid h-8 w-8 place-items-center rounded-md border border-cizgi bg-zemin/70 text-metin-solgun
-          hover:text-metin focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60 ${hud}`}
+          hover:text-metin focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60`}
       >
         <BuyutSimgesi acik={tamEkran} />
       </button>

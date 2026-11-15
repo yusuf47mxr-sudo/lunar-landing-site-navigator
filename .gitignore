@@ -14,3 +14,4 @@ planb_veri_paketi*.zip
 
 # Açılmış veri paketi (scripts/gercekVeriDonustur.mjs okur)
 veri_kaynak/
+*.zip

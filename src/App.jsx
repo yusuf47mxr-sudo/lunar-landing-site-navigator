@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo } from 'react'
 import { useDil } from './dil/index.js'
-import { useDurum } from './durum/store.js'
+import { alanParametresiniCoz, useBolgeler, useDurum } from './durum/store.js'
 
 // Sayfa store.mod'a göre seçilir; mod ModDegistirici ile değişir.
 // Seçili alan, zaman ve parametreler depoda durduğu için mod değişince korunur.
@@ -40,6 +40,15 @@ export default function App() {
   // bileşen sayar ve bütün sayfayı yeniden kurar (3B sahne, tam ekran sıfırlanır).
   const Sayfa = useMemo(() => HAZIR[anahtar] ?? SAYFALAR[anahtar], [anahtar])
   const { dil, t } = useDil()
+
+  // ?alan=<ad> (ör. "haworth", "malapert_massif") → listedeki gerçek ad
+  const { bolgeler } = useBolgeler()
+  useEffect(() => {
+    if (!bolgeler) return
+    const { seciliAlan, alanSec } = useDurum.getState()
+    const cozulen = alanParametresiniCoz(seciliAlan, bolgeler)
+    if (cozulen !== seciliAlan) alanSec(cozulen)
+  }, [bolgeler])
 
   // Sayfa başlığı ve <html lang> dile göre
   useEffect(() => {
