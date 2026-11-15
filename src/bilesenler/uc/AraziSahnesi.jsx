@@ -174,7 +174,20 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
     }
   }, [katmanShader, ml, katman.foto, katman.tehlike, fotoDokusu, tehlikeDokusu, mlVeri.veri])
   /** Katman düğmesi; fotoğraf açılınca kamera 3 km'lik kareyi kadraja alır. */
+  // Katman kullanılabilir mi: fotoğraf yoksa (SLIM, Blue Ghost 1, Nobile Rim 2, Cabeus B) hiçbiri;
+  // ML bu görüntüye uygulanmadıysa (Chang'e 3/4) yalnız fotoğraf
+  const katmanVar = (ad) => !!ml && (ad === 'foto' || ml.uygulandi !== false)
+  const katmanYokNedeni = !ml ? t('sahne.fotoYok') : t('sahne.mlUygulanmadi')
+  // Alan değişince kullanılamayan katmanları kapat
+  useEffect(() => {
+    setKatman((s) => {
+      const y = { foto: s.foto && katmanVar('foto'), krater: s.krater && katmanVar('krater'), tehlike: s.tehlike && katmanVar('tehlike') }
+      return y.foto === s.foto && y.krater === s.krater && y.tehlike === s.tehlike ? s : y
+    })
+  }, [ml]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const katmanDegistir = (ad) => {
+    if (!katmanVar(ad)) return
     const fotoAcilacak = ad === 'foto' && !katman.foto
     setKatman((s) => ({ ...s, [ad]: !s[ad] }))
     if (fotoAcilacak) kamera('foto')
@@ -231,6 +244,11 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
                   <span>≥ 0.5</span>
                 </div>
                 <p className="mt-0.5">{t('sahne.tehlikeOlcek')}</p>
+                {!kutup && (
+                  <p className="mt-0.5 text-uyari/90" data-alt-sinir="">
+                    {t('sahne.kutupDisiAltSinir')}
+                  </p>
+                )}
                 <p className="mt-0.5 flex items-center justify-end gap-1.5">
                   <span
                     className="inline-block h-2.5 w-6 rounded-sm"
@@ -347,6 +365,7 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
         <KraterKarti
           kartRef={kartRef}
           alttan={telefon}
+          kutupDisi={!kutup}
           krater={seciliKrater}
           veri={mlVeri.veri}
           izgara={ml.izgara}
@@ -357,16 +376,22 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
 
       {/* Sol alt: (ML katmanları) (yerden notu) kamera ve düşey abartı */}
       <div className={`absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2 ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
-        {ml && (
+        {(ml || (arazi && !arazi.duz && !arazi.kaba)) && (
           <div role="group" aria-label={t('sahne.mlKatmanlari')} data-ml-dugmeler="" className="flex w-full flex-wrap items-center gap-1.5">
             {['foto', 'krater', 'tehlike'].map((ad) => (
               <button
                 key={ad}
                 type="button"
                 aria-pressed={katman[ad]}
+                disabled={!katmanVar(ad)}
+                title={katmanVar(ad) ? undefined : katmanYokNedeni}
                 onClick={() => katmanDegistir(ad)}
                 className={`rounded-md border px-2.5 py-1 text-xs tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60 ${
-                  katman[ad] ? 'border-gunes/70 bg-yuzey-acik text-metin' : 'border-cizgi bg-zemin/70 text-metin-solgun hover:text-metin'
+                  !katmanVar(ad)
+                    ? 'cursor-not-allowed border-cizgi bg-zemin/70 text-metin-solgun opacity-40'
+                    : katman[ad]
+                      ? 'border-gunes/70 bg-yuzey-acik text-metin'
+                      : 'border-cizgi bg-zemin/70 text-metin-solgun hover:text-metin'
                 }`}
               >
                 {t(`sahne.katman.${ad}`)}

@@ -159,7 +159,9 @@ const sunAu = []
 for (let k = 0; k < SAAT; k++) sunAu.push(yuvarla(eph.au[i0 + k], 6))
 
 // --- Alanlar ----------------------------------------------------------------
-const { sites } = await okuJson('sites.json')
+/** Paketteki ama uygulamaya alınmayan alanlar (v7: cp22_crater — CP-22 krater içi nokta, kararla dışarıda). */
+const DISLANAN = new Set(['cp22_crater'])
+const sites = (await okuJson('sites.json')).sites.filter((s) => !DISLANAN.has(s.id))
 const bolgeler = []
 let enBuyukParalaksFarki = 0 // Dünya yüksekliğinde direkler arası en büyük fark (°)
 

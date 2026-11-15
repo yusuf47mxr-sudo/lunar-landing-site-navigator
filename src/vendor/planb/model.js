@@ -382,6 +382,7 @@
           const dt = Math.hypot(Lh, dz) / (v * 3600), t = tim[k] + dt;
           let c = dt * (1 + (lit(q, t) ? 0 : wD) + (comm(q, t) ? 0 : wC));
           if (ground) { const g = ground[q]; if (g == null || !isFinite(g)) c += wU * Lh / 100; else c += wH * g * Lh / 100; }
+          if (opt.penalty) c *= 1 + opt.penalty[q];
           const nc = cost[k] + c;
           if (nc < cost[q]) { cost[q] = nc; tim[q] = t; prev[q] = k; push(nc + hcost(q), q); }
         }
@@ -397,12 +398,14 @@
     const steps = [];
     const addLeg = (lg, phase) => lg.path.forEach((k, q) => { if (q === 0 && steps.length) return; steps.push({ k, t: lg.times[q], phase }); });
     addLeg(go, "go"); steps.push({ k: b, t: go.tEnd + work, phase: "work" }); addLeg(back, "back");
-    let dist = 0, darkH = 0, noCommH = 0, maxSl = 0, hazMax = 0, unkM = 0, battEmpty = null, beyond = false;
+    let dist = 0, darkH = 0, noCommH = 0, maxSl = 0, hazMax = 0, unkM = 0, battEmpty = null, beyond = false, cost = 0, hazSum = 0;
     for (let q = 1; q < steps.length; q++) {
       const A = steps[q - 1], B = steps[q], dt = B.t - A.t;
       if (A.k !== B.k) { const ai = A.k % n, aj = (A.k - ai) / n, bi = B.k % n, bj = (B.k - bi) / n, Lh = Math.hypot(ai - bi, aj - bj) * sp, dz = G.ground_m[B.k] - G.ground_m[A.k];
         dist += Math.hypot(Lh, dz); maxSl = Math.max(maxSl, Math.atan(Math.abs(dz) / Lh) * 180 / Math.PI);
-        if (ground) { const g = ground[B.k]; if (g == null || !isFinite(g)) unkM += Lh; else hazMax = Math.max(hazMax, g); } }
+        if (ground) { const g = ground[B.k]; if (g == null || !isFinite(g)) { unkM += Lh; cost += wU * Lh / 100; } else { hazMax = Math.max(hazMax, g); hazSum += g * Lh; cost += wH * g * Lh / 100; } }
+        cost += dt * (1 + (lit(B.k, B.t) ? 0 : wD) + (comm(B.k, B.t) ? 0 : wC)); }
+      else cost += dt * (1 + (lit(B.k, B.t) ? 0 : wD) + (comm(B.k, B.t) ? 0 : wC));   // hedefte calisma
       if (B.t >= N) beyond = true;
       const sub = Math.max(1, Math.ceil(dt * 4));                 // 15 dk adimlarla isik/baglanti
       for (let s = 0; s < sub; s++) { const tm = A.t + (s + 0.5) * dt / sub, kk = s < sub / 2 ? A.k : B.k;
@@ -412,7 +415,8 @@
     }
     steps[0].lit = lit(a, t0); steps[0].comm = comm(a, t0);
     return { ok: true, steps, distM: dist, totalH: steps[steps.length - 1].t - t0, driveH: go.tEnd - t0 + (back.tEnd - go.tEnd - work), darkH, noCommH,
-      maxSlopeDeg: maxSl, hazMax, unknownM: unkM, battEmpty, feasible: battEmpty == null, beyondWindow: beyond, relay,
+      maxSlopeDeg: maxSl, hazMax, hazMeanPath: dist > 0 ? hazSum / Math.max(dist - unkM, 1) : 0, unknownM: unkM, cost, battEmpty, feasible: battEmpty == null, beyondWindow: beyond, relay,
+      battMarginH: opt.batteryH - darkH,
       weights: { wDark: wD, wComm: wC, wHaz: wH, wUnknown: wU } };
   }
 
@@ -451,7 +455,30 @@
     return { pNoHda: sNo / N, pHda: sH / N, divertShare: nDiv / N, meanDivertM: nDiv ? dSum / nDiv : 0, unknownShare: unkLand / N, n: N, samples, recall: rec, divertM: R };
   }
 
-  const M = { hdaOdds, roverRoute, losFrom, landingNodes, landingOdds, erf, bestInRegion, findDates, analyzeRange, refine, windows, sunG, earthG, diskFraction, sunRadiusDeg, loadEphem, analyze, indexOf, why, horizonAt, nextEvents, power, hourly, windowStats, demSample, horizonFromDem,
+  // ---------- Alternatif gezgin yollari (aday uret -> hepsini ayni olcutle test et -> en guvenlisini sec) ----------
+  // Aday uretimi: "ceza yontemi". Bulunan her yolun gectigi noktalarin arama maliyeti (1 + penalty) ile carpilir
+  // (yol uzerindeki nokta +penStep, komsulari +penStep/2); boylece sonraki arama baska bir koridor dener.
+  // Ceza SADECE yol aramasini etkiler; her adayin olcutleri (cost, darkH, noCommH, egim, krater) cezasiz hesaplanir, yani adil karsilastirilir.
+  // Siralama: once batarya yetenler (feasible), sonra gercek risk-maliyeti (cost) kucukten buyuge. Ayni yol tekrar cikarsa elenir.
+  function roverAlternatives(G, nodes, opt, k) {
+    k = k || 10; const n = G.n, K = n * n, pen = new Float64Array(K), step = opt.penStep == null ? 1.5 : opt.penStep;
+    const seen = new Set(), out = []; let tries = 0;
+    while (out.length < k && tries < 3 * k) {
+      tries++;
+      const r = roverRoute(G, nodes, Object.assign({}, opt, { penalty: pen }));
+      if (!r.ok) { if (!out.length) return { ok: false, reason: r.reason, routes: [] }; break; }
+      const key = r.steps.map(s => s.k).join(",");
+      for (const s of r.steps) { pen[s.k] += step; const i = s.k % n, j = (s.k - i) / n;
+        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const ii = i + di, jj = j + dj; if ((di || dj) && ii >= 0 && jj >= 0 && ii < n && jj < n) pen[jj * n + ii] += step / 2; } }
+      if (seen.has(key)) continue; seen.add(key);
+      out.push(Object.assign(r, { candidate: out.length + 1 }));   // r'nin olcutleri (cost, darkH, ...) zaten cezasiz hesaplanir
+    }
+    out.sort((a, b) => (b.feasible - a.feasible) || (a.cost - b.cost));
+    out.forEach((r, q) => r.rank = q + 1);
+    return { ok: true, routes: out, best: out[0], tried: tries, k };
+  }
+
+  const M = { roverAlternatives, hdaOdds, roverRoute, losFrom, landingNodes, landingOdds, erf, bestInRegion, findDates, analyzeRange, refine, windows, sunG, earthG, diskFraction, sunRadiusDeg, loadEphem, analyze, indexOf, why, horizonAt, nextEvents, power, hourly, windowStats, demSample, horizonFromDem,
     basis, azel, SUN_R_DEG };
   if (typeof module !== "undefined") module.exports = M; else g.Model = M;
 })(typeof window !== "undefined" ? window : globalThis);

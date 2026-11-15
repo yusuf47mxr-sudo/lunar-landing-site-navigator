@@ -123,7 +123,7 @@ function KucukSecim({ secenekler, deger, onSec, etiket }) {
  * @param {object} props.inis   useInisOlasiligi()
  */
 /** @param {boolean} [props.alttan]  telefon: kart sahnenin altından açılan panel (en çok %55) */
-export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKapat, alttan = false }) {
+export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKapat, alttan = false, kutupDisi = false }) {
   const [e, n, cap, guven] = krater
   const hucre = kraterHucresi(veri.node, krater)
   const g = hucre ? veri.node.haz_frac[hucre.k] : undefined
@@ -204,6 +204,11 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
         {t('kraterKarti.hucreTehlikesi')}{' '}
         {g === undefined ? '—' : g === null ? <span className="text-metin-solgun">{t('kraterKarti.bilinmiyorGolge')}</span> : <>g = {g.toFixed(2)}</>}
       </p>
+      {kutupDisi && (
+        <p className="mt-0.5 text-[10px] leading-snug text-uyari/90" data-alt-sinir="">
+          {t('sahne.kutupDisiAltSinir')}
+        </p>
+      )}
 
       <div className="mt-1.5 space-y-1 border-t border-cizgi pt-1.5" data-inis-sonucu="">
         <div data-kart-pencere="">

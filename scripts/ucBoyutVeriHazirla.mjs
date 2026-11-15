@@ -110,6 +110,8 @@ for (const b of bolgeler) {
         source: m.source,
         frame: m.frame,
         dark_rule: m.dark_rule,
+        ml_applied: m.ml_applied !== false,
+        ml_note: m.ml_note ?? null,
         // Tespit isabet oranı (precision) / bulma oranı, D aralığına göre — kutup testi (GR1, eksiksiz etiket)
         accuracy: { polar_GR1_complete: m.accuracy?.polar_GR1_complete ?? null },
         // [doğu m, kuzey m, D m, güven] — ızgara merkezine göre
@@ -130,7 +132,9 @@ for (const b of bolgeler) {
       path.join(CIKTI, izgara + '.json'),
       JSON.stringify({ site_id: id, n: g.n, spacing_m: g.spacing_m, n_az: g.n_az, lat: g.lat, lon: g.lon, ground_m: g.ground_m, slope_deg: g.slope_deg }),
     )
-    ml = { kraterler: krater, foto, yari_m: m.texture.half_extent_m, m_px: m.texture.m_per_px, izgara }
+    // uygulandi: false → ML bu görüntüye uygulanmadı (v7: Chang'e 3/4, görüntü 1.6 / 1.4 m/px;
+    // model ≤ 1.3 m/px ile sınandı) — yalnız fotoğraf, krater ve tehlike kapalı
+    ml = { kraterler: krater, foto, yari_m: m.texture.half_extent_m, m_px: m.texture.m_per_px, izgara, uygulandi: m.ml_applied !== false }
   }
 
   const cikti = {

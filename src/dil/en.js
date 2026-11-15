@@ -280,6 +280,9 @@ export default {
   },
   // --- 3B yerel sahne, ML katmanları, krater kartı, pusula ---
   sahne: {
+    fotoYok: 'No 1 m map-projected LROC image for this site',
+    mlUygulanmadi: 'Image is 1.4–1.6 m/px; the crater model was only validated at ≤ 1.3 m/px, so it is not applied',
+    kutupDisiAltSinir: 'Outside the pole, ML underestimates hazard → lower bound',
     aciklamalar: 'Legend & notes',
     kamera: {
       etiket: 'Camera',

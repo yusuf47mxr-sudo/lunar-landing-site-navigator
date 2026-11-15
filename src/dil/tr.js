@@ -288,6 +288,9 @@ export default {
   // --- 3B yerel sahne, ML katmanları, krater kartı, pusula ---
   // 3B yerel sahne (AraziSahnesi)
   sahne: {
+    fotoYok: 'Bu alan için 1 m çözünürlüklü, haritaya oturtulmuş LROC fotoğrafı yok',
+    mlUygulanmadi: 'Görüntü 1.4–1.6 m/px; krater modeli yalnız ≤ 1.3 m/px ile sınandı, uygulanmadı',
+    kutupDisiAltSinir: 'Kutup dışında ML tehlikeyi düşük tahmin eder → alt sınır',
     aciklamalar: 'Açıklamalar',
     kamera: {
       etiket: 'Kamera',
