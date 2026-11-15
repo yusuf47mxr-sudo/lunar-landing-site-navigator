@@ -681,7 +681,7 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   (D ≥ 20 m varsayılan, "tümü (≥ 10 m)"); rengi kendi YOLOv8 güven skoruna göre
   (0.2 soluk sarı → 1.0 parlak turuncu-kırmızı; skor KALİBRE DEĞİL), kalınlık
   çapla hafif artar. Krater tıklanınca kart (boşa tıklama ya da ESC kapatır,
-  seçili halka beyaz ve kalın): çap; güven skoru + çubuk; bu çaptaki
+  seçili halka beyaz ve kalın): çap; güven skoru yüzde ("ML güven skoru: %22 (olasılık değil)") + çubuk; bu çaptaki
   tespitlerin isabet oranı (`accuracy.polar_GR1_complete` precision, 10–20 m /
   ≥ 20 m); hücre tehlikesi g (null → "bilinmiyor — gölge"); "Buraya inersen:
   başarı %…" — paketin `landingOdds`'u bir Web Worker'da (`core/inisIsci.js`),

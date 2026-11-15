@@ -201,7 +201,7 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
       </div>
 
       <p className="mt-1.5 flex items-center justify-between tabular-nums">
-        <span>ML güven skoru: {guven.toFixed(2)}</span>
+        <span>ML güven skoru: %{Math.round(guven * 100)} (olasılık değil)</span>
       </p>
       <div className="mt-1 h-1.5 w-full rounded-full bg-cizgi" aria-hidden="true">
         <div className="h-full rounded-full" style={{ width: `${Math.round(guven * 100)}%`, background: renk }} />
