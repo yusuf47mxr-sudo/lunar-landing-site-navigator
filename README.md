@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="docs/fasley_logo.png" width="220" alt="FASLEy logo">
+</p>
+<p align="center"><b>Team FASLEy · NASA Space Apps Challenge 2026</b></p>
+
 # Ay İniş Alanı Navigatörü
 
 **🌐 Canlı: <https://ay-inis-navigatoru.vercel.app>**
@@ -186,13 +191,11 @@ Kod, [Claude](https://www.anthropic.com/claude) (Anthropic) yardımıyla
 yazıldı. Tasarım kararları, formüller, veri sözleşmesi ve sonuçların
 doğrulanması ekip tarafından yapıldı.
 
-## Ekip
+## Ekip / Team — FASLEy
 
-**ENRG – Erciyes Neutrino Research Group**
-
-- _Ad Soyad_ — _rol_
-- _Ad Soyad_ — _rol_
-- _Ad Soyad_ — _rol_
+- Yusuf İlhan
+- Yusuf Aydemir
+- Yahya Sönmez
 
 ---
 
@@ -225,5 +228,6 @@ defaulting to the browser language).
 Run with `npm install` and `npm run dev`; build with `npm run build`.
 Built with React, Vite, Tailwind CSS, Zustand, Framer Motion and d3-geo.
 The code was written with the help of Claude (Anthropic); design decisions,
-formulas and validation were done by the team, ENRG – Erciyes Neutrino
-Research Group.
+formulas and validation were done by the team.
+
+**Team FASLEy:** Yusuf İlhan, Yusuf Aydemir, Yahya Sönmez.
