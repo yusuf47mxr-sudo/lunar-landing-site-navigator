@@ -91,7 +91,9 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
       ayDokulari.js       Renk 2k/4k, displacement ve normal haritası (16 bit yükseklikten)
       png16.js            16 bit gri PNG çözücü (DecompressionStream)
       kutupYamasi.js      80°G içi 400 m DEM yaması, 80°G'de kesik küre; dikişsiz geçiş
-      MlKatmanlari.jsx    v5 ML: NAC fotoğrafı (albedo), ML kraterleri (InstancedMesh), 100 m tehlike örtüsü
+      MlKatmanlari.jsx    v5 ML: NAC fotoğrafı, ML kraterleri (InstancedMesh, güven rengi), 100 m tehlike örtüsü
+      KraterKarti.jsx     Tıklanan kraterin kartı (güven, isabet, g, "buraya inersen" başarı)
+      inisOlasiligi.js    İniş olasılığı işçisini yönetir (core/inisIsci.js: model.js landingNodes/landingOdds)
       kure.js             Enlem/boylam → küre vektörü, kamera duruşları
       HataSiniri.jsx      WebGL denetimi ve sahne hata sınırı (→ panorama)
       AraziSahnesi.jsx    Yerel sahne: Canvas, HUD, kamera düğmeleri, düşey abartı
@@ -670,7 +672,22 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   birkaç derecede ya da ufkun altında olsa da görünür) + %15 sahne gölgelemesi
   (arazi şekli okunsun). Açılınca kamera kuş bakışına alçalıp kareyi kadraja
   alır (`kamera('foto')`). Kraterler araziye eğimiyle oturan ince halkalar
-  (D ≥ 20 m varsayılan, "tümü (≥ 10 m)"); üzerine gelince "Krater, D ≈ 14 m".
+  (D ≥ 20 m varsayılan, "tümü (≥ 10 m)"); rengi kendi YOLOv8 güven skoruna göre
+  (0.2 soluk sarı → 1.0 parlak turuncu-kırmızı; skor KALİBRE DEĞİL), kalınlık
+  çapla hafif artar. Krater tıklanınca kart (boşa tıklama ya da ESC kapatır,
+  seçili halka beyaz ve kalın): çap; güven skoru + çubuk; bu çaptaki
+  tespitlerin isabet oranı (`accuracy.polar_GR1_complete` precision, 10–20 m /
+  ≥ 20 m); hücre tehlikesi g (null → "bilinmiyor — gölge"); "Buraya inersen:
+  başarı %…" — paketin `landingNodes` + `landingOdds`'u bir Web Worker'da
+  (`core/inisIsci.js`), hedef = kraterin 100 m hücresi, pencere = depodaki tL
+  ve D, σ 100 m, eğim 10°, batarya 50 sa, tampon 24 sa, ground = haz_frac
+  (rehber §9); düğümler alan + pencere başına önbellekte. Altında en büyük
+  başarısızlık payı (krater / eğim / uzun karanlık / iletişim kesintisi /
+  ızgara dışı). Bunun için `public/veri/3b/` altında 10 alanın `izgara_*`
+  (31×31 konum, eğim; ufuk Int16 `.bin`) ve 2027 efemeris dilimi
+  `efemeris_2027.json` (paketin ham vektörleri, birebir). Doğrulama: Haworth,
+  2027-10-11, 14 gün, merkez hücre → fizik %92.6, + ML %66.9 (rehberle aynı;
+  paketin ham dosyalarıyla fark 0).
   Tehlike: 100 m hücreler, en fazla %55 saydamlık; g < 0.10 neredeyse saydam,
   0.10–0.30 açık turuncu, ≥ 0.30 koyu turuncu-kırmızı (sürekli). Hücre içinin
   %70'i kendi değerini birebir taşır, kenarda 30 m yumuşak geçiş. `null`

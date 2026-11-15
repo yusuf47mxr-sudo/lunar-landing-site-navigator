@@ -17,7 +17,7 @@
 //             gösterilmez, hiçbir renk yeşil değildir.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CanvasTexture, CircleGeometry, DataTexture, DoubleSide, Matrix4, Quaternion, RGBAFormat, RingGeometry, SRGBColorSpace, Vector3 } from 'three'
+import { CanvasTexture, CircleGeometry, Color, DataTexture, DoubleSide, Matrix4, Quaternion, RGBAFormat, RingGeometry, SRGBColorSpace, Vector3 } from 'three'
 import { yukseklik } from './veri.js'
 
 const tabanYol = () => {
@@ -28,7 +28,6 @@ const tabanYol = () => {
 const KRATER_YUKARI = 1.2
 /** Kenarda araziye geçiş (m). */
 const FOTO_GECIS_M = 150
-export const KRATER_RENK = '#ff8a3d'
 
 // --- Veri ---------------------------------------------------------------------
 
@@ -264,46 +263,81 @@ const _p = new Vector3()
 const _n = new Vector3()
 const YUKARI = new Vector3(0, 1, 0)
 
-/** Halka (ve görünmez disk) dönüşümleri: araziye oturur, eğime göre yatırılır. */
-function kraterMatrisleri(arazi, abarti, kraterler) {
-  const m = new Float32Array(kraterler.length * 16)
-  kraterler.forEach(([e, n, D], k) => {
-    const x = e
-    const z = -n
-    const r = D / 2
-    const h = yukseklik(arazi, x, z) * abarti
-    const d = Math.max(5, r)
-    const gx = ((yukseklik(arazi, x + d, z) - yukseklik(arazi, x - d, z)) * abarti) / (2 * d)
-    const gz = ((yukseklik(arazi, x, z + d) - yukseklik(arazi, x, z - d)) * abarti) / (2 * d)
-    _n.set(-gx, 1, -gz).normalize()
-    _q.setFromUnitVectors(YUKARI, _n)
-    _p.set(x, h + KRATER_YUKARI + r * 0.02, z)
-    _s.set(r, r, r)
-    _m.compose(_p, _q, _s).toArray(m, k * 16)
-  })
-  return m
+/** ML güven skoru (0.2–1.0) → renk: soluk sarı → turuncu → parlak turuncu-kırmızı (sRGB, sürekli). */
+export const GUVEN_DURAKLARI = [
+  [0.2, [255, 238, 150]],
+  [0.6, [255, 150, 40]],
+  [1.0, [255, 56, 20]],
+]
+export function guvenRengi(conf) {
+  const c = Math.min(1, Math.max(0.2, conf))
+  const [a, b] = c <= 0.6 ? [GUVEN_DURAKLARI[0], GUVEN_DURAKLARI[1]] : [GUVEN_DURAKLARI[1], GUVEN_DURAKLARI[2]]
+  const t = (c - a[0]) / (b[0] - a[0])
+  return a[1].map((v, k) => v + (b[1][k] - v) * t)
+}
+/** Açıklamadaki renk şeridi (CSS). */
+export const GUVEN_SERIDI = `linear-gradient(to right, ${GUVEN_DURAKLARI.map(([c, r]) => `rgb(${r.join(',')}) ${((c - 0.2) / 0.8) * 100}%`).join(', ')})`
+
+/** Halka kalınlığı (m): çapla hafif artar (D 10 m → 1.0 m, 60 m → 2.5 m); göreli = kalınlık / yarıçap. */
+const kalinlikM = (D) => 0.7 + 0.03 * D
+
+/** Halka/disk dönüşümü: araziye oturur, eğime göre yatırılır. */
+function kraterMatrisi(arazi, abarti, [e, n, D], hedef, k) {
+  const x = e
+  const z = -n
+  const r = D / 2
+  const h = yukseklik(arazi, x, z) * abarti
+  const d = Math.max(5, r)
+  const gx = ((yukseklik(arazi, x + d, z) - yukseklik(arazi, x - d, z)) * abarti) / (2 * d)
+  const gz = ((yukseklik(arazi, x, z + d) - yukseklik(arazi, x, z - d)) * abarti) / (2 * d)
+  _n.set(-gx, 1, -gz).normalize()
+  _q.setFromUnitVectors(YUKARI, _n)
+  _p.set(x, h + KRATER_YUKARI + r * 0.02, z)
+  _s.set(r, r, r)
+  _m.compose(_p, _q, _s).toArray(hedef, k * 16)
+}
+
+/** Kraterin sahnedeki merkez noktası (kart konumu için). */
+export function kraterNoktasi(arazi, abarti, [e, n, D]) {
+  return [e, yukseklik(arazi, e, -n) * abarti + KRATER_YUKARI + D * 0.01, -n]
 }
 
 /**
- * ML kraterleri: InstancedMesh ince halkalar; üzerine gelinen kraterin D'si
- * onUzerinde({ D, x, y }) ile bildirilir (x, y: istemci pikseli).
+ * Halka geometrisi: iç kenar köşeleri (yarıçap 0.5) shader'da örnek başına
+ * kalınlığa göre içeri/dışarı taşınır (aKalinlik = göreli kalınlık).
  */
-export function MlKraterler({ arazi, abarti, kraterler, onUzerinde }) {
-  const halka = useRef()
-  const disk = useRef()
-  const halkaGeo = useMemo(() => new RingGeometry(0.86, 1, 40).rotateX(-Math.PI / 2), [])
+function halkaMalzemesiniYamala(shader) {
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>', '#include <common>\nattribute float aKalinlik;')
+    .replace(
+      '#include <begin_vertex>',
+      `vec3 transformed = vec3(position);
+      float rr = length(position.xz);
+      if (rr < 0.75) transformed.xz = position.xz / rr * (1.0 - aKalinlik);`,
+    )
+}
+
+/**
+ * ML kraterleri: InstancedMesh ince halkalar, rengi kendi güven skoruna göre.
+ * Tıklanınca onSec(krater) — sürükleme sayılmaz; seçili halka beyaz ve kalın.
+ */
+export function MlKraterler({ arazi, abarti, kraterler, secili, onSec }) {
+  const halkaGeo = useMemo(() => new RingGeometry(0.5, 1, 40).rotateX(-Math.PI / 2), [])
   const diskGeo = useMemo(() => new CircleGeometry(1, 20).rotateX(-Math.PI / 2), [])
-  const matrisler = useMemo(() => kraterMatrisleri(arazi, abarti, kraterler), [arazi, abarti, kraterler])
-  useEffect(() => {
-    for (const ref of [halka, disk]) {
-      const im = ref.current
-      if (!im) continue
-      im.instanceMatrix.array.set(matrisler)
-      im.instanceMatrix.needsUpdate = true
-      im.count = kraterler.length
-      im.computeBoundingSphere()
-    }
-  }, [matrisler, kraterler.length])
+  const say = Math.max(1, kraterler.length)
+  const { matris, renk, kalinlik } = useMemo(() => {
+    const matris = new Float32Array(say * 16)
+    const renk = new Float32Array(say * 3)
+    const kalinlik = new Float32Array(say)
+    const c = new Color()
+    kraterler.forEach((k, i) => {
+      kraterMatrisi(arazi, abarti, k, matris, i)
+      const [r, g, b] = guvenRengi(k[3])
+      c.setRGB(r / 255, g / 255, b / 255, SRGBColorSpace).toArray(renk, i * 3)
+      kalinlik[i] = Math.min(0.6, kalinlikM(k[2]) / (k[2] / 2))
+    })
+    return { matris, renk, kalinlik }
+  }, [arazi, abarti, kraterler, say])
   useEffect(
     () => () => {
       halkaGeo.dispose()
@@ -311,29 +345,77 @@ export function MlKraterler({ arazi, abarti, kraterler, onUzerinde }) {
     },
     [halkaGeo, diskGeo],
   )
-  const say = Math.max(1, kraterler.length)
+  // Seçili kraterin beyaz, kalın halkası
+  const seciliMatris = useMemo(() => {
+    if (!secili) return null
+    const m = new Float32Array(16)
+    kraterMatrisi(arazi, abarti, secili, m, 0)
+    return new Matrix4().fromArray(m)
+  }, [arazi, abarti, secili])
+  const seciliGeo = useMemo(() => {
+    if (!secili) return null
+    const g = Math.min(0.8, (kalinlikM(secili[2]) * 2.4) / (secili[2] / 2))
+    return new RingGeometry(1 - g, 1 + g * 0.25, 64).rotateX(-Math.PI / 2)
+  }, [secili])
+  useEffect(() => () => seciliGeo?.dispose(), [seciliGeo])
+
   return (
     <>
-      <instancedMesh key={`h${say}`} ref={halka} args={[halkaGeo, undefined, say]} renderOrder={3} frustumCulled={false}>
-        <meshBasicMaterial color={KRATER_RENK} transparent opacity={0.92} depthWrite={false} side={DoubleSide} polygonOffset polygonOffsetFactor={-4} />
+      <instancedMesh key={`h${say}`} args={[halkaGeo, undefined, say]} renderOrder={3} frustumCulled={false}>
+        <instancedBufferAttribute attach="instanceMatrix" args={[matris, 16]} />
+        <instancedBufferAttribute attach="instanceColor" args={[renk, 3]} />
+        <instancedBufferAttribute attach="geometry-attributes-aKalinlik" args={[kalinlik, 1]} />
+        <meshBasicMaterial
+          transparent
+          opacity={0.95}
+          depthWrite={false}
+          side={DoubleSide}
+          toneMapped={false}
+          onBeforeCompile={halkaMalzemesiniYamala}
+          customProgramCacheKey={() => 'krater-halka'}
+        />
       </instancedMesh>
-      {/* Üzerine gelme için görünmez diskler (ince halkayı yakalamak zor) */}
+      {/* Tıklama için görünmez diskler (ince halkayı yakalamak zor) */}
       <instancedMesh
         key={`d${say}`}
-        ref={disk}
         args={[diskGeo, undefined, say]}
         frustumCulled={false}
-        onPointerMove={(e) => {
+        onClick={(e) => {
+          if (e.delta > 4) return // sürükleme
           e.stopPropagation()
           const k = e.instanceId
-          if (k != null && kraterler[k]) onUzerinde?.({ D: kraterler[k][2], x: e.nativeEvent.clientX, y: e.nativeEvent.clientY })
+          if (k != null && kraterler[k]) onSec?.(kraterler[k])
         }}
-        onPointerOut={() => onUzerinde?.(null)}
+        onPointerOver={() => (document.body.style.cursor = 'pointer')}
+        onPointerOut={() => (document.body.style.cursor = '')}
       >
+        <instancedBufferAttribute attach="instanceMatrix" args={[matris, 16]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} side={DoubleSide} />
       </instancedMesh>
+      {secili && seciliMatris && seciliGeo && (
+        <mesh geometry={seciliGeo} matrixAutoUpdate={false} matrix={seciliMatris} renderOrder={4}>
+          <meshBasicMaterial color="#ffffff" depthWrite={false} side={DoubleSide} toneMapped={false} />
+        </mesh>
+      )}
     </>
   )
+}
+
+/** Kraterin bulunduğu 100 m hücre (i, j) ve dizi indeksi; ızgara dışında null. */
+export function kraterHucresi(node, [e, n]) {
+  const h = (node.n - 1) / 2
+  const i = Math.round(e / node.spacing_m) + h
+  const j = Math.round(n / node.spacing_m) + h
+  if (i < 0 || j < 0 || i >= node.n || j >= node.n) return null
+  return { i, j, k: j * node.n + i }
+}
+
+/** Kutup testinde (GR1, eksiksiz etiket) bu çaptaki tespitlerin isabet oranı (precision). */
+export function kraterIsabeti(veri, D) {
+  const a = veri?.accuracy?.polar_GR1_complete
+  if (!a) return null
+  const p = D < 20 ? a['10-20m'] : a['20-m']
+  return p ? p.precision : null
 }
 
 /** Açıklama kutusundaki ML cümlesi; sayılar ml_calibration.json'dan (kutup kümesi). */

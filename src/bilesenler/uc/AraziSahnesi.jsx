@@ -18,7 +18,9 @@ import { Bloom, EffectComposer, ToneMapping } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PCFShadowMap } from 'three'
-import { useBolgeler } from '../../durum/store.js'
+import { useShallow } from 'zustand/react/shallow'
+import { useBolgeler, useDurum } from '../../durum/store.js'
+import { gunBicimle } from '../ZamanKaydirici.jsx'
 import Secenekler from '../Secenekler.jsx'
 import Arazi, { NEVER_LIT_RENK, zeminOlustur } from './Arazi.jsx'
 import Gok from './Gok.jsx'
@@ -26,7 +28,9 @@ import Iskelet from './Iskelet.jsx'
 import EkranEtiketleri from './EkranEtiketleri.jsx'
 import { HataSiniri } from './HataSiniri.jsx'
 import Kamera, { FOV } from './Kamera.jsx'
-import { KRATER_RENK, MlKraterler, mlAciklamasi, useKatmanShader, useMlVerisi, useNacDokusu, useTehlikeDokusu } from './MlKatmanlari.jsx'
+import { GUVEN_SERIDI, kraterNoktasi, MlKraterler, mlAciklamasi, useKatmanShader, useMlVerisi, useNacDokusu, useTehlikeDokusu } from './MlKatmanlari.jsx'
+import KraterKarti, { KartIzdusum } from './KraterKarti.jsx'
+import { useInisOlasiligi } from './inisOlasiligi.js'
 import Pusula, { PUSULA_YARICAP, sahneEtiketleri } from './Pusula.jsx'
 import { ABARTILAR, KAMERA_UZAK, UFUK_YARICAP } from './sahne.js'
 import { useArazi } from './veri.js'
@@ -122,7 +126,10 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
   // v5 ML katmanları (yalnız taranan 10 alanda düğmeler görünür; varsayılan kapalı)
   const [katman, setKatman] = useState({ foto: false, krater: false, tehlike: false })
   const [kraterTumu, setKraterTumu] = useState(false) // false: D ≥ 20 m; true: hepsi (≥ 10 m)
-  const [kraterUzerinde, setKraterUzerinde] = useState(null) // { D, x, y }
+  const [seciliKrater, setSeciliKrater] = useState(null) // [doğu, kuzey, D, güven] — tıklanan krater
+  const kartRef = useRef(null)
+  const { tL, D: gorevGun } = useDurum(useShallow((s) => ({ tL: s.tL, D: s.D })))
+  const inis = useInisOlasiligi()
   const kapsayici = useRef(null)
   const kamera = (tip) => {
     if (tip === 'yerden' || tip === 'kus') setKip(tip)
@@ -173,7 +180,20 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
     () => (mlVeri.veri ? (kraterTumu ? mlVeri.veri.craters : mlVeri.veri.craters.filter((k) => k[2] >= 20)) : []),
     [mlVeri.veri, kraterTumu],
   )
-  const kapsayiciKutu = () => kapsayici.current?.getBoundingClientRect()
+
+  // Kart: alan ya da katman değişince kapanır; ESC de kapatır
+  useEffect(() => setSeciliKrater(null), [ml, katman.krater, kraterTumu])
+  useEffect(() => {
+    if (!seciliKrater) return
+    const tus = (e) => e.key === 'Escape' && setSeciliKrater(null)
+    document.addEventListener('keydown', tus)
+    return () => document.removeEventListener('keydown', tus)
+  }, [seciliKrater])
+  // Kraterler açılınca iniş düğümlerini önceden hesapla (ilk tıklama hızlı olsun)
+  useEffect(() => {
+    if (ml?.izgara && katman.krater && tL + gorevGun * 24 <= 8760) inis.hazirla(ml.izgara, tL, gorevGun)
+  }, [ml, katman.krater, tL, gorevGun, inis])
+  const kartNoktasi = useMemo(() => (seciliKrater && arazi ? kraterNoktasi(arazi, abarti, seciliKrater) : null), [seciliKrater, arazi, abarti])
 
   // Fotoğraf ve tehlike arazi malzemesinin içinde (useKatmanShader): uniform'lar güncellenir
   const katmanShader = useKatmanShader()
@@ -214,6 +234,8 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
             camera={{ fov: FOV.kus, near: 0.5, far: KAMERA_UZAK, position: [0, 30000, 4000] }}
             gl={{ antialias: false, powerPreference: 'high-performance', logarithmicDepthBuffer: true }}
             style={{ position: 'absolute', inset: 0 }}
+          
+            onPointerMissed={() => setSeciliKrater(null)}
           >
             <color attach="background" args={['#02030a']} />
             <Gok
@@ -229,12 +251,13 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
             <Arazi arazi={arazi} abarti={abarti} zemin={zemin} katman={katmanShader} />
             <Pusula arazi={arazi} abarti={abarti} yaricap={PUSULA_YARICAP[kip]} aracGorunur={kip !== 'yerden'} />
             {ml && katman.krater && kraterler.length > 0 && (
-              <MlKraterler arazi={arazi} abarti={abarti} kraterler={kraterler} onUzerinde={setKraterUzerinde} />
+              <MlKraterler arazi={arazi} abarti={abarti} kraterler={kraterler} secili={seciliKrater} onSec={setSeciliKrater} />
             )}
             <EkranEtiketleri noktalar={etiketler} ogeler={ogeler} />
             <Kamera komut={komut} zemin={zemin} sunAlt={sunAlt} sunAz={sunAz} earthAlt={earthAlt} earthAz={earthAz} acilisUcusu={acilisUcusu} />
             {golgeOlcumu && <GolgeOlcer onYavas={yavasSa} />}
             {import.meta.env.DEV && <GelistirmeIzdusum />}
+            {kartNoktasi && <KartIzdusum nokta={kartNoktasi} kart={kartRef} />}
             <EffectComposer multisampling={4}>
               <Bloom luminanceThreshold={BLOOM_ESIK} luminanceSmoothing={0.3} mipmapBlur intensity={1.2} radius={0.7} />
               <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
@@ -284,20 +307,20 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
         </p>
       )}
 
-      {/* Üzerine gelinen krater */}
-      {kraterUzerinde && katman.krater && (() => {
-        const k = kapsayiciKutu()
-        if (!k) return null
-        return (
-          <p
-            data-krater-ipucu=""
-            className="pointer-events-none absolute z-20 whitespace-nowrap rounded-md border border-cizgi bg-zemin/90 px-2 py-1 text-xs text-metin"
-            style={{ left: kraterUzerinde.x - k.left + 12, top: kraterUzerinde.y - k.top - 28 }}
-          >
-            Krater, D ≈ {Math.round(kraterUzerinde.D)} m
-          </p>
-        )
-      })()}
+      {/* Tıklanan kraterin kartı (konumunu KartIzdusum yazar) */}
+      {seciliKrater && mlVeri.veri && katman.krater && (
+        <KraterKarti
+          kartRef={kartRef}
+          krater={seciliKrater}
+          veri={mlVeri.veri}
+          izgara={ml.izgara}
+          tL={tL}
+          D={gorevGun}
+          inis={inis}
+          gunBicim={gunBicimle(new Date(Date.UTC(2027, 0, 1) + tL * 3600e3))}
+          onKapat={() => setSeciliKrater(null)}
+        />
+      )}
 
       {/* Sol alt: (ML katmanları) (yerden notu) kamera ve düşey abartı */}
       <div className={`absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2 ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
@@ -365,10 +388,14 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
             {katman.foto && <p className="text-metin/85">LROC NAC fotoğrafı (ışık fotoğraftan, sahne ışığından bağımsız)</p>}
             {(katman.krater || katman.tehlike) && <p className={`text-metin/85 ${katman.foto ? 'mt-1' : ''}`}>{mlAciklamasi(mlVeri.veri, mlVeri.kalibrasyon)}</p>}
             {katman.krater && (
-              <p className="mt-1 flex items-center justify-end gap-1.5">
-                <span className="inline-block h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: KRATER_RENK }} />
-                ML kraterleri ({kraterTumu ? 'D ≥ 10 m' : 'D ≥ 20 m'}, {kraterler.length})
-              </p>
+              <>
+                <p className="mt-1">ML kraterleri ({kraterTumu ? 'D ≥ 10 m' : 'D ≥ 20 m'}, {kraterler.length}) · tıklayın: ayrıntı</p>
+                <div className="mt-0.5 flex items-center justify-end gap-1.5" data-guven-seridi="">
+                  <span>ML güven skoru 0.2</span>
+                  <span className="inline-block h-2.5 w-24 rounded-sm" style={{ background: GUVEN_SERIDI }} />
+                  <span>1.0</span>
+                </div>
+              </>
             )}
             {katman.tehlike && (
               <>

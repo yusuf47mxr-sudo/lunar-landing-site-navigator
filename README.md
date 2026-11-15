@@ -108,7 +108,7 @@ Güneş ve Dünya konumları paketin, Python hattıyla birebir doğrulanmış
 | NASA NSSDC, LROC, USGS, makaleler | Alan koordinatları (`bolgeler.json` "kaynak") |
 | [NASA CGI Moon Kit](https://svs.gsfc.nasa.gov/4720) — NASA's Scientific Visualization Studio | 3B Ay küresinin renk dokusu (LROC WAC) ve yükseklik haritası (LOLA), `public/veri/3b/moon/`; arayüzde kredi yazılır |
 | LROC NAC kontrollü güney kutbu mozaiği, 1 m/px — **NASA/GSFC/Arizona State University** | Yerel sahnede "Fotoğraf" katmanı (10 alan, 3.1 km kare) |
-| Ekibin ML modeli (YOLOv8, 1 m LROC NAC); eğitim: **Boazman et al. 2024** (PSJ 5:279) ve **SomBench NAC (NASA–IBM, CC BY 4.0)** | "Küçük kraterler (ML)" (D ≥ 10 m) ve 100 m hücre "Tehlike" katmanları; kutupta ML 0.208 / uzman 0.198, hücre başına ±0.09; kalıcı gölgede görüntü yok → bilinmiyor |
+| Ekibin ML modeli (YOLOv8, 1 m LROC NAC); eğitim: **Boazman et al. 2024** (PSJ 5:279) ve **SomBench NAC (NASA–IBM, CC BY 4.0)** | "Küçük kraterler (ML)" (D ≥ 10 m, renk = güven skoru, kalibre değil) ve 100 m hücre "Tehlike" katmanları; kutupta ML 0.208 / uzman 0.198, hücre başına ±0.09; kalıcı gölgede görüntü yok → bilinmiyor. Kratere tıklayınca kart: isabet oranı (kutup testi) ve paketin `landingOdds`'u ile "buraya inersen" başarı olasılığı (Haworth örneğinde rehberle aynı: %66.9) |
 | Güney kutbu 400 m DEM (LOLA LDEM_80S_80MPP_ADJ) | 80°G içi özel koordinatta **kaba** ufuk ve 3B arazi (Güneş % ort. +8 puan fazla, RMSE 12) |
 
 *Not an official NASA product.*

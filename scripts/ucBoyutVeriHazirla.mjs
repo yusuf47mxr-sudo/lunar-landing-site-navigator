@@ -110,6 +110,8 @@ for (const b of bolgeler) {
         source: m.source,
         frame: m.frame,
         dark_rule: m.dark_rule,
+        // Tespit isabet oranı (precision) / bulma oranı, D aralığına göre — kutup testi (GR1, eksiksiz etiket)
+        accuracy: { polar_GR1_complete: m.accuracy?.polar_GR1_complete ?? null },
         // [doğu m, kuzey m, D m, güven] — ızgara merkezine göre
         craters: m.craters.map(([e, n, D, g]) => [Math.round(e * 10) / 10, Math.round(n * 10) / 10, Math.round(D * 10) / 10, g]),
         // 31×31, 100 m; k = j·31 + i (j güneyden kuzeye). haz_frac null = görüntü karanlık → bilinmiyor
@@ -117,7 +119,18 @@ for (const b of bolgeler) {
       }),
     )
     await copyFile(path.join(paket, m.texture.file), path.join(CIKTI, foto))
-    ml = { kraterler: krater, foto, yari_m: m.texture.half_extent_m, m_px: m.texture.m_per_px }
+    // İniş olasılığı (model.js landingNodes/landingOdds) için 31×31 ızgara: konum, eğim, ufuk.
+    // horizon_cdeg (961 × 180, ufuk × 100) Int16 ikili dosyada; geri kalanı JSON.
+    const g = await okuJson(path.join(paket, `grid_${id}.json`))
+    const izgara = `izgara_${kok}`
+    const hc = Int16Array.from(g.horizon_cdeg)
+    if (hc.some((v, k) => v !== g.horizon_cdeg[k])) throw new Error(`${id}: horizon_cdeg Int16'ya sığmıyor`)
+    await writeFile(path.join(CIKTI, izgara + '.bin'), Buffer.from(hc.buffer))
+    await writeFile(
+      path.join(CIKTI, izgara + '.json'),
+      JSON.stringify({ site_id: id, n: g.n, spacing_m: g.spacing_m, n_az: g.n_az, lat: g.lat, lon: g.lon, ground_m: g.ground_m, slope_deg: g.slope_deg }),
+    )
+    ml = { kraterler: krater, foto, yari_m: m.texture.half_extent_m, m_px: m.texture.m_per_px, izgara }
   }
 
   const cikti = {
@@ -147,8 +160,8 @@ const bos = paketSiteleri.map((s) => s.id).filter((id) => !kullanilan.has(id))
 if (bos.length) console.log(`Pakette olup bolgeler.json'da karşılığı olmayan siteler: ${bos.join(', ')}`)
 
 // --- bolgeler.json'da olmayan eski alan dosyalarını sil ---------------------
-const KOPYA_ADLARI = new Set(['dem_south_400m.json', 'artemis_regions.geo.json', 'ml_calibration.json'])
-const gecerli = new Set(bolgeler.flatMap((b) => [b.file, `mlcraters_${b.file}`]))
+const KOPYA_ADLARI = new Set(['dem_south_400m.json', 'artemis_regions.geo.json', 'ml_calibration.json', 'efemeris_2027.json'])
+const gecerli = new Set(bolgeler.flatMap((b) => [b.file, `mlcraters_${b.file}`, `izgara_${b.file}`]))
 for (const ad of await readdir(CIKTI)) {
   if (!ad.endsWith('.json') || gecerli.has(ad) || KOPYA_ADLARI.has(ad)) continue
   await unlink(path.join(CIKTI, ad))
@@ -161,6 +174,29 @@ for (const ad of KOPYALAR) {
   await copyFile(path.join(paket, ad), path.join(CIKTI, ad))
   console.log(`kopyalandı: ${ad}`)
 }
+// --- İniş olasılığı için 2027 efemeris dilimi (paketin ham vektörleri, birebir) ---
+{
+  const e = await okuJson(path.join(paket, 'ephem_hourly.json'))
+  const t0 = Date.parse(e.start_utc + 'Z')
+  const bas = Math.round((Date.parse('2027-01-01T00:00:00Z') - t0) / (e.step_s * 1000))
+  const n = 8760
+  if (bas < 0 || bas + n > e.n) throw new Error('ephem_hourly 2027 yılını kapsamıyor')
+  await writeFile(
+    path.join(CIKTI, 'efemeris_2027.json'),
+    JSON.stringify({
+      start_utc: '2027-01-01T00:00:00',
+      step_s: e.step_s,
+      n,
+      frame: e.frame,
+      source: `ephem_hourly.json [${bas}, ${bas + n})`,
+      sun_dir: e.sun_dir.slice(3 * bas, 3 * (bas + n)),
+      earth_km: e.earth_km.slice(3 * bas, 3 * (bas + n)),
+      sun_au: e.sun_au.slice(bas, bas + n),
+    }),
+  )
+  console.log(`yazıldı: efemeris_2027.json (ephem indeksi ${bas}…${bas + n - 1})`)
+}
+
 await mkdir(path.join(CIKTI, 'moon'), { recursive: true })
 for (const ad of await readdir(path.join(paket, 'moon'))) {
   await copyFile(path.join(paket, 'moon', ad), path.join(CIKTI, 'moon', ad))
