@@ -26,7 +26,7 @@ import Iskelet from './Iskelet.jsx'
 import EkranEtiketleri from './EkranEtiketleri.jsx'
 import { HataSiniri } from './HataSiniri.jsx'
 import Kamera, { FOV } from './Kamera.jsx'
-import { KRATER_RENK, MlKraterler, mlAciklamasi, NacFoto, TehlikeOrtusu, useMlVerisi } from './MlKatmanlari.jsx'
+import { KRATER_RENK, MlKraterler, mlAciklamasi, useKatmanShader, useMlVerisi, useNacDokusu, useTehlikeDokusu } from './MlKatmanlari.jsx'
 import Pusula, { PUSULA_YARICAP, sahneEtiketleri } from './Pusula.jsx'
 import { ABARTILAR, KAMERA_UZAK, UFUK_YARICAP } from './sahne.js'
 import { useArazi } from './veri.js'
@@ -126,6 +126,7 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
   const kapsayici = useRef(null)
   const kamera = (tip) => {
     if (tip === 'yerden' || tip === 'kus') setKip(tip)
+    else if (tip === 'foto') setKip('kus')
     setKomut((k) => ({ tip, sira: k.sira + 1 }))
   }
   // Alan değişince kuş bakışına dön
@@ -174,6 +175,29 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
   )
   const kapsayiciKutu = () => kapsayici.current?.getBoundingClientRect()
 
+  // Fotoğraf ve tehlike arazi malzemesinin içinde (useKatmanShader): uniform'lar güncellenir
+  const katmanShader = useKatmanShader()
+  const fotoDokusu = useNacDokusu(ml, !!ml && katman.foto)
+  const tehlikeDokusu = useTehlikeDokusu(ml && katman.tehlike ? mlVeri.veri?.node : null)
+  useEffect(() => {
+    const u = katmanShader.u
+    u.uKFoto.value = fotoDokusu ?? u.uKFoto.value
+    u.uKFotoAcik.value = ml && katman.foto && fotoDokusu ? 1 : 0
+    u.uKTehlike.value = tehlikeDokusu ?? u.uKTehlike.value
+    u.uKTehlikeAcik.value = ml && katman.tehlike && tehlikeDokusu ? 1 : 0
+    if (ml) u.uKYari.value = ml.yari_m
+    if (mlVeri.veri) {
+      u.uKHucre.value = mlVeri.veri.node.spacing_m
+      u.uKN.value = mlVeri.veri.node.n
+    }
+  }, [katmanShader, ml, katman.foto, katman.tehlike, fotoDokusu, tehlikeDokusu, mlVeri.veri])
+  /** Katman düğmesi; fotoğraf açılınca kamera 3 km'lik kareyi kadraja alır. */
+  const katmanDegistir = (ad) => {
+    const fotoAcilacak = ad === 'foto' && !katman.foto
+    setKatman((s) => ({ ...s, [ad]: !s[ad] }))
+    if (fotoAcilacak) kamera('foto')
+  }
+
   const karanlik = f <= KARANLIK_ESIK
   const karanlikNot = sunAlt + 0.266 < 0 ? 'Güneş ufkun altında' : 'Güneş uzaktaki arazinin arkasında'
   const neverLitVar = !!arazi?.neverLit && arazi.neverLit.values.some((v) => v === 1)
@@ -202,10 +226,8 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
               golgeYari={golgeYari}
               golgeBoyut={golgeBoyut}
             />
-            <Arazi arazi={arazi} abarti={abarti} zemin={zemin} />
+            <Arazi arazi={arazi} abarti={abarti} zemin={zemin} katman={katmanShader} />
             <Pusula arazi={arazi} abarti={abarti} yaricap={PUSULA_YARICAP[kip]} aracGorunur={kip !== 'yerden'} />
-            {ml && katman.foto && <NacFoto arazi={arazi} abarti={abarti} ml={ml} />}
-            {ml && katman.tehlike && mlVeri.veri && <TehlikeOrtusu arazi={arazi} abarti={abarti} node={mlVeri.veri.node} />}
             {ml && katman.krater && kraterler.length > 0 && (
               <MlKraterler arazi={arazi} abarti={abarti} kraterler={kraterler} onUzerinde={setKraterUzerinde} />
             )}
@@ -290,7 +312,7 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
                 key={ad}
                 type="button"
                 aria-pressed={katman[ad]}
-                onClick={() => setKatman((s) => ({ ...s, [ad]: !s[ad] }))}
+                onClick={() => katmanDegistir(ad)}
                 className={`rounded-md border px-2.5 py-1 text-xs tracking-wide transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60 ${
                   katman[ad] ? 'border-gunes/70 bg-yuzey-acik text-metin' : 'border-cizgi bg-zemin/70 text-metin-solgun hover:text-metin'
                 }`}
@@ -318,7 +340,7 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
             Ay'da hava olmadığı için gölgeler tam karanlık.
           </p>
         )}
-        <Secenekler secenekler={KAMERA_SECENEKLERI} deger={komut.tip} onSec={kamera} etiket="Kamera" kucuk className="bg-zemin/70" />
+        <Secenekler secenekler={KAMERA_SECENEKLERI} deger={komut.tip === 'foto' ? 'kus' : komut.tip} onSec={kamera} etiket="Kamera" kucuk className="bg-zemin/70" />
         <Secenekler secenekler={ABARTI_SECENEKLERI} deger={abarti} onSec={setAbarti} etiket="Düşey abartı" kucuk className="bg-zemin/70" />
         {kutup && abarti === 1 && <span className="text-[11px] text-metin-solgun">kutupta 2× önerilir</span>}
       </div>
@@ -340,7 +362,8 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
         {/* ML açıklaması, katman açıklamaları ve krediler */}
         {mlAcik && (
           <div data-ml-aciklama="" className="max-w-[360px] rounded-md bg-zemin/80 px-2.5 py-1.5 text-right leading-snug">
-            {(katman.krater || katman.tehlike) && <p className="text-metin/85">{mlAciklamasi(mlVeri.veri, mlVeri.kalibrasyon)}</p>}
+            {katman.foto && <p className="text-metin/85">LROC NAC fotoğrafı (ışık fotoğraftan, sahne ışığından bağımsız)</p>}
+            {(katman.krater || katman.tehlike) && <p className={`text-metin/85 ${katman.foto ? 'mt-1' : ''}`}>{mlAciklamasi(mlVeri.veri, mlVeri.kalibrasyon)}</p>}
             {katman.krater && (
               <p className="mt-1 flex items-center justify-end gap-1.5">
                 <span className="inline-block h-2.5 w-2.5 rounded-full border-2" style={{ borderColor: KRATER_RENK }} />
@@ -349,16 +372,25 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
             )}
             {katman.tehlike && (
               <>
-                <p className="mt-1 flex items-center justify-end gap-1.5">
-                  <span className="inline-block h-2.5 w-6 rounded-sm" style={{ background: 'linear-gradient(to right, rgba(255,138,61,0.15), rgba(255,138,61,0.85))' }} />
-                  Tehlike: iniş ayağının krater payı (100 m hücre; koyu ≥ %30)
-                </p>
+                <p className="mt-1">Tehlike: iniş ayağının krater payı g (100 m hücre)</p>
+                <div className="mt-0.5 flex items-center justify-end gap-1.5">
+                  <span>0</span>
+                  <span
+                    className="inline-block h-2.5 w-28 rounded-sm"
+                    style={{
+                      background:
+                        'linear-gradient(to right, rgba(255,180,110,0.05) 0%, rgba(255,180,110,0.18) 20%, rgba(255,120,45,0.55) 60%, rgba(196,60,20,0.85) 100%)',
+                    }}
+                  />
+                  <span>≥ 0.5</span>
+                </div>
+                <p className="mt-0.5">g &lt; 0.10 neredeyse saydam · 0.10–0.30 açık turuncu · ≥ 0.30 koyu turuncu-kırmızı</p>
                 <p className="mt-0.5 flex items-center justify-end gap-1.5">
                   <span
                     className="inline-block h-2.5 w-6 rounded-sm"
                     style={{ background: 'repeating-linear-gradient(135deg, rgba(200,206,214,0.95) 0 3px, rgba(120,128,140,0.35) 3px 7px)' }}
                   />
-                  unknown — shadowed, ML can&apos;t see
+                  unknown — shadowed, ML can&apos;t see (bilinmiyor, güvenli değil)
                 </p>
               </>
             )}

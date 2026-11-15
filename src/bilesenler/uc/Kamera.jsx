@@ -28,6 +28,9 @@ const KUS_UZAKLIK = 6500
 const KUS_YUKSEKLIK = 3200
 const ACILIS_YUKSEKLIK = 30000
 const EN_AZ_YER_PAYI = 2.5
+/** Fotoğraf karesi (3.1 km) FOV 55° ile dikey sığsın: ~3.4 km uzaklık, ~60° eğik. */
+const FOTO_YUKSEKLIK = 2900
+const FOTO_GUNEY = 1700
 export const FOV = { yerden: 60, kus: 55 }
 
 const KIP_SINIRLARI = {
@@ -61,6 +64,11 @@ export default function Kamera({ komut, zemin, sunAlt, sunAz, earthAlt, earthAz,
   /** Komut → hedef konum, bakış noktası ve FOV */
   const hedefHesapla = (tip) => {
     const g = guncel.current
+    // 'foto': kuş bakışı, alçalıp 3.1 km'lik fotoğraf karesini kadraja alır (güneyden, kuzey yukarı)
+    if (tip === 'foto') {
+      kip.current = 'kus'
+      return { poz: new Vector3(0, merkezY() + FOTO_YUKSEKLIK, FOTO_GUNEY), hedef: new Vector3(0, merkezY(), 0), fov: FOV.kus }
+    }
     if (tip === 'yerden' || tip === 'kus') kip.current = tip
     if (kip.current === 'yerden') {
       const poz = new Vector3(0, merkezY() + GOZ_YUKSEKLIK, 0)

@@ -662,14 +662,21 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   soluk gri-mavi (zayıf öz ışıma).
 - **ML katmanları (v5, yerel sahne).** Yalnız ML'li 10 alanda üç düğme:
   "Fotoğraf", "Küçük kraterler (ML)", "Tehlike" — varsayılan kapalı, tam
-  ekranda da. Fotoğraf arazinin ortasındaki 3.1 km'lik kareye serilir, 150 m'de
-  regolite yumuşak geçer; RENK (albedo) olarak kullanılır, gölgeyi sahnedeki
-  Güneş yapar (gömülü gölge yüzünden kontrast %50 azaltılır, ortalama regolit
-  tonuna eşlenir). Kraterler araziye eğimiyle oturan ince halkalar (D ≥ 20 m
-  varsayılan, "tümü (≥ 10 m)"); üzerine gelince "Krater, D ≈ 14 m". Tehlike:
-  100 m hücreler, g → şeffaf turuncu yoğunluk (bilinen her hücre soluk
-  başlar); `null` hücreler gri taralı "unknown — shadowed, ML can't see" —
-  **asla güvenli gösterilmez, hiçbir hücre yeşil değildir.** Açıklama kutusu
+  ekranda da. Fotoğraf ve tehlike ayrı ağ değil, arazi malzemesinin içinde
+  (`MlKatmanlari.useKatmanShader`, dünya x/z'den doku koordinatı): araziye tam
+  oturur, delik ve z çakışması yok (sahne logaritmik derinlik kullanır,
+  `polygonOffset` orada işlemez). Fotoğraf 3.1 km'lik kare, 150 m kenar geçişi;
+  kendi parlaklığıyla: %85 öz ışık (sahne ışığından bağımsız; kutupta Güneş
+  birkaç derecede ya da ufkun altında olsa da görünür) + %15 sahne gölgelemesi
+  (arazi şekli okunsun). Açılınca kamera kuş bakışına alçalıp kareyi kadraja
+  alır (`kamera('foto')`). Kraterler araziye eğimiyle oturan ince halkalar
+  (D ≥ 20 m varsayılan, "tümü (≥ 10 m)"); üzerine gelince "Krater, D ≈ 14 m".
+  Tehlike: 100 m hücreler, en fazla %55 saydamlık; g < 0.10 neredeyse saydam,
+  0.10–0.30 açık turuncu, ≥ 0.30 koyu turuncu-kırmızı (sürekli). Hücre içinin
+  %70'i kendi değerini birebir taşır, kenarda 30 m yumuşak geçiş. `null`
+  hücreler gri, opak olmayan çapraz tarama (40 m; uzakta düz soluk griye
+  söner) "unknown — shadowed, ML can't see" — **asla güvenli gösterilmez,
+  hiçbir hücre yeşil değildir.** Açıklama kutusu
   ML cümlesi (sayılar `ml_calibration.json`) ve krediler: "LROC NAC:
   NASA/GSFC/Arizona State University", "Craters: Boazman et al. 2024; SomBench
   NAC (NASA–IBM, CC BY 4.0)", "Not an official NASA product."

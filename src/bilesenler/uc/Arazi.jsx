@@ -274,9 +274,24 @@ export function neverLitGeometrisi(arazi) {
   return g
 }
 
-/** Regolit: mat, yansımasız (MeshPhysicalMaterial = Standard + specularIntensity). */
-function Regolit({ side }) {
-  return <meshPhysicalMaterial vertexColors roughness={0.95} metalness={0} specularIntensity={0} side={side} />
+/**
+ * Regolit: mat, yansımasız (MeshPhysicalMaterial = Standard + specularIntensity).
+ * katman verilirse (MlKatmanlari.katmanShaderEkle) fotoğraf ve tehlike örtüsü
+ * malzemenin içinde, dünya konumuna göre çizilir: ayrı ağ yok, delik ya da z
+ * çakışması olmaz (logaritmik derinlikte polygonOffset işlemez).
+ */
+function Regolit({ side, katman }) {
+  return (
+    <meshPhysicalMaterial
+      vertexColors
+      roughness={0.95}
+      metalness={0}
+      specularIntensity={0}
+      side={side}
+      onBeforeCompile={katman ? (shader) => katman.ekle(shader) : undefined}
+      customProgramCacheKey={katman ? () => 'regolit-katman' : undefined}
+    />
+  )
 }
 
 /**
@@ -284,7 +299,7 @@ function Regolit({ side }) {
  * @param {number} props.abarti düşey abartı (1, 2, 5)
  * @param {object} props.zemin  zeminOlustur(arazi, abarti, horizon)
  */
-export default function Arazi({ arazi, abarti = 1, zemin }) {
+export default function Arazi({ arazi, abarti = 1, zemin, katman = null }) {
   const yer = useMemo(() => zeminGeometrisi(arazi, abarti, zemin), [arazi, abarti, zemin])
   const sacak = useMemo(() => sacakGeometrisi(zemin), [zemin])
   const ortu = useMemo(() => neverLitGeometrisi(arazi), [arazi])
@@ -292,7 +307,7 @@ export default function Arazi({ arazi, abarti = 1, zemin }) {
   return (
     <group>
       <mesh geometry={yer} castShadow receiveShadow>
-        <Regolit />
+        <Regolit katman={katman} />
       </mesh>
       <mesh geometry={sacak}>
         <Regolit side={DoubleSide} />

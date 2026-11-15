@@ -6,14 +6,18 @@
 // hücreler (i, j) → ((i − 15)·100, (j − 15)·100) aynı doğu/kuzey çerçevesinde,
 // metre. Sahnede +x doğu, −z kuzey (yükseklik y).
 //
-// Fotoğraf RENK (albedo) olarak kullanılır, gölgeyi sahnedeki Güneş yapar:
-// fotoğraftaki gömülü gölgeler yüzünden kontrast %50 azaltılır, ortalama
-// regolit tonuna eşlenir; kenarda 150 m'de araziye yumuşak geçiş.
-// Tehlike: g (iniş ayağının krater payı) → şeffaf turuncu yoğunluk; null =
-// görüntü karanlık, ML göremez → gri taralı "unknown" (asla güvenli gösterilmez).
+// Fotoğraf ve tehlike ayrı ağ değil, arazinin kendi malzemesinde çizilir
+// (katmanShader): dünya x/z'den doku koordinatı; araziye tam oturur, delik ve z
+// çakışması olmaz (sahne logaritmik derinlik kullanıyor, polygonOffset işlemez).
+//   Fotoğraf: kendi parlaklığıyla — %85 öz ışık (sahne ışığından bağımsız) +
+//             %15 sahne gölgelemesi (arazi şekli okunsun); kenarda 150 m geçiş.
+//   Tehlike:  g → saydamlık ve renk (en fazla %55); hücre içinin %70'i değeri
+//             birebir taşır, yalnız kenarlarda 30 m yumuşak geçiş. null = görüntü
+//             karanlık → gri, opak olmayan çapraz tarama ("unknown"); asla güvenli
+//             gösterilmez, hiçbir renk yeşil değildir.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { BufferAttribute, BufferGeometry, CanvasTexture, CircleGeometry, DoubleSide, Matrix4, Quaternion, RepeatWrapping, RingGeometry, SRGBColorSpace, Vector3 } from 'three'
+import { CanvasTexture, CircleGeometry, DataTexture, DoubleSide, Matrix4, Quaternion, RGBAFormat, RingGeometry, SRGBColorSpace, Vector3 } from 'three'
 import { yukseklik } from './veri.js'
 
 const tabanYol = () => {
@@ -21,18 +25,10 @@ const tabanYol = () => {
   return `${taban.replace(/\/?$/, '/')}veri/3b/`
 }
 
-/** Fotoğrafın arazinin üstündeki yüksekliği (m, abartılı yüksekliğe eklenir). */
-const FOTO_YUKARI = 1.5
 const KRATER_YUKARI = 1.2
-const ORTU_YUKARI = 2.5
 /** Kenarda araziye geçiş (m). */
 const FOTO_GECIS_M = 150
-/** Kontrast oranı: gömülü gölgeler yarıya iner. */
-const FOTO_KONTRAST = 0.5
-/** Regolit ortalama tonu (sRGB 0–255): arazinin orta yükseklik rengi ≈ 0.465 doğrusal. */
-const REGOLIT_SRGB = [182, 178, 174]
 export const KRATER_RENK = '#ff8a3d'
-const TEHLIKE_DOYMA = 0.3 // g ≥ 0.3 en koyu
 
 // --- Veri ---------------------------------------------------------------------
 
@@ -80,7 +76,7 @@ export function useMlVerisi(ml, etkin) {
 
 const duzgun = (t) => t * t * (3 - 2 * t)
 
-/** NAC fotoğrafını albedo dokusuna çevirir: kontrast, ortalama, kenar saydamlığı. */
+/** NAC fotoğrafı → doku; kendi parlaklığı korunur, yalnız kenarda 150 m saydamlık geçişi. */
 function fotoDokusu(img, mPx) {
   const W = img.naturalWidth
   const H = img.naturalHeight
@@ -91,67 +87,26 @@ function fotoDokusu(img, mPx) {
   ctx.drawImage(img, 0, 0)
   const veri = ctx.getImageData(0, 0, W, H)
   const d = veri.data
-  let toplam = 0
-  let sayi = 0
-  for (let k = 0; k < d.length; k += 4) {
-    if (d[k] > 0) {
-      toplam += d[k]
-      sayi++
-    }
-  }
-  const ort = sayi ? toplam / sayi : 128
   const gecisPx = FOTO_GECIS_M / mPx
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      const k = (y * W + x) * 4
-      const sapma = (d[k] - ort) * FOTO_KONTRAST
       const kenar = Math.min(x, y, W - 1 - x, H - 1 - y)
-      for (let c = 0; c < 3; c++) d[k + c] = Math.max(0, Math.min(255, REGOLIT_SRGB[c] + sapma))
-      d[k + 3] = Math.round(255 * duzgun(Math.min(1, kenar / gecisPx)))
+      d[(y * W + x) * 4 + 3] = Math.round(255 * duzgun(Math.min(1, kenar / gecisPx)))
     }
   }
   ctx.putImageData(veri, 0, 0)
   const t = new CanvasTexture(tuval)
-  t.colorSpace = SRGBColorSpace
+  t.colorSpace = SRGBColorSpace // örneklemede doğrusala çevrilir
   t.anisotropy = 8
   return t
 }
 
-/** Araziye oturan kare ağ: kenar 2·yari, kuzey yukarı (uv v = 1 kuzey). */
-function fotoGeometrisi(arazi, abarti, yari) {
-  const adim = 124 // 25 m
-  const n = adim + 1
-  const konum = new Float32Array(n * n * 3)
-  const uv = new Float32Array(n * n * 2)
-  for (let j = 0; j < n; j++) {
-    for (let i = 0; i < n; i++) {
-      const u = i / adim
-      const v = j / adim
-      const x = -yari + 2 * yari * u
-      const z = -(-yari + 2 * yari * v)
-      const k = j * n + i
-      konum.set([x, yukseklik(arazi, x, z) * abarti + FOTO_YUKARI, z], k * 3)
-      uv.set([u, v], k * 2)
-    }
-  }
-  const indeks = []
-  for (let j = 0; j < adim; j++) {
-    for (let i = 0; i < adim; i++) {
-      const a = j * n + i
-      indeks.push(a, a + 1, a + n, a + 1, a + n + 1, a + n)
-    }
-  }
-  const g = new BufferGeometry()
-  g.setAttribute('position', new BufferAttribute(konum, 3))
-  g.setAttribute('uv', new BufferAttribute(uv, 2))
-  g.setIndex(indeks)
-  g.computeVertexNormals()
-  return g
-}
-
-export function NacFoto({ arazi, abarti, ml }) {
+/** Fotoğraf dokusu; yalnız açıkken iner, kapanınca bırakılır. */
+export function useNacDokusu(ml, acik) {
   const [doku, setDoku] = useState(null)
+  const ad = acik && ml ? ml.foto : null
   useEffect(() => {
+    if (!ad) return
     let iptal = false
     let t = null
     const img = new Image()
@@ -160,29 +115,144 @@ export function NacFoto({ arazi, abarti, ml }) {
       t = fotoDokusu(img, ml.m_px)
       setDoku(t)
     }
-    img.src = tabanYol() + ml.foto
+    img.src = tabanYol() + ad
     return () => {
       iptal = true
       t?.dispose()
+      setDoku(null)
     }
-  }, [ml.foto, ml.m_px])
-  const geometri = useMemo(() => fotoGeometrisi(arazi, abarti, ml.yari_m), [arazi, abarti, ml.yari_m])
-  useEffect(() => () => geometri.dispose(), [geometri])
-  if (!doku) return null
-  return (
-    <mesh geometry={geometri} receiveShadow renderOrder={1}>
-      <meshPhysicalMaterial
-        map={doku}
-        transparent
-        depthWrite={false}
-        roughness={0.95}
-        metalness={0}
-        specularIntensity={0}
-        polygonOffset
-        polygonOffsetFactor={-3}
-      />
-    </mesh>
-  )
+  }, [ad]) // eslint-disable-line react-hooks/exhaustive-deps
+  return doku
+}
+
+// --- Tehlike dokusu -------------------------------------------------------------
+
+/** 31×31 hücre → RGBA8: R = g (0–1), G = 255 bilinen / 0 bilinmeyen (null). Satır j = güneyden kuzeye. */
+export function useTehlikeDokusu(node) {
+  const doku = useMemo(() => {
+    if (!node) return null
+    const N = node.n
+    const d = new Uint8Array(N * N * 4)
+    for (let k = 0; k < N * N; k++) {
+      const g = node.haz_frac[k]
+      d[k * 4] = g == null ? 0 : Math.round(Math.min(1, Math.max(0, g)) * 255)
+      d[k * 4 + 1] = g == null ? 0 : 255
+      d[k * 4 + 3] = 255
+    }
+    const t = new DataTexture(d, N, N, RGBAFormat)
+    t.needsUpdate = true
+    return t
+  }, [node])
+  useEffect(() => () => doku?.dispose(), [doku])
+  return doku
+}
+
+// --- Arazi malzemesine eklenen katman shader'ı ------------------------------------
+
+const BOS_DOKU = (() => {
+  const t = new DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1, RGBAFormat)
+  t.needsUpdate = true
+  return t
+})()
+
+const KATMAN_ORTAK = /* glsl */ `
+uniform sampler2D uKFoto;
+uniform float uKFotoAcik;
+uniform sampler2D uKTehlike;
+uniform float uKTehlikeAcik;
+uniform float uKYari;
+uniform float uKHucre;
+uniform float uKN;
+varying vec3 vKatmanP;
+
+vec4 katmanFoto() {
+  vec2 uv = vec2(vKatmanP.x + uKYari, -vKatmanP.z + uKYari) / (2.0 * uKYari);
+  if (uKFotoAcik < 0.5 || any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return vec4(0.0);
+  return texture2D(uKFoto, uv);
+}
+vec2 katmanHucre(ivec2 ij) {
+  ij = clamp(ij, ivec2(0), ivec2(int(uKN) - 1));
+  vec4 t = texelFetch(uKTehlike, ij, 0);
+  return vec2(t.r, t.g);
+}
+// g → doğrusal renk: < 0.10 açık turuncu (neredeyse saydam), 0.10–0.30 açık → turuncu, ≥ 0.30 koyu turuncu-kırmızı
+vec3 katmanRenk(float g) {
+  vec3 acik = vec3(1.0, 0.45, 0.16);
+  vec3 orta = vec3(1.0, 0.19, 0.025);
+  vec3 koyu = vec3(0.80, 0.07, 0.015);
+  return g < 0.30 ? mix(acik, orta, smoothstep(0.10, 0.30, g)) : mix(orta, koyu, smoothstep(0.30, 0.50, g));
+}
+float katmanSaydamlik(float g) {
+  // 0 → 0.04, 0.10 → 0.10, 0.30 → 0.40, ≥ 0.50 → 0.55 (en fazla %55)
+  return g < 0.10 ? mix(0.04, 0.10, g / 0.10) : g < 0.30 ? mix(0.10, 0.40, (g - 0.10) / 0.20) : mix(0.40, 0.55, smoothstep(0.30, 0.50, g));
+}
+`
+
+/**
+ * Arazi malzemesine (Regolit) eklenecek katman: uniform'lar ve shader yaması.
+ * Uniform nesneleri kalıcıdır; açık/kapalı ve dokular değişince yeniden derleme olmaz.
+ */
+export function useKatmanShader() {
+  return useMemo(() => {
+    const u = {
+      uKFoto: { value: BOS_DOKU },
+      uKFotoAcik: { value: 0 },
+      uKTehlike: { value: BOS_DOKU },
+      uKTehlikeAcik: { value: 0 },
+      uKYari: { value: 1550 },
+      uKHucre: { value: 100 },
+      uKN: { value: 31 },
+    }
+    const ekle = (shader) => {
+      Object.assign(shader.uniforms, u)
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nvarying vec3 vKatmanP;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvKatmanP = (modelMatrix * vec4(transformed, 1.0)).xyz;')
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\n' + KATMAN_ORTAK)
+        .replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>
+          vec4 kFoto = katmanFoto();
+          // Sahne gölgelemesi ~%15 (arazi şekli okunsun), gerisi öz ışık
+          diffuseColor.rgb = mix(diffuseColor.rgb, kFoto.rgb * 0.2, kFoto.a);`,
+        )
+        .replace(
+          '#include <emissivemap_fragment>',
+          `#include <emissivemap_fragment>
+          totalEmissiveRadiance += kFoto.rgb * 0.85 * kFoto.a;`,
+        )
+        .replace(
+          '#include <opaque_fragment>',
+          `#include <opaque_fragment>
+          if (uKTehlikeAcik > 0.5) {
+            vec2 hc = vec2(vKatmanP.x + uKYari, -vKatmanP.z + uKYari);
+            float icerde = step(0.0, hc.x) * step(0.0, hc.y) * step(hc.x, 2.0 * uKYari) * step(hc.y, 2.0 * uKYari);
+            vec2 c = hc / uKHucre - 0.5;
+            vec2 i0 = floor(c);
+            // Hücre içinin %70'i kendi değeri; kenarda 30 m geçiş (değerler değişmez)
+            vec2 w = smoothstep(0.35, 0.65, c - i0);
+            ivec2 a = ivec2(i0);
+            vec2 v00 = katmanHucre(a), v10 = katmanHucre(a + ivec2(1, 0));
+            vec2 v01 = katmanHucre(a + ivec2(0, 1)), v11 = katmanHucre(a + ivec2(1, 1));
+            float bilinen = mix(mix(v00.y, v10.y, w.x), mix(v01.y, v11.y, w.x), w.y);
+            float gb = mix(mix(v00.x * v00.y, v10.x * v10.y, w.x), mix(v01.x * v01.y, v11.x * v11.y, w.x), w.y);
+            float g = bilinen > 0.001 ? gb / bilinen : 0.0;
+            // Bilinmeyen: gri çapraz tarama, opak değil. 40 m aralık; çizgi kenarı ekran
+            // türeviyle yumuşatılır, uzakta (çizgi pikselden inceyse) düz soluk griye söner — titreşmez
+            float u = (vKatmanP.x - vKatmanP.z) / 40.0;
+            float fw = fwidth(u);
+            float d = abs(fract(u) - 0.5);
+            float cizgi = (1.0 - smoothstep(0.18 - fw, 0.18 + fw, d)) * (1.0 - smoothstep(0.08, 0.3, fw));
+            float ta = (1.0 - bilinen) * icerde * (0.16 + 0.3 * cizgi);
+            gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.42, 0.45, 0.5), ta);
+            float ha = katmanSaydamlik(g) * bilinen * icerde;
+            gl_FragColor.rgb = mix(gl_FragColor.rgb, katmanRenk(g), ha);
+          }`,
+        )
+    }
+    return { u, ekle }
+  }, [])
 }
 
 // --- Kraterler ----------------------------------------------------------------
@@ -262,110 +332,6 @@ export function MlKraterler({ arazi, abarti, kraterler, onUzerinde }) {
       >
         <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} side={DoubleSide} />
       </instancedMesh>
-    </>
-  )
-}
-
-// --- Tehlike örtüsü -----------------------------------------------------------
-
-let taramaDokusu = null
-/** Gri çapraz tarama (bilinmeyen hücreler). */
-function taramaDokusuAl() {
-  if (taramaDokusu) return taramaDokusu
-  const b = 32
-  const tuval = document.createElement('canvas')
-  tuval.width = tuval.height = b
-  const ctx = tuval.getContext('2d')
-  ctx.fillStyle = 'rgba(120, 128, 140, 0.35)'
-  ctx.fillRect(0, 0, b, b)
-  ctx.strokeStyle = 'rgba(200, 206, 214, 0.95)'
-  ctx.lineWidth = 5
-  for (let o = -b; o <= b; o += 16) {
-    ctx.beginPath()
-    ctx.moveTo(o, b)
-    ctx.lineTo(o + b, 0)
-    ctx.stroke()
-  }
-  taramaDokusu = new CanvasTexture(tuval)
-  taramaDokusu.wrapS = taramaDokusu.wrapT = RepeatWrapping
-  taramaDokusu.colorSpace = SRGBColorSpace
-  return taramaDokusu
-}
-
-/** 100 m hücreler: bilinen (turuncu, g ile yoğunluk; RGBA köşe rengi) ve bilinmeyen (taralı). */
-function tehlikeGeometrileri(arazi, abarti, node) {
-  const N = node.n
-  const hucre = node.spacing_m
-  const alt = 4 // hücre başına bölme (25 m) — araziye otursun
-  const yap = (secici, renkFn) => {
-    const konum = []
-    const renk = []
-    const uv = []
-    const indeks = []
-    for (let j = 0; j < N; j++) {
-      for (let i = 0; i < N; i++) {
-        const k = j * N + i
-        if (!secici(node.haz_frac[k])) continue
-        const e0 = (i - (N - 1) / 2) * hucre - hucre / 2
-        const n0 = (j - (N - 1) / 2) * hucre - hucre / 2
-        const ilk = konum.length / 3
-        const rgba = renkFn?.(node.haz_frac[k])
-        for (let v = 0; v <= alt; v++) {
-          for (let u = 0; u <= alt; u++) {
-            const x = e0 + (u / alt) * hucre
-            const z = -(n0 + (v / alt) * hucre)
-            konum.push(x, yukseklik(arazi, x, z) * abarti + ORTU_YUKARI, z)
-            uv.push(x / 25, -z / 25)
-            if (rgba) renk.push(...rgba)
-          }
-        }
-        for (let v = 0; v < alt; v++) {
-          for (let u = 0; u < alt; u++) {
-            const a = ilk + v * (alt + 1) + u
-            indeks.push(a, a + 1, a + alt + 1, a + 1, a + alt + 2, a + alt + 1)
-          }
-        }
-      }
-    }
-    if (!konum.length) return null
-    const g = new BufferGeometry()
-    g.setAttribute('position', new BufferAttribute(Float32Array.from(konum), 3))
-    g.setAttribute('uv', new BufferAttribute(Float32Array.from(uv), 2))
-    if (renk.length) g.setAttribute('color', new BufferAttribute(Float32Array.from(renk), 4))
-    g.setIndex(indeks)
-    return g
-  }
-  // Turuncu (#ff8a3d, doğrusal) — saydamlık g ile; bilinen her hücre çok soluk başlar (g = 0 da
-  // örtülü kalır: "bakıldı, krater bulunmadı" — delik gibi görünmesin), g ≥ 0.3'te en koyu.
-  const bilinen = yap(
-    (g) => g != null,
-    (g) => [1, 0.25, 0.05, 0.05 + 0.65 * Math.min(1, g / TEHLIKE_DOYMA) ** 1.3],
-  )
-  const bilinmeyen = yap((g) => g == null)
-  return { bilinen, bilinmeyen }
-}
-
-export function TehlikeOrtusu({ arazi, abarti, node }) {
-  const g = useMemo(() => tehlikeGeometrileri(arazi, abarti, node), [arazi, abarti, node])
-  useEffect(
-    () => () => {
-      g.bilinen?.dispose()
-      g.bilinmeyen?.dispose()
-    },
-    [g],
-  )
-  return (
-    <>
-      {g.bilinen && (
-        <mesh geometry={g.bilinen} renderOrder={2}>
-          <meshBasicMaterial vertexColors transparent depthWrite={false} side={DoubleSide} polygonOffset polygonOffsetFactor={-5} />
-        </mesh>
-      )}
-      {g.bilinmeyen && (
-        <mesh geometry={g.bilinmeyen} renderOrder={2}>
-          <meshBasicMaterial map={taramaDokusuAl()} transparent depthWrite={false} side={DoubleSide} polygonOffset polygonOffsetFactor={-5} />
-        </mesh>
-      )}
     </>
   )
 }
