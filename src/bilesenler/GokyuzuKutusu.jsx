@@ -9,7 +9,9 @@
 // varsayilan: ilk görünüm ('3b' Temel, 'otomatik' Orta/İleri).
 
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
+import { hataOlustur } from '../core/hata.js'
 import { ozelNoktaNotu } from '../core/ozelNokta.js'
+import { hataMetni, useDil } from '../dil/index.js'
 import { useAnlikDurum, useBolgeler, useGorunurluk } from '../durum/store.js'
 import GokyuzuGorunumu, { kubbeMi } from './GokyuzuGorunumu.jsx'
 import Secenekler from './Secenekler.jsx'
@@ -17,11 +19,8 @@ import Iskelet from './uc/Iskelet.jsx'
 
 const UcBoyut = lazy(() => import('./uc/UcBoyut.jsx'))
 
-const GORUNUM_SECENEKLERI = [
-  { deger: 'panorama', etiket: 'Panorama' },
-  { deger: 'kubbe', etiket: 'Kubbe' },
-  { deger: '3b', etiket: '3B' },
-]
+// Etiketler sözlükte: t(`gokyuzuKutusu.gorunum.${deger}`)
+const GORUNUMLER = ['panorama', 'kubbe', '3b']
 
 export const IZ_SAAT = 48
 
@@ -43,6 +42,7 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
   const { alan } = anlik
   const { f, c } = useGorunurluk()
   const { bolgeler } = useBolgeler()
+  const { t, aciklama: aciklamaAl } = useDil()
 
   // Görünüm kipi: varsayılan (Temel'de 3B; diğerlerinde otomatik: kutup → panorama,
   // değilse kubbe). Elle seçim, kutup ↔ kutup dışı geçişinde otomatiğe döner.
@@ -52,7 +52,7 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
   const gorunum = istenen === '3b' && ucBoyutHata ? 'panorama' : istenen
   const ucBoyut = gorunum === '3b'
 
-  const onHata = useCallback((hata) => setUcBoyutHata(hata ?? new Error('3B açılamadı')), [])
+  const onHata = useCallback((hata) => setUcBoyutHata(hata ?? hataOlustur('gokyuzuKutusu.ucAcilamadi', {}, '3D could not start')), [])
 
   const sunTrail = useMemo(
     () => (alan ? izKes(alan.sun_az, alan.sun_alt, anlik.t, IZ_SAAT, alan.dt_hours) : null),
@@ -64,29 +64,29 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
   )
 
   const kayit = alan && bolgeler ? bolgeler.find((b) => b.site === alan.site) : undefined
-  const aciklama = kayit?.aciklama
+  const aciklama = aciklamaAl(kayit)
   const hazir = alan && anlik.horizon && f && c
 
   return (
     <>
       {gecisli && (
         <div className="mb-2 flex items-center justify-between gap-4">
-          <h2 className="text-[11px] uppercase tracking-[0.18em] text-metin-solgun">Gökyüzü</h2>
+          <h2 className="text-[11px] uppercase tracking-[0.18em] text-metin-solgun">{t('gokyuzuKutusu.baslik')}</h2>
           <Secenekler
-            secenekler={GORUNUM_SECENEKLERI}
+            secenekler={GORUNUMLER.map((deger) => ({ deger, etiket: t(`gokyuzuKutusu.gorunum.${deger}`) }))}
             deger={ucBoyut ? '3b' : kubbeMi(gorunum, anlik.kutup) ? 'kubbe' : 'panorama'}
             onSec={(g) => {
               if (g === '3b') setUcBoyutHata(null)
               setSecim({ kutup: anlik.kutup, gorunum: g })
             }}
-            etiket="Gökyüzü görünümü"
+            etiket={t('gokyuzuKutusu.gorunumEtiket')}
             kucuk
           />
         </div>
       )}
       <div className={`grid overflow-hidden rounded-2xl border border-cizgi ${className}`}>
         {anlik.hata ? (
-          <p className="p-6 text-uyari">Veri yüklenemedi: {String(anlik.hata.message ?? anlik.hata)}</p>
+          <p className="p-6 text-uyari">{t('gokyuzuKutusu.veriYuklenemedi', { hata: hataMetni(anlik.hata, t) })}</p>
         ) : ucBoyut ? (
           // 3B, alan verisi yüklenirken de bağlı kalır (seviye ve kamera korunsun);
           // yerel sahne yükleme sırasında kendi iskeletini gösterir.
@@ -94,7 +94,7 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
             <UcBoyut anlik={anlik} f={hazir ? f[anlik.t] : 0} c={hazir ? c[anlik.t] : 0} aciklama={aciklama} onHata={onHata} />
           </Suspense>
         ) : !hazir ? (
-          <p className="self-center justify-self-center text-metin-solgun">Yükleniyor…</p>
+          <p className="self-center justify-self-center text-metin-solgun">{t('uygulama.yukleniyor')}</p>
         ) : (
           <GokyuzuGorunumu
             horizon={anlik.horizon}
@@ -114,18 +114,18 @@ export default function GokyuzuKutusu({ varsayilan = 'otomatik', gecisli = false
       </div>
       {istenen === '3b' && ucBoyutHata && (
         <p className="mt-2 text-xs text-metin-solgun" data-3b-not="">
-          3B görünüm açılamadı ({ucBoyutHata.message}); panorama gösteriliyor.
+          {t('gokyuzuKutusu.ucNot', { hata: hataMetni(ucBoyutHata, t) })}
         </p>
       )}
       {/* Kutup dışı alanlarda ufuk küresel DEM'e dayanır (SLDEM2015 ≈ 118 m; Chandrayaan-3 LOLA ≈ 237 m) */}
       {kayit?.arazi === 'terrain_global' && (
         <p className="mt-2 text-xs tracking-wide text-metin-solgun/80" data-arazi-notu="">
-          Arazi ~{kayit.arazi_cozunurluk_m ?? 118} m çözünürlükte.
+          {t('gokyuzuKutusu.araziNotu', { m: kayit.arazi_cozunurluk_m ?? 118 })}
         </p>
       )}
       {anlik.yaklasik && (
         <p className="mt-3 text-sm text-uyari" data-ozel-uyari="">
-          {ozelNoktaNotu(anlik.alan).uzun}
+          {ozelNoktaNotu(anlik.alan, t).uzun}
         </p>
       )}
     </>

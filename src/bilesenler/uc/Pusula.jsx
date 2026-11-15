@@ -58,12 +58,13 @@ function halkaGeometrisi(arazi, abarti, r, kalinlik) {
 /**
  * Ekran etiketleri. Her biri: { id, konum, metin, sinif, ofset?, capa?, yaricapM?, ok?, ikinci? }
  * (EkranEtiketleri ve AraziSahnesi'ndeki çizim bunları kullanır).
+ * t: dil/ çeviri fonksiyonu (useDil().t); çağıran useMemo bağımlılığına koyar, dil değişince yenilenir.
  */
-export function sahneEtiketleri({ arazi, abarti, r, kip, earthAz, earthAlt, sunAz, sunAlt, c }) {
+export function sahneEtiketleri({ arazi, abarti, r, kip, earthAz, earthAlt, sunAz, sunAlt, c, t }) {
   const liste = HARFLER.map(([harf, az]) => ({
     id: `yon-${harf}`,
     konum: yerNoktasi(arazi, abarti, az, r * 1.14, 20),
-    metin: harf,
+    metin: t(`ortak.yonler.${harf}`),
     sinif: `text-[13px] font-medium tracking-[0.15em] ${harf === 'K' ? 'text-white' : 'text-metin-solgun'} ${GOLGE}`,
   }))
   // Dünya yönü: halkanın içinde, okun ucu Dünya azimutuna bakar
@@ -73,8 +74,8 @@ export function sahneEtiketleri({ arazi, abarti, r, kip, earthAz, earthAlt, sunA
     yonKonum: yerNoktasi(arazi, abarti, earthAz, r, 20),
     ok: true,
     kacin: true, // harflerle ve iniş etiketiyle çakışırsa ekranda kayar
-    metin: 'Dünya yönü',
-    ikinci: c === 1 ? null : '(ufkun altında)',
+    metin: t('pusula.dunyaYonu'),
+    ikinci: c === 1 ? null : t('pusula.ufkunAltinda'),
     sinif: `text-[11px] tracking-wide text-iletisim ${GOLGE}`,
   })
   if (kip !== 'yerden') {
@@ -82,7 +83,7 @@ export function sahneEtiketleri({ arazi, abarti, r, kip, earthAz, earthAlt, sunA
       id: 'inis',
       konum: [0, yukseklik(arazi, 0, 0) * abarti, 0],
       ofset: [0, 26],
-      metin: 'İniş noktası',
+      metin: t('pusula.inisNoktasi'),
       sinif: `text-[11px] tracking-wide text-metin ${GOLGE}`,
     })
   }
@@ -93,7 +94,7 @@ export function sahneEtiketleri({ arazi, abarti, r, kip, earthAz, earthAlt, sunA
     capa: 'sol',
     ofset: [8, 0],
     yaricapTan: (GUNES_DISK_YARICAP * 2.5) / GOK_YARICAP, // parlama payı
-    metin: `Güneş ${dereceBicimle(sunAlt)}`,
+    metin: `${t('ortak.gunes')} ${dereceBicimle(sunAlt)}`,
     sinif: `text-[11px] tracking-wide text-gunes ${GOLGE}`,
   })
   const d = yonVektoru(earthAlt, earthAz).multiplyScalar(GOK_YARICAP)
@@ -103,7 +104,7 @@ export function sahneEtiketleri({ arazi, abarti, r, kip, earthAz, earthAlt, sunA
     capa: 'sol',
     ofset: [8, 0],
     yaricapTan: DUNYA_DISK_YARICAP / GOK_YARICAP,
-    metin: `Dünya ${dereceBicimle(earthAlt)}`,
+    metin: `${t('ortak.dunya')} ${dereceBicimle(earthAlt)}`,
     sinif: `text-[11px] tracking-wide text-iletisim ${GOLGE}`,
   })
   return liste

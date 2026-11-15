@@ -7,29 +7,11 @@
 
 import { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { useDil } from '../dil/index.js'
 import { useAnlikDurum, useDurum, useGeriSayim } from '../durum/store.js'
 import { AkanSure, geriSayimSatirlari } from './GeriSayim.jsx'
 
 const ADIM_SANIYEDE = 30
-
-const gunBicim = new Intl.DateTimeFormat('tr-TR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'UTC',
-})
-const saatBicim = new Intl.DateTimeFormat('tr-TR', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-  timeZone: 'UTC',
-})
-
-/** "14 Mart 2027" */
-export const gunBicimle = (d) => gunBicim.format(d)
-
-/** "14 Mart 2027, 08:00 UTC" */
-export const tarihBicimle = (d) => `${gunBicim.format(d)}, ${saatBicim.format(d)} UTC`
 
 /** Oynatılırken t'yi saniyede ADIM_SANIYEDE × hiz adım ilerletir; sonda durur. */
 function useOynatma(n) {
@@ -105,6 +87,7 @@ export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px
     useShallow((s) => ({ oynatiliyor: s.oynatiliyor, tAyarla: s.tAyarla, oynatDegistir: s.oynatDegistir })),
   )
   useOynatma(surucu ? n : 0)
+  const { t, b } = useDil()
 
   const oynat = () => {
     // Sondayken oynat'a basılırsa baştan başla
@@ -113,7 +96,7 @@ export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px
   }
   const dolu = n > 1 ? (anlik.t / (n - 1)) * 100 : 0
   const sayim = useGeriSayim()
-  const [gunes, dunya] = sayim ? geriSayimSatirlari(sayim) : [null, null]
+  const [gunes, dunya] = sayim ? geriSayimSatirlari(sayim, t) : [null, null]
 
   return (
     <div
@@ -125,15 +108,15 @@ export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px
             className="col-span-2 text-center text-sm tracking-wide text-metin tabular-nums sm:col-span-1 sm:col-start-2 sm:row-start-1"
             aria-live="off"
           >
-            {anlik.zaman ? tarihBicimle(anlik.zaman) : '—'}
+            {anlik.zaman ? b.tarih(anlik.zaman) : '—'}
           </p>
           {gunes && (
-            <KucukSayim simge="☀" simgeEtiket="Güneş" satir={gunes} className="sm:col-start-1 sm:row-start-1" />
+            <KucukSayim simge="☀" simgeEtiket={t('ortak.gunes')} satir={gunes} className="sm:col-start-1 sm:row-start-1" />
           )}
           {dunya && (
             <KucukSayim
               simge="📡"
-              simgeEtiket="Dünya ile iletişim"
+              simgeEtiket={t('geriSayim.dunyaIletisim')}
               satir={dunya}
               className="text-right sm:col-start-3 sm:row-start-1"
             />
@@ -143,7 +126,7 @@ export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px
           <button
             onClick={oynat}
             disabled={!alan}
-            aria-label={oynatiliyor ? 'Durdur' : 'Oynat'}
+            aria-label={t(oynatiliyor ? 'zamanKaydirici.durdur' : 'zamanKaydirici.oynat')}
             className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-gunes/70 bg-gunes/10 text-gunes
               transition-colors hover:bg-gunes/20 disabled:opacity-40
               focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60"
@@ -152,8 +135,8 @@ export default function ZamanKaydirici({ className = '', enFazla = 'max-w-[900px
           </button>
           <input
             type="range"
-            aria-label="Zaman"
-            aria-valuetext={anlik.zaman ? tarihBicimle(anlik.zaman) : undefined}
+            aria-label={t('zamanKaydirici.zaman')}
+            aria-valuetext={anlik.zaman ? b.tarih(anlik.zaman) : undefined}
             className="kaydirici flex-1"
             style={{ '--dolu': `${dolu}%` }}
             min={0}

@@ -2,12 +2,15 @@
 // reddedilirse (ör. iOS) sabit konumlu "sahte" tam ekran. F tuşu ve ESC.
 // Üst katman: köşelerde yarı saydam bilgiler, altta mevcut zaman çubuğu
 // (ZamanKaydirici) ve rozetler (DurumGostergesi) — kopya değil, aynı bileşen.
-// Fare 3 sn hareketsiz kalınca katman solar, hareketle geri gelir.
+// Fare 3 sn hareketsiz kalınca katman solar, hareketle geri gelir. Dil seçici
+// (TR | EN) de katmanda: tam ekrandan çıkmadan dil değiştirilebilir.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useAnlikDurum } from '../../durum/store.js'
+import { useDil } from '../../dil/index.js'
+import { useAnlikDurum, useBolgeler } from '../../durum/store.js'
+import DilSecici from '../DilSecici.jsx'
 import DurumGostergesi from '../DurumGostergesi.jsx'
-import ZamanKaydirici, { tarihBicimle } from '../ZamanKaydirici.jsx'
+import ZamanKaydirici from '../ZamanKaydirici.jsx'
 
 const SOLMA_MS = 3000
 
@@ -107,19 +110,30 @@ export function useKatmanGorunur(etkin, kapsayici) {
   return gorunur
 }
 
-/** Tam ekrandaki üst katman: sol üst alan adı + tarih, sağ üst rozetler, altta zaman çubuğu. */
-export function TamEkranKatmani({ gorunur, aciklama }) {
+/**
+ * Tam ekrandaki üst katman: sol üst alan adı + açıklama + tarih, sağ üst dil
+ * seçici (büyüt/küçült düğmesinin solunda) ve rozetler, altta zaman çubuğu.
+ */
+export function TamEkranKatmani({ gorunur }) {
   const anlik = useAnlikDurum()
+  const { bolgeler } = useBolgeler()
+  const { b, ad, aciklama: aciklamaAl } = useDil()
+  const site = anlik.alan?.site
+  const aciklama = aciklamaAl(site ? bolgeler?.find((k) => k.site === site) : undefined)
   const sinif = `transition-opacity duration-500 ${gorunur ? 'opacity-100' : 'pointer-events-none opacity-0'}`
   return (
     <>
       {/* Sol üst: gezinti çubuğunun (UcBoyut) altında */}
       <div className={`pointer-events-none absolute left-4 top-14 z-20 max-w-[min(60vw,520px)] ${sinif}`}>
         <p className="text-2xl font-light tracking-wide text-metin drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-          {anlik.alan?.site ?? ''}
+          {site ? ad(site) : ''}
         </p>
         {aciklama && <p className="text-sm text-metin-solgun">{aciklama}</p>}
-        <p className="mt-1 text-sm tracking-wide text-metin/90 tabular-nums">{anlik.zaman ? tarihBicimle(anlik.zaman) : ''}</p>
+        <p className="mt-1 text-sm tracking-wide text-metin/90 tabular-nums">{anlik.zaman ? b.tarih(anlik.zaman) : ''}</p>
+      </div>
+      {/* Sağ üst: dil seçici, büyüt/küçült düğmesinin (UcBoyut, right-3 top-3 h-8 w-8) solunda */}
+      <div className={`absolute right-14 top-3 z-30 ${sinif}`}>
+        <DilSecici className="!bg-zemin/70" />
       </div>
       <div className={`absolute right-4 top-14 z-20 w-[min(44vw,420px)] ${sinif}`}>
         <DurumGostergesi kip="sayisal" />

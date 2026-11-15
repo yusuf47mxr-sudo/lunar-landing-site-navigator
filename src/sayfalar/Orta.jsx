@@ -6,6 +6,7 @@
 // yüksekliği kadar yer tutar, en alttaki içerik onun arkasında kalmaz.
 
 import AlanListesi from '../bilesenler/AlanListesi.jsx'
+import DilSecici from '../bilesenler/DilSecici.jsx'
 import DurumGostergesi from '../bilesenler/DurumGostergesi.jsx'
 import IsiHaritasi from '../bilesenler/IsiHaritasi.jsx'
 import GokyuzuKutusu from '../bilesenler/GokyuzuKutusu.jsx'
@@ -17,6 +18,7 @@ import ParametrePaneli from '../bilesenler/ParametrePaneli.jsx'
 import SayisalOzet from '../bilesenler/SayisalOzet.jsx'
 import ZamanCizelgesiKutusu from '../bilesenler/ZamanCizelgesiKutusu.jsx'
 import ZamanKaydirici from '../bilesenler/ZamanKaydirici.jsx'
+import { useDil } from '../dil/index.js'
 import { useBolgeler, useSeciliAlanVerisi } from '../durum/store.js'
 
 const BASLIK = 'text-[11px] uppercase tracking-[0.18em] text-metin-solgun'
@@ -34,37 +36,41 @@ export default function Orta() {
   const { alan } = useSeciliAlanVerisi()
   const { bolgeler } = useBolgeler()
   const kayit = alan && bolgeler ? bolgeler.find((b) => b.site === alan.site) : null
+  const { t, ad, aciklama } = useDil()
 
   return (
     <div className="min-h-screen bg-zemin text-metin">
       <main className="mx-auto flex max-w-[1400px] flex-col gap-6 px-4 pb-10 pt-6 sm:px-6">
         <header className="flex flex-wrap-reverse items-center justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">
-            <h1 className="text-xl font-light tracking-wide sm:text-2xl">Ay İniş Alanı Navigatörü</h1>
+            <h1 className="text-xl font-light tracking-wide sm:text-2xl">{t('uygulama.baslik')}</h1>
             <p className="mt-1 truncate font-light tracking-wide text-metin-solgun">
-              {alan?.site ?? ' '}
-              {kayit?.aciklama && <span className="text-metin-solgun/70"> · {kayit.aciklama}</span>}
+              {alan ? ad(alan.site) : ' '}
+              {aciklama(kayit) && <span className="text-metin-solgun/70"> · {aciklama(kayit)}</span>}
             </p>
           </div>
-          <ModDegistirici className="ml-auto" />
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2" role="group" aria-label={t('sayfa.ayarlar')}>
+            <ModDegistirici />
+            <DilSecici />
+          </div>
         </header>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
           {/* SOL SÜTUN */}
           <div className="flex min-w-0 flex-col gap-6">
-            <Kutu baslik="İniş alanı">
+            <Kutu baslik={t('sayfa.inisAlani')}>
               <AlanListesi yerlesim="dikey" />
             </Kutu>
-            <Kutu baslik="Güney kutbu haritası">
+            <Kutu baslik={t('sayfa.kutupHaritasi')}>
               <KutupHaritasi />
             </Kutu>
-            <Kutu baslik="Özel koordinat">
+            <Kutu baslik={t('sayfa.ozelKoordinat')}>
               <OzelKoordinat />
             </Kutu>
-            <Kutu baslik="Görev ayarları">
+            <Kutu baslik={t('sayfa.gorevAyarlari')}>
               <ParametrePaneli />
             </Kutu>
-            <Kutu baslik="Sayısal özet">
+            <Kutu baslik={t('sayfa.sayisalOzet')}>
               <SayisalOzet />
             </Kutu>
           </div>
@@ -75,21 +81,21 @@ export default function Orta() {
           <div className="flex min-w-0 flex-col gap-6 lg:self-start lg:[@media(min-height:950px)]:sticky lg:[@media(min-height:950px)]:top-6">
             <DurumGostergesi kip="sayisal" />
 
-            <section aria-label="Gökyüzü">
+            <section aria-label={t('sayfa.gokyuzu')}>
               <GokyuzuKutusu gecisli className="h-[340px]" />
             </section>
 
-            <Kutu baslik="Zaman çizelgesi">
+            <Kutu baslik={t('sayfa.zamanCizelgesi')}>
               <ZamanCizelgesiKutusu />
             </Kutu>
           </div>
         </div>
 
-        <section aria-label="Isı haritası" className="rounded-2xl border border-cizgi bg-yuzey p-4">
+        <section aria-label={t('sayfa.isiHaritasi')} className="rounded-2xl border border-cizgi bg-yuzey p-4">
           <IsiHaritasi karsilastirmaMaks={2} />
         </section>
 
-        <section aria-label="Karşılaştırma" className="rounded-2xl border border-cizgi bg-yuzey p-4">
+        <section aria-label={t('sayfa.karsilastirma')} className="rounded-2xl border border-cizgi bg-yuzey p-4">
           <Karsilastirma maks={2} />
         </section>
       </main>

@@ -2,7 +2,7 @@
 // Challenge bunu "kritik operasyonel bilgi" olarak vurgular: büyük ve net.
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { saatBicimle } from '../core/hesap.js'
+import { useDil } from '../dil/index.js'
 import { useGeriSayim } from '../durum/store.js'
 import AkanSayi from './AkanSayi.jsx'
 
@@ -16,31 +16,31 @@ const YAKIN_RENK = {
   dunyaDogusu: 'rgba(34, 211, 238, 1)', // --iletisim
 }
 
-const sureBicimle = (v) => saatBicimle(Math.max(0, Math.round(v)))
-
 /**
- * Akan süre metni ("3 g 7 sa"); 24 saatin altında türüne göre renklenir.
+ * Akan süre metni ("3 g 7 sa" / "3 d 7 h"); 24 saatin altında türüne göre renklenir.
  * Sayısal özet tablosu da bunu kullanır.
  */
 export function AkanSure({ saat, tur }) {
+  const { b } = useDil()
   return (
     <AkanSayi
       deger={saat}
-      bicim={sureBicimle}
+      bicim={(v) => b.sure(Math.max(0, Math.round(v)))}
       renk={saat < KRITIK_SAAT ? YAKIN_RENK[tur] : NORMAL}
       className="tabular-nums font-normal"
     />
   )
 }
 
-/** geriSayim() sonucundan iki satırın içeriği: [güneş, dünya]. */
-export function geriSayimSatirlari(g) {
-  const gunes = g.gunesGorunuyor
-    ? { tur: 'gunBatimi', onEk: 'Gün batımına', saat: g.gunBatimi, yoksa: 'Bu dönemde batmıyor' }
-    : { tur: 'gunDogumu', onEk: 'Gün doğumuna', saat: g.gunDogumu, yoksa: 'Bu dönemde doğmuyor' }
-  const dunya = g.dunyaGorunuyor
-    ? { tur: 'dunyaBatisi', onEk: 'Dünya batışına', saat: g.dunyaBatisi, yoksa: 'Bu dönemde batmıyor' }
-    : { tur: 'dunyaDogusu', onEk: 'Dünya doğuşuna', saat: g.dunyaDogusu, yoksa: 'Bu dönemde doğmuyor' }
+/**
+ * geriSayim() sonucundan iki satırın içeriği: [güneş, dünya].
+ * onEk ("Gün batımına" / "Sunset in"), yoksa ("Bu dönemde batmıyor" / "Does not set in this period").
+ * @param {(anahtar: string) => string} t  dil/ ceviri fonksiyonu (useDil().t)
+ */
+export function geriSayimSatirlari(g, t) {
+  const satir = (tur, saat, batis) => ({ tur, onEk: t(`geriSayim.${tur}`), saat, yoksa: t(batis ? 'geriSayim.batmiyor' : 'geriSayim.dogmuyor') })
+  const gunes = g.gunesGorunuyor ? satir('gunBatimi', g.gunBatimi, true) : satir('gunDogumu', g.gunDogumu, false)
+  const dunya = g.dunyaGorunuyor ? satir('dunyaBatisi', g.dunyaBatisi, true) : satir('dunyaDogusu', g.dunyaDogusu, false)
   return [gunes, dunya]
 }
 
@@ -78,13 +78,14 @@ function Satir({ simge, simgeEtiket, tur, onEk, saat, yoksa }) {
 
 export default function GeriSayim({ className = '' }) {
   const g = useGeriSayim()
+  const { t } = useDil()
   if (!g) return <div className={`min-h-[5.5rem] ${className}`} aria-busy="true" />
-  const [gunes, dunya] = geriSayimSatirlari(g)
+  const [gunes, dunya] = geriSayimSatirlari(g, t)
 
   return (
     <div className={`grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 ${className}`} aria-live="polite">
-      <Satir simge="☀" simgeEtiket="Güneş" {...gunes} />
-      <Satir simge="📡" simgeEtiket="Dünya ile iletişim" {...dunya} />
+      <Satir simge="☀" simgeEtiket={t('ortak.gunes')} {...gunes} />
+      <Satir simge="📡" simgeEtiket={t('geriSayim.dunyaIletisim')} {...dunya} />
     </div>
   )
 }

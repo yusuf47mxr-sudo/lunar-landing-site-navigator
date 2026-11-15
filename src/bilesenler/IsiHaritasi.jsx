@@ -9,11 +9,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { saatBicimle, yuzdeBicimle } from '../core/hesap.js'
+import { useDil } from '../dil/index.js'
 import { useBolgeler, useDurum, useOzet, useSeciliAlanVerisi } from '../durum/store.js'
 import { KATEGORILER } from './AlanListesi.jsx'
-import { AY_KISA } from './ZamanCizelgesi.jsx'
-import { gunBicimle } from './ZamanKaydirici.jsx'
 import { VARSAYILAN_RENK, YAZI, YAZI_KUCUK, renkleriOku, rgb } from './tuval.js'
 
 const ETIKET = 170 // soldaki alan adı sütunu (px)
@@ -49,6 +47,7 @@ function tara(ctx, x, y, w, h, renk) {
 
 /** @param {number} [props.karsilastirmaMaks] karşılaştırmadaki toplam sütun sınırı (Orta 2, İleri 3) */
 export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
+  const { t, b, ad } = useDil()
   const { ozet, hata } = useOzet()
   const { bolgeler } = useBolgeler()
   const { alan } = useSeciliAlanVerisi()
@@ -152,7 +151,7 @@ export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
       ctx.font = YAZI
       ctx.textAlign = 'right'
       ctx.fillStyle = s.site === seciliSite ? R.metin : R.metinSolgun
-      ctx.fillText(s.site, ETIKET - 10, s.y + h / 2 + 0.5, ETIKET - 12)
+      ctx.fillText(ad(s.site), ETIKET - 10, s.y + h / 2 + 0.5, ETIKET - 12)
 
       const u = gosterilenRef.current.get(s.site)
       const { enIyi } = hucreler.get(s.site)
@@ -213,7 +212,7 @@ export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
         ctx.moveTo(x, altY + 3)
         ctx.lineTo(x, altY + 9)
         ctx.stroke()
-        ctx.fillText(AY_KISA[new Date(ay).getUTCMonth()], x + 4, altY + 13)
+        ctx.fillText(b.ayKisa(new Date(ay)), x + 4, altY + 13)
       }
     }
   }
@@ -281,7 +280,7 @@ export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
 
   useEffect(() => {
     cizRef.current()
-  }, [satirlar, fare, seciliSite, seciliSutun])
+  }, [satirlar, fare, seciliSite, seciliSutun, b, ad])
 
   // --- Fare ----------------------------------------------------------------
   const hucreBul = (e) => {
@@ -320,7 +319,7 @@ export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
     const i = fare.sutun
     ipucu = {
       site: satir.site,
-      tarih: gunBicimle(new Date(t0ms + i * adimSaat * SAAT_MS)),
+      tarih: b.gun(new Date(t0ms + i * adimSaat * SAAT_MS)),
       bos: puan[i] == null,
       fBar: d.f_bar[i],
       cBar: d.c_bar[i],
@@ -335,24 +334,22 @@ export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
     <div className={className}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <h2 className="text-[11px] uppercase tracking-[0.18em] text-metin-solgun">Isı haritası</h2>
-          <p className="text-xs tabular-nums text-metin-solgun/80">
-            Görev: {D} gün · Direk: {hm} m
-          </p>
+          <h2 className="text-[11px] uppercase tracking-[0.18em] text-metin-solgun">{t('isiHaritasi.baslik')}</h2>
+          <p className="text-xs tabular-nums text-metin-solgun/80">{t('isiHaritasi.ozet', { D, hm })}</p>
         </div>
-        <p className="flex items-center gap-2 text-xs text-metin-solgun" aria-label="Renk ölçeği: koyu düşük puan, parlak yüksek puan">
-          düşük
+        <p className="flex items-center gap-2 text-xs text-metin-solgun" aria-label={t('isiHaritasi.olcekAria')}>
+          {t('isiHaritasi.dusuk')}
           <span
             aria-hidden="true"
             className="inline-block h-2 w-24 rounded-sm border border-cizgi"
             style={{ background: 'linear-gradient(to right, var(--zemin), var(--gunes))' }}
           />
-          yüksek
+          {t('isiHaritasi.yuksek')}
         </p>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div role="group" aria-label="Kategori filtresi" className="flex flex-wrap gap-1.5">
+        <div role="group" aria-label={t('isiHaritasi.filtreAria')} className="flex flex-wrap gap-1.5">
           {KATEGORILER.map((k) => {
             const acik = filtre.includes(k.anahtar)
             return (
@@ -365,30 +362,27 @@ export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
                   focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60
                   ${acik ? 'border-gunes/70 bg-yuzey-acik text-metin' : 'border-cizgi text-metin-solgun hover:text-metin'}`}
               >
-                {k.baslik}
+                {t(`kategori.${k.anahtar}`)}
               </button>
             )
           })}
         </div>
-        <p className="text-xs text-metin-solgun/80">
-          Her sütun bir iniş haftası. Parlak hücre: daha çok güneş ve iletişim, daha kısa karanlık. Beyaz nokta:
-          satırın en iyi haftası.
-        </p>
+        <p className="text-xs text-metin-solgun/80">{t('isiHaritasi.aciklama')}</p>
       </div>
 
       <div ref={kapRef} className="relative">
         {hata ? (
-          <p className="py-6 text-sm text-uyari">Isı haritası verisi yüklenemedi.</p>
+          <p className="py-6 text-sm text-uyari">{t('isiHaritasi.yuklenemedi')}</p>
         ) : !ozet || !bolgeler ? (
-          <p className="py-6 text-sm text-metin-solgun">Yükleniyor…</p>
+          <p className="py-6 text-sm text-metin-solgun">{t('uygulama.yukleniyor')}</p>
         ) : satirlar.length === 0 ? (
-          <p className="py-6 text-sm text-metin-solgun">Gösterilecek alan yok — yukarıdan bir kategori seçin.</p>
+          <p className="py-6 text-sm text-metin-solgun">{t('isiHaritasi.bos')}</p>
         ) : (
           <>
             <canvas
               ref={canvasRef}
               role="img"
-              aria-label={`Isı haritası: ${satirlar.length} alan, ${sutunSayisi} haftalık iniş tarihi. Hücreye tıklamak alanı ve iniş tarihini seçer.`}
+              aria-label={t('isiHaritasi.canvasAria', { alan: satirlar.length, hafta: sutunSayisi })}
               className="block"
               style={{ width: boyut.w, height: yukseklik, cursor: fare ? 'pointer' : 'default' }}
               onPointerMove={fareOynadi}
@@ -400,23 +394,23 @@ export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
                 className="pointer-events-none absolute z-10 w-[190px] rounded-lg border border-cizgi bg-yuzey-acik px-3 py-2 text-xs shadow-lg"
                 style={{ left: ipucu.x, top: ipucu.y, transform: 'translate(-50%, calc(-100% - 8px))' }}
               >
-                <p className="truncate text-sm text-metin">{ipucu.site}</p>
-                <p className="mb-1.5 text-metin-solgun">İniş: {ipucu.tarih}</p>
+                <p className="truncate text-sm text-metin">{ad(ipucu.site)}</p>
+                <p className="mb-1.5 text-metin-solgun">{t('isiHaritasi.inis', { tarih: ipucu.tarih })}</p>
                 {ipucu.bos ? (
-                  <p className="text-metin-solgun">Görev veri aralığının dışına taşıyor.</p>
+                  <p className="text-metin-solgun">{t('isiHaritasi.tasiyor')}</p>
                 ) : (
                   <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 tabular-nums">
-                    <dt className="text-metin-solgun">Aydınlanma</dt>
-                    <dd className="text-right text-metin">{yuzdeBicimle(ipucu.fBar)}</dd>
-                    <dt className="text-metin-solgun">İletişim</dt>
-                    <dd className="text-right text-metin">{yuzdeBicimle(ipucu.cBar)}</dd>
-                    <dt className="text-metin-solgun">En uzun karanlık</dt>
-                    <dd className="text-right text-metin">{saatBicimle(ipucu.tau)}</dd>
-                    <dt className="text-metin-solgun">Puan</dt>
+                    <dt className="text-metin-solgun">{t('isiHaritasi.aydinlanma')}</dt>
+                    <dd className="text-right text-metin">{b.yuzde(ipucu.fBar)}</dd>
+                    <dt className="text-metin-solgun">{t('isiHaritasi.iletisim')}</dt>
+                    <dd className="text-right text-metin">{b.yuzde(ipucu.cBar)}</dd>
+                    <dt className="text-metin-solgun">{t('isiHaritasi.enUzunKaranlik')}</dt>
+                    <dd className="text-right text-metin">{b.sure(ipucu.tau)}</dd>
+                    <dt className="text-metin-solgun">{t('isiHaritasi.puan')}</dt>
                     <dd className="text-right text-metin">{puanBicimle(ipucu.puan)}</dd>
                   </dl>
                 )}
-                <p className="mt-1.5 text-[10px] text-metin-solgun/70">Shift+tıklama: karşılaştırmaya ekle</p>
+                <p className="mt-1.5 text-[10px] text-metin-solgun/70">{t('isiHaritasi.shiftIpucu')}</p>
               </div>
             )}
           </>
@@ -424,9 +418,7 @@ export default function IsiHaritasi({ className = '', karsilastirmaMaks = 3 }) {
       </div>
 
       {ozet && epsilon !== ozet.epsilon_deg && (
-        <p className="mt-2 text-xs text-metin-solgun">
-          Isı haritası ε = {ozet.epsilon_deg}° ile önceden hesaplanmıştır.
-        </p>
+        <p className="mt-2 text-xs text-metin-solgun">{t('isiHaritasi.epsilonNot', { eps: ozet.epsilon_deg })}</p>
       )}
     </div>
   )

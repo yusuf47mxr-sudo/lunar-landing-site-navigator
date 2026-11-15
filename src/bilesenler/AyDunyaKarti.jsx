@@ -4,6 +4,7 @@
 import { useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { KUTUP_SINIRI } from '../core/sabitler.js'
+import { useDil } from '../dil/index.js'
 import { useEfemeris, useSeciliAlanVerisi } from '../durum/store.js'
 
 const R_DUNYA_KM = 6371.0 // ortalama yarıçap
@@ -39,40 +40,43 @@ function enKucukEnBuyuk(dizi) {
 
 const bir = (v) => (Math.round(v * 10) / 10).toFixed(1)
 
-/** Alan verisinden kartın cümleleri. */
-export function ayDunyaBilgileri(alan, caplar = null) {
+/**
+ * Alan verisinden kartın cümleleri.
+ * @param t  useDil().t (sayılar nokta ondalıklı, iki dilde aynı)
+ */
+export function ayDunyaBilgileri(alan, caplar, t) {
   const gunes = enKucukEnBuyuk(alan.sun_alt)
   const dunya = enKucukEnBuyuk(alan.earth_alt)
   const bilgiler = [
     {
       simge: '🌗',
-      metin: 'Burada bir gün, yani güneşin doğup tekrar doğması, 29.5 Dünya günü sürer.',
+      metin: t('ayDunya.gun'),
     },
     {
       simge: '☀',
-      metin: `Güneş burada en fazla ${bir(gunes.max)}° yükselir. Dünya'da orta enlemlerde yaz öğlesinde bu açı yaklaşık 70°'dir.`,
+      metin: t('ayDunya.gunesYukselir', { derece: bir(gunes.max) }),
     },
     dunya.max < 0
       ? {
           simge: '🌍',
-          metin: "Bu alandan Dünya hiç görünmez — Ay'ın uzak yüzündesiniz. Haberleşme için uydu gerekir.",
+          metin: t('ayDunya.dunyaGorunmez'),
         }
       : {
           simge: '🌍',
-          metin: `Dünya gökte neredeyse yerinden kıpırdamaz; yalnızca ±${bir((dunya.max - dunya.min) / 2)}° salınır.`,
+          metin: t('ayDunya.dunyaSalinir', { derece: bir((dunya.max - dunya.min) / 2) }),
         },
   ]
   if (caplar) {
     const oran = caplar.dunya / caplar.gunes
     bilgiler.push({
       simge: '🔭',
-      metin: `Ay'dan bakınca Dünya, Güneş'ten yaklaşık ${Math.round(oran)} kat büyük görünür (${caplar.dunya.toFixed(1)}° / ${caplar.gunes.toFixed(2)}°).`,
+      metin: t('ayDunya.buyukluk', { oran: Math.round(oran), dunya: caplar.dunya.toFixed(1), gunes: caplar.gunes.toFixed(2) }),
     })
   }
   if (Math.abs(alan.lat) >= KUTUP_SINIRI) {
     bilgiler.push({
       simge: '⛰',
-      metin: 'Güneş ufka çok yakın dolaştığı için birkaç metrelik bir tepe bile kilometrelerce gölge yapar.',
+      metin: t('ayDunya.tepe'),
     })
   }
   return bilgiler
@@ -80,13 +84,14 @@ export function ayDunyaBilgileri(alan, caplar = null) {
 
 export default function AyDunyaKarti({ className = '' }) {
   const { alan } = useSeciliAlanVerisi()
+  const { t } = useDil()
   const { efemeris } = useEfemeris(true)
   const caplar = useMemo(() => (efemeris?.earth_dist_km ? acisalCaplar(efemeris) : null), [efemeris])
-  const bilgiler = useMemo(() => (alan ? ayDunyaBilgileri(alan, caplar) : null), [alan, caplar])
+  const bilgiler = useMemo(() => (alan ? ayDunyaBilgileri(alan, caplar, t) : null), [alan, caplar, t])
 
   return (
     <section className={`rounded-2xl border border-cizgi bg-yuzey px-6 py-6 sm:px-8 ${className}`}>
-      <h2 className="text-lg font-light tracking-wide text-metin">Ay'da gökyüzü neden farklı?</h2>
+      <h2 className="text-lg font-light tracking-wide text-metin">{t('ayDunya.baslik')}</h2>
       <AnimatePresence mode="wait" initial={false}>
         {bilgiler && (
           <motion.ul

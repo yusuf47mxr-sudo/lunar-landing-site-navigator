@@ -5,16 +5,15 @@
 
 import { useState } from 'react'
 import { ozelNoktaNotu } from '../core/ozelNokta.js'
+import { useDil } from '../dil/index.js'
 import { useShallow } from 'zustand/react/shallow'
 import { csvDosyaAdi, csvUret, ozelDosyaAdi } from '../core/disaAktar.js'
 import { guc } from '../core/hesap.js'
 import { cDizisi, fDizisi, useBolgeler, useDurum, useSeciliAlanVerisi } from '../durum/store.js'
 import Secenekler from './Secenekler.jsx'
 
-const KAPSAMLAR = [
-  { deger: 'gorev', etiket: 'Görev aralığı' },
-  { deger: 'yil', etiket: 'Tüm yıl' },
-]
+// Etiketler sözlükte: t(`disaAktar.kapsam.${deger}`)
+const KAPSAMLAR = ['gorev', 'yil']
 
 /** Metni dosya olarak indirir. */
 function indir(dosyaAdi, metin) {
@@ -35,6 +34,8 @@ export default function DisaAktar({ className = '' }) {
     useShallow((s) => ({ tL: s.tL, D: s.D, hm: s.hm, epsilon: s.epsilon, S: s.S, eta: s.eta, yonelim: s.yonelim })),
   )
   const [kapsam, setKapsam] = useState('gorev')
+  const { t } = useDil()
+  const kapsamlar = KAPSAMLAR.map((deger) => ({ deger, etiket: t(`disaAktar.kapsam.${deger}`) }))
 
   const dt = alan?.dt_hours ?? 1
   const adim = Math.round((p.D * 24) / dt)
@@ -52,7 +53,7 @@ export default function DisaAktar({ className = '' }) {
     const f = fDizisi(alan, horizon)
     const c = cDizisi(alan, horizon, p.epsilon)
     const P = guc(f, alan.sun_alt, p.eta, p.S, p.yonelim, alan.sun_au ?? null)
-    indir(dosyaAdi, csvUret(alan, f, c, P, bas, son))
+    indir(dosyaAdi, csvUret(alan, f, c, P, bas, son, ozelNoktaNotu(alan, t).csv))
   }
 
   return (
@@ -65,19 +66,19 @@ export default function DisaAktar({ className = '' }) {
           className="shrink-0 rounded-lg border border-gunes/70 bg-gunes/10 px-3 py-1.5 text-sm tracking-wide text-gunes
             transition-colors hover:bg-gunes/20 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60"
         >
-          CSV indir
+          {t('disaAktar.indir')}
         </button>
-        <Secenekler secenekler={KAPSAMLAR} deger={kapsam} onSec={setKapsam} etiket="CSV kapsamı" kucuk />
+        <Secenekler secenekler={kapsamlar} deger={kapsam} onSec={setKapsam} etiket={t('disaAktar.kapsamEtiket')} kucuk />
       </div>
       {kapsam === 'gorev' && tasiyor ? (
-        <p className="mt-2 text-xs text-metin-solgun">Görev veri aralığının dışına taşıyor.</p>
+        <p className="mt-2 text-xs text-metin-solgun">{t('disaAktar.tasiyor')}</p>
       ) : (
         <p className="mt-2 text-xs tabular-nums text-metin-solgun">
           <span className="block break-all">{dosyaAdi ?? ' '}</span>
-          {dosyaAdi && <span className="block text-metin-solgun/70">{son - bas} satır + başlık</span>}
+          {dosyaAdi && <span className="block text-metin-solgun/70">{t('disaAktar.satir', { n: son - bas })}</span>}
         </p>
       )}
-      {alan?.yaklasik && <p className="mt-1 text-xs text-uyari">Dosyanın ilk satırı: “{ozelNoktaNotu(alan).csv}”</p>}
+      {alan?.yaklasik && <p className="mt-1 text-xs text-uyari">{t('disaAktar.ilkSatir', { not: ozelNoktaNotu(alan, t).csv })}</p>}
     </div>
   )
 }

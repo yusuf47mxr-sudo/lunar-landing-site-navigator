@@ -9,9 +9,8 @@
 //                 yeniden hesaplanmaz.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDil } from '../dil/index.js'
 import { VARSAYILAN_RENK, YAZI, YAZI_KUCUK, renkleriOku, rgb, saydam, yuvarlakDikdortgen } from './tuval.js'
-
-export const AY_KISA = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
 
 // Yerleşim (CSS pikseli)
 const SERIT_H = 28
@@ -32,13 +31,8 @@ function onEkToplam(dizi) {
   return P
 }
 
-const ikiHane = (v) => String(v).padStart(2, '0')
-
-/** "14 Mar, 08:00" */
-function kisaTarih(ms) {
-  const d = new Date(ms)
-  return `${d.getUTCDate()} ${AY_KISA[d.getUTCMonth()]}, ${ikiHane(d.getUTCHours())}:${ikiHane(d.getUTCMinutes())}`
-}
+/** "14 Mar, 08:00" / "Mar 14, 08:00" */
+const kisaTarih = (ms, t) => t('zamanCizelgesi.kisaTarih', { d: new Date(ms) })
 
 /**
  * Her piksel sütunu için dizinin o sütuna düşen aralığının ortalaması.
@@ -101,6 +95,7 @@ export default function ZamanCizelgesi({
   onZamanSec,
   className = '',
 }) {
+  const { t, b } = useDil()
   const kapRef = useRef(null)
   const altRef = useRef(null)
   const ustRef = useRef(null)
@@ -117,7 +112,7 @@ export default function ZamanCizelgesi({
 
   // Dinamik katmanın okuduğu son değerler (fare olayları React render'ı beklemez)
   const canliRef = useRef(null)
-  canliRef.current = { tSecili, n, t0ms, dtHours, onZamanSec, w: boyut.w, dpr: boyut.dpr }
+  canliRef.current = { tSecili, n, t0ms, dtHours, onZamanSec, w: boyut.w, dpr: boyut.dpr, t }
 
   const xOf = (i, w) => SOL + (i / n) * (w - SOL - SAG)
 
@@ -156,8 +151,8 @@ export default function ZamanCizelgesi({
     ctx.fillStyle = R.metinSolgun
     ctx.textAlign = 'right'
     ctx.textBaseline = 'middle'
-    ctx.fillText('Aydınlanma', x0 - 10, Y_GUNES + SERIT_H / 2)
-    ctx.fillText('İletişim', x0 - 10, Y_ILET + SERIT_H / 2)
+    ctx.fillText(t('zamanCizelgesi.aydinlanma'), x0 - 10, Y_GUNES + SERIT_H / 2, x0 - 12)
+    ctx.fillText(t('zamanCizelgesi.iletisim'), x0 - 10, Y_ILET + SERIT_H / 2, x0 - 12)
 
     if (fOnEk && cOnEk && n > 0) {
       // Şeritler: aygıt pikseli başına bir sütun, sütun aralığının ortalaması
@@ -212,7 +207,7 @@ export default function ZamanCizelgesi({
       ctx.moveTo(xa, yCizgi)
       ctx.lineTo(xb, yCizgi)
       ctx.stroke()
-      const metin = `${Math.round(aralik.uzunluk)} sa`
+      const metin = b.tamSaat(aralik.uzunluk)
       ctx.font = '500 10px Inter, ui-sans-serif, system-ui, sans-serif'
       const yari = ctx.measureText(metin).width / 2
       const xm = Math.max(SOL + yari, Math.min(w - SAG - yari, (xa + xb) / 2))
@@ -249,7 +244,7 @@ export default function ZamanCizelgesi({
         ctx.stroke()
         if (xb - xa > 18) {
           ctx.fillStyle = R.metinSolgun
-          ctx.fillText(AY_KISA[ay], (xa + xb) / 2, Y_AY + 1)
+          ctx.fillText(b.ayKisa(new Date(basMs)), (xa + xb) / 2, Y_AY + 1)
         }
         ay += 1
         if (ay > 11) {
@@ -258,12 +253,12 @@ export default function ZamanCizelgesi({
         }
       }
     }
-  }, [boyut, fOnEk, cOnEk, n, tL, D, araliklar, t0ms, dtHours]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [boyut, fOnEk, cOnEk, n, tL, D, araliklar, t0ms, dtHours, t, b]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Üst katman: seçili an ve fare (ucuz, sık) -----------------------------
   const ustCiz = () => {
     const canvas = ustRef.current
-    const { tSecili, n, t0ms, dtHours, w, dpr } = canliRef.current
+    const { tSecili, n, t0ms, dtHours, w, dpr, t } = canliRef.current
     if (!canvas || w < SOL + SAG + 10) return
     boyutla(canvas, w, dpr)
     const ctx = canvas.getContext('2d')
@@ -284,7 +279,7 @@ export default function ZamanCizelgesi({
       ctx.moveTo(x, Y_GUNES)
       ctx.lineTo(x, Y_ALT)
       ctx.stroke()
-      const metin = kisaTarih(t0ms + i * dtHours * 3600e3)
+      const metin = kisaTarih(t0ms + i * dtHours * 3600e3, t)
       ctx.font = YAZI
       const gen = ctx.measureText(metin).width + 12
       const lx = Math.max(SOL, Math.min(w - SAG - gen, fx - gen / 2))
@@ -320,7 +315,7 @@ export default function ZamanCizelgesi({
 
   useEffect(() => {
     ustCizRef.current()
-  }, [tSecili, boyut, n, t0ms, dtHours])
+  }, [tSecili, boyut, n, t0ms, dtHours, t])
 
   // --- Etkileşim --------------------------------------------------------------
   const yerelX = (e) => e.clientX - ustRef.current.getBoundingClientRect().left
@@ -375,11 +370,11 @@ export default function ZamanCizelgesi({
       style={{ height: YUKSEKLIK }}
       role="slider"
       tabIndex={0}
-      aria-label="Zaman çizelgesi: aydınlanma ve iletişim"
+      aria-label={t('zamanCizelgesi.aria')}
       aria-valuemin={0}
       aria-valuemax={Math.max(0, n - 1)}
       aria-valuenow={tSecili}
-      aria-valuetext={n ? kisaTarih(t0ms + tSecili * dtHours * 3600e3) : undefined}
+      aria-valuetext={n ? kisaTarih(t0ms + tSecili * dtHours * 3600e3, t) : undefined}
       onKeyDown={tus}
     >
       <canvas ref={altRef} className="absolute inset-0 block" aria-hidden="true" />

@@ -4,6 +4,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { dereceBicimle as derece } from '../core/hesap.js'
+import { useDil } from '../dil/index.js'
 import { useAnlikDurum, useGorunurluk } from '../durum/store.js'
 
 // Framer Motion renkleri ara değerleyebilsin diye hepsi rgba
@@ -68,34 +69,32 @@ export default function DurumGostergesi({ kip = 'sozel', className = '' }) {
   const anlik = useAnlikDurum()
   const { f, c } = useGorunurluk()
   const sayisal = kip === 'sayisal'
+  const { t } = useDil()
   if (!f || !c || !anlik.alan) {
     return <div className={`${sayisal ? 'min-h-[76px]' : 'min-h-[100px]'} ${className}`} aria-busy="true" />
   }
 
   const fT = f[anlik.t]
   const cT = c[anlik.t]
-  const gunes = fT > 0.5
-    ? { durum: 'gunesGorunur', metin: 'Güneş görünür' }
-    : fT > 0
-      ? { durum: 'gunesKismen', metin: 'Güneş kısmen görünür' }
-      : { durum: 'golgede', metin: 'Gölgede' }
-  const iletisim = cT === 1
-    ? { durum: 'baglanti', metin: 'Dünya ile bağlantı var' }
-    : { durum: 'baglantiYok', metin: 'Bağlantı yok' }
+  // Durum anahtarı hem stil hem metin anahtarı (durum.*)
+  const gunesDurum = fT > 0.5 ? 'gunesGorunur' : fT > 0 ? 'gunesKismen' : 'golgede'
+  const iletisimDurum = cT === 1 ? 'baglanti' : 'baglantiYok'
+  const gunes = { durum: gunesDurum, metin: t(`durum.${gunesDurum}`) }
+  const iletisim = { durum: iletisimDurum, metin: t(`durum.${iletisimDurum}`) }
 
   return (
     <div className={`grid ${sayisal ? 'grid-cols-2 gap-3' : 'grid-cols-1 gap-4 sm:grid-cols-2'} ${className}`}>
       <Rozet
-        etiket="Güneş"
+        etiket={t('ortak.gunes')}
         {...gunes}
         kucuk={sayisal}
-        ek={sayisal ? `Yükseklik ${derece(anlik.sunAlt)}` : null}
+        ek={sayisal ? t('durum.yukseklik', { deger: derece(anlik.sunAlt) }) : null}
       />
       <Rozet
-        etiket="İletişim"
+        etiket={t('durum.iletisim')}
         {...iletisim}
         kucuk={sayisal}
-        ek={sayisal ? `Dünya yüksekliği ${derece(anlik.earthAlt)}` : null}
+        ek={sayisal ? t('durum.dunyaYukseklik', { deger: derece(anlik.earthAlt) }) : null}
       />
     </div>
   )

@@ -19,6 +19,7 @@
 
 import { useEffect, useRef } from 'react'
 import { GUNES_YARICAP, ufukOku } from '../core/hesap.js'
+import { useDil } from '../dil/index.js'
 import { VARSAYILAN_RENK, YAZI, YAZI_KUCUK, renkleriOku, saydam, yuvarlakDikdortgen } from './tuval.js'
 
 const GECIS_MS = 150
@@ -84,12 +85,14 @@ export default function GokyuzuGorunumu({
   merkezAz = 180,
   className = '',
 }) {
+  const { t } = useDil()
   const kapRef = useRef(null)
   const canvasRef = useRef(null)
 
   // Çizimin okuduğu her şey ref'te; böylece rAF döngüsü React render'ına bağlı kalmaz.
+  // t: canvas etiketleri (yön harfleri, açıklama, rozet, fare etiketi) dile göre
   const propsRef = useRef(null)
-  propsRef.current = { horizon, epsilon, kutup, sunTrail, earthTrail, yaklasik, gorunum, merkezAz }
+  propsRef.current = { horizon, epsilon, kutup, sunTrail, earthTrail, yaklasik, gorunum, merkezAz, t }
 
   const boyutRef = useRef({ w: 0, h: 0, dpr: 1 })
   const fareRef = useRef(null) // { x, y } CSS pikseli veya null
@@ -284,7 +287,7 @@ export default function GokyuzuGorunumu({
     }
     ctx.textAlign = 'center'
     ctx.textBaseline = 'top'
-    const yonler = { 0: 'K', 90: 'D', 180: 'G', 270: 'B' }
+    const yonler = { 0: p.t('ortak.yonler.K'), 90: p.t('ortak.yonler.D'), 180: p.t('ortak.yonler.G'), 270: p.t('ortak.yonler.B') }
     // Dar görünümde (karşılaştırma sütunları) derece etiketleri üst üste biner:
     // yalnızca yön harfleri yazılır
     const dereceSigar = (x1 - x0) / 12 >= 30
@@ -304,16 +307,16 @@ export default function GokyuzuGorunumu({
     }
 
     // 9. Açıklama (sağ üst)
-    aciklamaCiz(ctx, R, x1, y0)
+    aciklamaCiz(ctx, R, x1, y0, p.t)
 
     // 10. Yaklaşık veri uyarısı (sol üst)
-    if (p.yaklasik) rozetCiz(ctx, R, x0, y0)
+    if (p.yaklasik) rozetCiz(ctx, R, x0, y0, p.t)
 
     // Fare etiketi: o azimuttaki ufuk yüksekliği
     if (fareAz !== null && hz) {
       const H = ufukOku(hz, fareAz)
       const Hy = Math.round(H * 10) / 10 // "−0.0°" çıkmasın
-      const metin = `Az ${Math.round(fareAz) % 360}° · ufuk ${Hy >= 0 ? '+' : '−'}${Math.abs(Hy).toFixed(1)}°`
+      const metin = p.t('gokyuzu.ufukIpucu', { az: Math.round(fareAz) % 360, ufuk: `${Hy >= 0 ? '+' : '−'}${Math.abs(Hy).toFixed(1)}°` })
       ctx.font = YAZI
       const gen = ctx.measureText(metin).width + 14
       const hy = gy(H)
@@ -369,10 +372,10 @@ export default function GokyuzuGorunumu({
     cizIsteRef.current()
   }, [horizon, kutup, gorunum, merkezAz])
 
-  // Diğer görsel girdiler değişince yeniden çiz
+  // Diğer görsel girdiler (dil dahil) değişince yeniden çiz
   useEffect(() => {
     cizIsteRef.current()
-  }, [epsilon, sunTrail, earthTrail, yaklasik])
+  }, [epsilon, sunTrail, earthTrail, yaklasik, t])
 
   // Boyut + DPR
   useEffect(() => {
@@ -436,7 +439,7 @@ export default function GokyuzuGorunumu({
         onMouseMove={fareHareket}
         onMouseLeave={fareCikti}
         role="img"
-        aria-label={`Gökyüzü görünümü: Güneş yüksekliği ${fmt(sunAlt)}, azimut ${fmt(sunAz)}; Dünya yüksekliği ${fmt(earthAlt)}, azimut ${fmt(earthAz)}`}
+        aria-label={t('gokyuzu.aria', { gunesAlt: fmt(sunAlt), gunesAz: fmt(sunAz), dunyaAlt: fmt(earthAlt), dunyaAz: fmt(earthAz) })}
       />
     </div>
   )
@@ -544,9 +547,9 @@ function tasmaCiz(ctx, az, alt, renk, ek, gx, y0, y1, x0, x1) {
 }
 
 /** Sol üstte "Arazi hesaba katılmadı" rozeti (iki kipte de aynı yerde). */
-function rozetCiz(ctx, R, x0, y0) {
+function rozetCiz(ctx, R, x0, y0, t) {
   ctx.font = '500 11px Inter, ui-sans-serif, system-ui, sans-serif'
-  const metin = 'Arazi hesaba katılmadı'
+  const metin = t('ozel.duz.kisa')
   const gen = ctx.measureText(metin).width
   const bx = x0 + 8
   const by = y0 + 8
@@ -561,13 +564,13 @@ function rozetCiz(ctx, R, x0, y0) {
   ctx.fillText(metin, bx + 8, by + 10.5)
 }
 
-function aciklamaCiz(ctx, R, x1, y0) {
+function aciklamaCiz(ctx, R, x1, y0, t) {
   ctx.font = YAZI
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
   const ogeler = [
-    ['Güneş', R.gunes],
-    ['Dünya', R.iletisim],
+    [t('ortak.gunes'), R.gunes],
+    [t('ortak.dunya'), R.iletisim],
   ]
   const genislikler = ogeler.map(([ad]) => ctx.measureText(ad).width + 18)
   const toplam = genislikler.reduce((a, b) => a + b, 0) + 10
@@ -758,7 +761,7 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
   ctx.textBaseline = 'middle'
   for (const [az, yon] of [[0, 'K'], [90, 'D'], [180, 'G'], [270, 'B']]) {
     const [x, y] = kubbeKenarXY(g, az, Rk + 22)
-    ctx.fillText(yon, x, y + 0.5)
+    ctx.fillText(p.t(`ortak.yonler.${yon}`), x, y + 0.5)
   }
 
   // altMin'in altındaki cisimler: kenarın hemen dışında işaret + yükseklik etiketi
@@ -768,8 +771,8 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
   }
 
   // Lejant ve yaklaşık uyarısı panoramadaki yerlerinde
-  aciklamaCiz(ctx, R, w - KENAR.sag, KENAR.ust)
-  if (p.yaklasik) rozetCiz(ctx, R, KENAR.sol, KENAR.ust)
+  aciklamaCiz(ctx, R, w - KENAR.sag, KENAR.ust, p.t)
+  if (p.yaklasik) rozetCiz(ctx, R, KENAR.sol, KENAR.ust, p.t)
 
   // Fare: imlecin altındaki noktanın azimut ve yüksekliği
   if (fare) {
@@ -779,7 +782,7 @@ function kubbeCiz(ctx, { w, h, dpr, R, p, konum, fare }) {
     if (r <= Rk) {
       const alt = 90 - ((90 - altMin) * r) / Rk
       const az = mod360(Math.atan2(-dx, -dy) / DERECE)
-      const metin = `Az ${Math.round(az) % 360}° · yük. ${isaretli1(Math.round(alt * 10) / 10)}`
+      const metin = p.t('gokyuzu.yukseklikIpucu', { az: Math.round(az) % 360, yukseklik: isaretli1(Math.round(alt * 10) / 10) })
       ctx.font = YAZI
       const gen = ctx.measureText(metin).width + 14
       let lx = fare.x + 12

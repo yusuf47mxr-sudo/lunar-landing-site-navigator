@@ -239,23 +239,8 @@ export function enUzunAraliklar(f, c, tL, D, dtHours) {
   }
 }
 
-// --- Süre biçimleme -------------------------------------------------------
-
-/**
- * Saat cinsinden süreyi okunur metne çevirir.
- *   79 → "3 g 7 sa",  72 → "3 g",  11 → "11 sa",  11.5 → "11 sa 30 dk",  0.75 → "45 dk"
- * null / geçersiz değer → null (arayüz "veri aralığında değişmiyor" gösterir).
- */
-export function saatBicimle(saat) {
-  if (saat === null || saat === undefined || !Number.isFinite(saat) || saat < 0) return null
-  const dakika = Math.round(saat * 60)
-  if (dakika < 60) return `${dakika} dk`
-  const gun = Math.floor(dakika / 1440)
-  const sa = Math.floor((dakika % 1440) / 60)
-  const dk = dakika % 60
-  if (gun > 0) return sa > 0 ? `${gun} g ${sa} sa` : `${gun} g`
-  return dk > 0 ? `${sa} sa ${dk} dk` : `${sa} sa`
-}
+// --- Biçimleme -------------------------------------------------------------
+// Süre, yüzde ve tarih dile bağlıdır: src/dil/index.js bicim(dil) (b.sure, b.yuzde, b.tamSaat, b.tarih).
 
 /** Yükseklik açısı: +2.3° / −1.1° / 0.0° (bir ondalık, işaretli). Geçersizse "—". */
 export function dereceBicimle(v) {
@@ -263,12 +248,6 @@ export function dereceBicimle(v) {
   const y = Math.round(v * 10) / 10
   return `${y > 0 ? '+' : y < 0 ? '−' : ''}${Math.abs(y).toFixed(1)}°`
 }
-
-/** 0…1 oranı → "%82" */
-export const yuzdeBicimle = (v) => `%${Math.round(v * 100)}`
-
-/** Saat → "62 sa" (güne çevrilmez; tabloda karşılaştırması kolay) */
-export const tamSaatBicimle = (v) => `${Math.round(v)} sa`
 
 // --- Panorama merkezi -----------------------------------------------------
 

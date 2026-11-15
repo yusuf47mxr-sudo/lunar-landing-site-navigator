@@ -87,7 +87,33 @@ const AD = {
   chandrayaan3: 'Chandrayaan-3',
   slim: 'SLIM',
 }
+/** İngilizce arayüzde farklı olan kısa adlar (bolgeler.json "site_en"; anahtar yine "site"). */
+const AD_EN = {
+  im2_target: 'IM-2 Athena (target)',
+  im2_actual: 'IM-2 Athena (landing)',
+}
 const ARTEMIS_ACIKLAMA = 'Artemis III aday bölgesi · bölgedeki en iyi nokta'
+const ARTEMIS_ACIKLAMA_EN = 'Artemis III candidate region · best point in region'
+/** İngilizce açıklamalar (paketin name / group alanlarından). */
+const ACIKLAMA_EN = {
+  apollo11: 'First crewed landing, 1969',
+  apollo12: 'Oceanus Procellarum, 1969',
+  apollo14: 'Fra Mauro, 1971',
+  apollo15: 'Hadley-Apennine, 1971',
+  apollo16: 'Descartes Highlands, 1972',
+  apollo17: 'Taurus-Littrow, 1972',
+  im1_odysseus: 'Malapert A region, 2024',
+  im2_target: 'Mons Mouton, 2025 · intended site',
+  im2_actual: 'Mons Mouton, 2025 · actual landing site',
+  cp22_prospect: 'Mons Mouton plateau, CLPS candidate site',
+  blueghost1: 'Mare Crisium, 2025',
+  change3: 'Mare Imbrium, China, 2013',
+  change4: 'Far side, China, 2019',
+  change5: 'Near Mons Rümker, China, 2020',
+  change6: 'Far side, China, 2024',
+  chandrayaan3: 'Near the south pole, India, 2023',
+  slim: 'Shioli crater, Japan, 2024',
+}
 const ACIKLAMA = {
   apollo11: 'İlk insanlı iniş, 1969',
   apollo12: 'Oceanus Procellarum, 1969',
@@ -113,6 +139,7 @@ const tablodan = (tablo, s, ne) => {
 }
 const ad = (s) => tablodan(AD, s, 'kısa ad')
 const aciklama = (s) => (s.id.startsWith('a3_') ? ARTEMIS_ACIKLAMA : tablodan(ACIKLAMA, s, 'açıklama'))
+const aciklamaEn = (s) => (s.id.startsWith('a3_') ? ARTEMIS_ACIKLAMA_EN : tablodan(ACIKLAMA_EN, s, 'İngilizce açıklama'))
 /**
  * terrain_global alanlarda ufkun dayandığı DEM çözünürlüğü (m) — VERI_SOZLESMESI.md:
  * SLDEM2015 256 ppd ≈ 118 m; Chandrayaan-3 (60°G dışı) LOLA 128 ppd ≈ 237 m.
@@ -193,7 +220,9 @@ for (const s of sites) {
   bolgeler.push({
     site: ad(s),
     kategori: kategori(s),
+    site_en: AD_EN[s.id] ?? ad(s),
     aciklama: aciklama(s),
+    aciklama_en: aciklamaEn(s),
     lat: s.lat,
     lon: yuvarla(boylam360(s.lon), 6),
     file: dosya,

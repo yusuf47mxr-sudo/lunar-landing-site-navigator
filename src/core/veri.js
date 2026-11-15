@@ -7,6 +7,8 @@
 // Varsayılan yükleyici tarayıcıda fetch kullanır. Node betikleri
 // `yukleyiciAyarla` ile dosya sisteminden okuyan bir yükleyici verir.
 
+import { hataOlustur } from './hata.js'
+
 const ZAMAN_ALANLARI = ['sun_alt', 'sun_az', 'earth_alt', 'earth_az', 'sun_au']
 const EFEMERIS_ALANLARI = ['sun_sub_lat', 'sun_sub_lon', 'earth_sub_lat', 'earth_sub_lon', 'sun_au', 'earth_dist_km']
 
@@ -17,7 +19,7 @@ const tabanYol = () => {
 
 async function fetchIleOku(dosya) {
   const yanit = await fetch(tabanYol() + dosya)
-  if (!yanit.ok) throw new Error(`${dosya} yüklenemedi (HTTP ${yanit.status})`)
+  if (!yanit.ok) throw hataOlustur('hata.yuklenemedi', { dosya, durum: yanit.status }, `${dosya} could not be loaded (HTTP ${yanit.status})`)
   return yanit.json()
 }
 
@@ -89,7 +91,7 @@ export function alanYukle(site) {
     const bolgeler = await bolgeleriYukle()
     const kayit = bolgeler.find((b) => b.site === site)
     if (!kayit) throw new Error(`Bilinmeyen alan: ${site}`)
-    if (!kayit.file) throw new Error(`bolgeler.json'da "${site}" için "file" yok`)
+    if (!kayit.file) throw hataOlustur('hata.dosyaYok', { site }, `bolgeler.json: no "file" for "${site}"`)
     return alanHazirla(await jsonOku(kayit.file))
   })
 }

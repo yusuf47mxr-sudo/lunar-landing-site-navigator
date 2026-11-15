@@ -6,19 +6,15 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { useDil } from '../dil/index.js'
 import { useBolgeler, useDurum } from '../durum/store.js'
 
 /** "Artemis III aday bölgesi · bölgedeki en iyi nokta" → "Artemis III aday bölgesi" */
 export const kisaAciklama = (a) => (a ?? '').split(' · ')[0]
 
-export const KATEGORILER = [
-  { anahtar: 'artemis', baslik: 'Artemis' },
-  { anahtar: 'clps', baslik: 'CLPS' },
-  { anahtar: 'apollo', baslik: 'Apollo' },
-  { anahtar: 'uluslararasi', baslik: 'Uluslararası' },
-]
+/** Kategori sırası; başlık sözlükte: t(`kategori.${anahtar}`). */
+export const KATEGORILER = [{ anahtar: 'artemis' }, { anahtar: 'clps' }, { anahtar: 'apollo' }, { anahtar: 'uluslararasi' }]
 
-/** Arama için sadeleştirme: küçük harf, Türkçe/aksanlı harfler ve noktalama yok. */
 const SOLMA = 40 // şerit kenarındaki solma genişliği (px)
 
 /** Şeridin kenar maskesi: yalnızca o yönde gizli içerik varken solar. */
@@ -30,10 +26,11 @@ function solmaMaskesi({ sol, sag }) {
   return { WebkitMaskImage: m, maskImage: m }
 }
 
+/** Arama için sadeleştirme: küçük harf, Türkçe/aksanlı harfler ve noktalama yok. */
 export function aramaDuzle(s) {
   return s
     .toLocaleLowerCase('tr')
-    .replace(/ı/g, 'i')
+    .replace(/\u0131/g, 'i') // noktasız ı → i
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .replace(/['’]/g, '')
@@ -46,6 +43,7 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
   const { seciliAlan, ozelNokta, alanSec } = useDurum(
     useShallow((s) => ({ seciliAlan: s.seciliAlan, ozelNokta: s.ozelNokta, alanSec: s.alanSec })),
   )
+  const { t, ad, aciklama } = useDil()
   const yatay = yerlesim === 'yatay'
   const [arama, setArama] = useState('')
   const seritRef = useRef(null)
@@ -102,11 +100,13 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
     serit.scrollTo({ top: Math.max(0, ust), behavior })
   }, [yatay, bolgeler, seciliAlan])
 
-  if (hata) return <p className="text-uyari text-sm">Alan listesi yüklenemedi.</p>
+  if (hata) return <p className="text-uyari text-sm">{t('alanListesi.yuklenemedi')}</p>
   if (!bolgeler) return <div className={`h-[92px] ${className}`} aria-busy="true" />
 
   const aranan = yatay ? '' : aramaDuzle(arama)
-  const eslesir = (b) => !aranan || aramaDuzle(`${b.site} ${b.aciklama ?? ''}`).includes(aranan)
+  // Arama her iki dilde de iki adla (site, site_en) ve aktif dildeki açıklamayla eşleşir
+  const eslesir = (b) =>
+    !aranan || aramaDuzle(`${b.site} ${b.site_en ?? ''} ${aciklama(b) ?? ''}`).includes(aranan)
   const gruplar = KATEGORILER.map((k) => ({
     ...k,
     alanlar: bolgeler.filter((b) => b.kategori === k.anahtar && eslesir(b)),
@@ -115,7 +115,7 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
   const liste = (
     <nav
       ref={seritRef}
-      aria-label="İniş alanları"
+      aria-label={t('alanListesi.liste')}
       style={yatay ? solmaMaskesi(kenar) : undefined}
       className={
         yatay
@@ -129,7 +129,7 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
           <h3
             className={`mb-2 text-[11px] uppercase tracking-[0.18em] text-metin-solgun ${yatay ? 'sticky left-0 w-max' : ''}`}
           >
-            {g.baslik}
+            {t(`kategori.${g.anahtar}`)}
           </h3>
           <ul className={yatay ? 'flex gap-3' : 'flex flex-col gap-1.5'}>
             {g.alanlar.map((b) => {
@@ -148,10 +148,10 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
                     <span
                       className={`block truncate font-light tracking-wide text-metin ${yatay ? 'text-[15px]' : 'text-sm'}`}
                     >
-                      {b.site}
+                      {ad(b.site)}
                     </span>
                     {/* Kartta yalnız kısa açıklama ("·" öncesi); tamamı başlık altındaki satırda */}
-                    <span className="mt-0.5 block text-xs text-metin-solgun truncate">{kisaAciklama(b.aciklama)}</span>
+                    <span className="mt-0.5 block text-xs text-metin-solgun truncate">{kisaAciklama(aciklama(b))}</span>
                   </button>
                 </li>
               )
@@ -159,7 +159,7 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
           </ul>
         </section>
       ))}
-      {gruplar.length === 0 && <p className="py-4 text-sm text-metin-solgun">Eşleşen alan yok.</p>}
+      {gruplar.length === 0 && <p className="py-4 text-sm text-metin-solgun">{t('alanListesi.eslesmeYok')}</p>}
     </nav>
   )
 
@@ -170,8 +170,8 @@ export default function AlanListesi({ yerlesim = 'yatay', className = '' }) {
         type="search"
         value={arama}
         onChange={(e) => setArama(e.target.value)}
-        placeholder="Alan ara (ad veya açıklama)"
-        aria-label="Alan ara"
+        placeholder={t('alanListesi.aramaIpucu')}
+        aria-label={t('alanListesi.aramaEtiket')}
         className="mb-3 w-full shrink-0 rounded-lg border border-cizgi bg-zemin px-3 py-2 text-sm text-metin
           placeholder:text-metin-solgun/70 focus:border-iletisim/60 focus:outline-none"
       />

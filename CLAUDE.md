@@ -69,6 +69,11 @@ kütüphaneleri. Grafikler özel çizimdir, tam kontrol gerekir.
     planbModel.js     Paketin model.js'i (src/vendor/planb/, veri:donustur kopyalar); yalnız dinamik yüklenir
     inisIsci.js       Krater kartının iniş olasılığı işçisi (Web Worker; model.js landingOdds + hourly)
     inisPencere.js    Hızlı pencere hesabı ve öneri taraması (işçi ve scripts/inisDogrula.mjs ortak)
+    hata.js           hataOlustur(kod, params, ingilizce): kullanıcıya gösterilen hatalar dile bağımsız
+  /dil
+    index.js          useDil() → { dil, t, b, ad, aciklama }; ceviri(dil), bicim(dil), alanAdi, hataMetni
+    tr.js, en.js      Sözlükler (aynı anahtarlar; ad alanı = bileşen/konu)
+    ekler.js          Türkçe ek yardımcıları (yönelme, bulunma, iyelik; yalnız tr.js kullanır)
   /bilesenler
     GokyuzuGorunumu.jsx
     ZamanCizelgesi.jsx
@@ -195,7 +200,9 @@ anahtarıdır; dosya ve 3B eşleşmesi paket kimliğine (`id`) bağlıdır.
   {
     "site": "Apollo 11",
     "kategori": "apollo",
+    "site_en": "Apollo 11",
     "aciklama": "İlk insanlı iniş, 1969",
+    "aciklama_en": "First crewed landing, 1969",
     "lat": 0.6734,
     "lon": 23.4731,
     "file": "apollo11.json",
@@ -210,6 +217,9 @@ anahtarıdır; dosya ve 3B eşleşmesi paket kimliğine (`id`) bağlıdır.
 `kategori` değerleri: `artemis`, `apollo`, `clps`, `uluslararasi`. Paketteki
 gruptan: Artemis III → `artemis`; South pole missions → `clps`; Apollo →
 `apollo`; Other missions → Blue Ghost 1 `clps`, diğerleri `uluslararasi`.
+`site` anahtardır (depo, ozet.json, karşılaştırma); `site_en` yalnız İngilizce
+arayüzde GÖSTERİLEN ad (farklı olanlar: "IM-2 Athena (target)" / "(landing)").
+`aciklama_en` paketteki name / group'tan (dönüştürücüdeki `ACIKLAMA_EN`).
 `kaynak` koordinatın kaynağı (sites.json `source`). `arazi`: `terrain` (kutup
 LOLA/PGDA 5–20 m) ya da `terrain_global` (SLDEM2015 ≈ 118 m; Chandrayaan-3
 LOLA ≈ 237 m → `arazi_cozunurluk_m`). `terrain_global` alanlarda gökyüzü
@@ -451,6 +461,8 @@ sadece diziler yeniden taranır.
 {
   // Mod
   mod: 'temel' | 'orta' | 'ileri',
+
+  dil: 'tr' | 'en',         // localStorage 'ay-navigator-dil'; yoksa navigator.language 'tr…' → TR, değilse EN
 
   // Bağımsız değişkenler
   seciliAlan: 'Malapert Massif',
@@ -749,6 +761,20 @@ bölge taramasındaki en iyi noktadır; paket adı "… (best point)").
   sürer (`surucu={false}`).
 - **Türkçe isimlendirme.** Bileşen ve değişken adları Türkçe; JSON alan
   adları İngilizce (veri sözleşmesi öyle kararlaştırıldı).
+- **Arayüz iki dilli (TR / EN).** Kullanıcıya görünen HİÇBİR metin kodda
+  sabit yazılmaz: JSX metni, aria-label, title, placeholder, canvas ve 3B
+  etiketleri, hata mesajları `src/dil/tr.js` + `en.js`'ten `useDil().t` ile
+  gelir (React dışı kodda `ceviri(dil)` / `bicim(dil)` parametre olarak).
+  Biçimler `b`: tarih `b.tarih` ("26 Ocak 2027, 10:00 UTC" / "Jan 26, 2027,
+  10:00 UTC"), süre `b.sure` ("3 g 7 sa" / "3 d 7 h"), yüzde `b.yuzde`
+  ("%22" / "22%"); ondalık işaret iki dilde de nokta. Alan adı `ad(site)`,
+  açıklama `aciklama(kayit)`; özel nokta kimliği `@ozel:lat,lon` (gösterimde
+  "Özel nokta (…)" / "Custom point (…)"). Türkçe ekli cümleler sözlükte
+  fonksiyon (ekler.js), İngilizcesi ayrı şablon. CSV sütun adları İngilizce
+  sabit. Seçici "TR | EN" mod seçicinin yanında ve 3B tam ekran katmanında;
+  dil değişince alan, zaman, mod ve 3B sahne korunur. Denetim:
+  `npm run dil:denetle` — sözlük dışında (yorumlar hariç) Türkçe karakterli
+  satır 0 ve tr/en anahtarları eşit olmalı.
 - **Dosya boyutu.** Her alan ayrı JSON; sadece seçili alan yüklenir.
   Isı haritası `ozet.json`'dan beslenir.
 - **Yaklaşık veri işaretlenir.** `yaklasik: true` olan her alanda uyarı

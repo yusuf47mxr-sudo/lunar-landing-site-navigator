@@ -43,11 +43,25 @@ export const KART_BATARYALARI = [50, 100, 200] // saat
 export const karsilastirmaSutunlari = (s) =>
   s.ozelNokta ? s.karsilastirma : s.karsilastirma.filter((x) => x !== s.seciliAlan)
 
+/** Arayüz dili: localStorage'da hatırlanır; ilk açılışta tarayıcı dili 'tr' ile başlıyorsa TR, değilse EN. */
+export const DIL_ANAHTARI = 'ay-navigator-dil'
+function ilkDil() {
+  try {
+    const kayitli = globalThis.localStorage?.getItem(DIL_ANAHTARI)
+    if (kayitli === 'tr' || kayitli === 'en') return kayitli
+  } catch {
+    // depolama kapalı (gizli pencere vb.)
+  }
+  const tarayici = globalThis.navigator?.language ?? ''
+  return tarayici.toLowerCase().startsWith('tr') ? 'tr' : 'en'
+}
+
 const izinli = (deger, liste, eski) => (liste.includes(deger) ? deger : eski)
 
 export const useDurum = create((set) => ({
-  // Mod
+  // Mod ve dil
   mod: 'temel',
+  dil: ilkDil(), // 'tr' | 'en'
 
   // Bağımsız değişkenler
   seciliAlan: 'Malapert Massif',
@@ -73,6 +87,16 @@ export const useDurum = create((set) => ({
 
   // --- Eylemler -----------------------------------------------------------
   modSec: (mod) => set((s) => ({ mod: izinli(mod, MODLAR, s.mod) })),
+  dilSec: (dil) =>
+    set((s) => {
+      const yeni = izinli(dil, ['tr', 'en'], s.dil)
+      try {
+        globalThis.localStorage?.setItem(DIL_ANAHTARI, yeni)
+      } catch {
+        // depolama kapalı: dil yalnız bu oturumda geçerli
+      }
+      return { dil: yeni }
+    }),
   alanSec: (seciliAlan) => set({ seciliAlan, ozelNokta: null }),
   ozelNoktaSec: (ozelNokta) => set({ ozelNokta }),
   karsilastirmaDegistir: (site) =>

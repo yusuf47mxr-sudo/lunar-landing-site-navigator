@@ -4,6 +4,8 @@
 // bir kez indirilir. Biçim model.js demSample/horizonFromDem'in beklediği:
 // { width, height, pixel_m, x0, y0, z: Int16Array (m) }.
 
+import { hataOlustur } from './hata.js'
+
 const tabanYol = () => {
   const taban = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
   return `${taban.replace(/\/?$/, '/')}veri/3b/`
@@ -19,11 +21,11 @@ export function kutupDemYukle() {
   if (!soz) {
     soz = Promise.all([
       fetch(tabanYol() + 'dem_south_400m.json').then((y) => {
-        if (!y.ok) throw new Error(`Kutup DEM bilgisi yüklenemedi (HTTP ${y.status})`)
+        if (!y.ok) throw hataOlustur('hata.yuklenemedi', { dosya: 'dem_south_400m.json', durum: y.status }, `Polar DEM header could not be loaded (HTTP ${y.status})`)
         return y.json()
       }),
       fetch(tabanYol() + 'dem_south_400m.bin').then((y) => {
-        if (!y.ok) throw new Error(`Kutup DEM'i yüklenemedi (HTTP ${y.status})`)
+        if (!y.ok) throw hataOlustur('hata.yuklenemedi', { dosya: 'dem_south_400m.bin', durum: y.status }, `Polar DEM could not be loaded (HTTP ${y.status})`)
         return y.arrayBuffer()
       }),
     ])

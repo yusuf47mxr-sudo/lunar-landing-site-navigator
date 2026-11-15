@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import { DataTexture, LinearFilter, LinearMipmapLinearFilter, RedFormat, RepeatWrapping, RGBAFormat, SRGBColorSpace, TextureLoader } from 'three'
+import { hataOlustur } from '../../core/hata.js'
 import { png16Coz } from './png16.js'
 import { AY_YARICAP_KM, KURE_ABARTI } from './kure.js'
 
@@ -32,7 +33,7 @@ function yukseklikYukle() {
       const [bilgi, png] = await Promise.all([
         fetch(tabanYol() + 'moon_textures.json').then((y) => y.json()),
         fetch(tabanYol() + YUKSEKLIK_DOSYASI).then((y) => {
-          if (!y.ok) throw new Error(`Ay yükseklik haritası yüklenemedi (HTTP ${y.status})`)
+          if (!y.ok) throw hataOlustur('kure.hata.yukseklik', { durum: y.status }, `Moon height map could not be loaded (HTTP ${y.status})`)
           return y.arrayBuffer()
         }),
       ])
@@ -126,7 +127,7 @@ function renkYukle(ad) {
         coz(t)
       },
       undefined,
-      () => red(new Error(`Ay dokusu yüklenemedi: ${ad}`)),
+      () => red(hataOlustur('kure.hata.doku', { dosya: ad }, `Moon texture could not be loaded: ${ad}`)),
     )
   })
 }

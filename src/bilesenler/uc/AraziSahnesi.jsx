@@ -18,6 +18,7 @@ import { Bloom, EffectComposer, ToneMapping } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PCFShadowMap } from 'three'
+import { useDil } from '../../dil/index.js'
 import { useBolgeler } from '../../durum/store.js'
 import Secenekler from '../Secenekler.jsx'
 import Arazi, { NEVER_LIT_RENK, zeminOlustur } from './Arazi.jsx'
@@ -86,12 +87,8 @@ function GolgeOlcer({ onYavas }) {
   return null
 }
 
-const KAMERA_SECENEKLERI = [
-  { deger: 'yerden', etiket: 'Yerden' },
-  { deger: 'kus', etiket: 'Kuş bakışı' },
-  { deger: 'gunes', etiket: "Güneş'e bak" },
-  { deger: 'dunya', etiket: "Dünya'ya bak" },
-]
+/** Kamera kipleri; etiket render'da sözlükten (sahne.kamera.<kip>). */
+const KAMERA_KIPLERI = ['yerden', 'kus', 'gunes', 'dunya']
 const ABARTI_SECENEKLERI = ABARTILAR.map((a) => ({ deger: a, etiket: `${a}×` }))
 
 /**
@@ -105,6 +102,7 @@ const ABARTI_SECENEKLERI = ABARTILAR.map((a) => ({ deger: a, etiket: `${a}×` })
 export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hud = '', acilisUcusu = false }) {
   const { alan, horizon, sunAlt, sunAz, earthAlt, earthAz, kutup, yaklasik } = anlik
   const { bolgeler } = useBolgeler()
+  const { t } = useDil()
   // null: özel koordinat (düz zemin); "kaba:…": 80°G içi özel koordinat (400 m DEM'den kaba arazi);
   // undefined: liste ya da alan verisi henüz yüklenmedi (bekle)
   const dosya = yaklasik
@@ -164,9 +162,9 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
   const etiketler = useMemo(
     () =>
       arazi
-        ? sahneEtiketleri({ arazi, abarti, r: PUSULA_YARICAP[kip], kip, earthAz, earthAlt, sunAz, sunAlt, c })
+        ? sahneEtiketleri({ arazi, abarti, r: PUSULA_YARICAP[kip], kip, earthAz, earthAlt, sunAz, sunAlt, c, t })
         : [],
-    [arazi, abarti, kip, earthAz, earthAlt, sunAz, sunAlt, c],
+    [arazi, abarti, kip, earthAz, earthAlt, sunAz, sunAlt, c, t],
   )
   const ogeler = useRef({})
 
@@ -216,13 +214,14 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
   }
 
   const karanlik = f <= KARANLIK_ESIK
-  const karanlikNot = sunAlt + 0.266 < 0 ? 'Güneş ufkun altında' : 'Güneş uzaktaki arazinin arkasında'
+  const karanlikNot = t(sunAlt + 0.266 < 0 ? 'sahne.karanlik.ufukAltinda' : 'sahne.karanlik.araziArkasinda')
+  const kameraSecenekleri = KAMERA_KIPLERI.map((k) => ({ deger: k, etiket: t(`sahne.kamera.${k}`) }))
   const neverLitVar = !!arazi?.neverLit && arazi.neverLit.values.some((v) => v === 1)
 
   return (
     <div ref={kapsayici} className="relative h-full w-full overflow-hidden bg-zemin" data-yerel-sahne="">
       {!arazi ? (
-        <Iskelet metin={hata ? 'Arazi verisi yüklenemedi' : 'Arazi verisi yükleniyor…'} />
+        <Iskelet metin={t(hata ? 'sahne.yuklenemedi' : 'sahne.yukleniyor')} />
       ) : (
         <HataSiniri onHata={onHata}>
           <Canvas
@@ -319,12 +318,8 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
       {/* Sol alt: (ML katmanları) (yerden notu) kamera ve düşey abartı */}
       <div className={`absolute bottom-3 left-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2 ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
         {ml && (
-          <div role="group" aria-label="ML katmanları" data-ml-dugmeler="" className="flex w-full flex-wrap items-center gap-1.5">
-            {[
-              ['foto', 'Fotoğraf'],
-              ['krater', 'Küçük kraterler (ML)'],
-              ['tehlike', 'Tehlike'],
-            ].map(([ad, etiket]) => (
+          <div role="group" aria-label={t('sahne.mlKatmanlari')} data-ml-dugmeler="" className="flex w-full flex-wrap items-center gap-1.5">
+            {['foto', 'krater', 'tehlike'].map((ad) => (
               <button
                 key={ad}
                 type="button"
@@ -334,18 +329,18 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
                   katman[ad] ? 'border-gunes/70 bg-yuzey-acik text-metin' : 'border-cizgi bg-zemin/70 text-metin-solgun hover:text-metin'
                 }`}
               >
-                {etiket}
+                {t(`sahne.katman.${ad}`)}
               </button>
             ))}
             {katman.krater && (
               <Secenekler
                 secenekler={[
                   { deger: false, etiket: 'D ≥ 20 m' },
-                  { deger: true, etiket: 'tümü (≥ 10 m)' },
+                  { deger: true, etiket: t('sahne.kraterTumu') },
                 ]}
                 deger={kraterTumu}
                 onSec={setKraterTumu}
-                etiket="Krater boyutu"
+                etiket={t('sahne.kraterBoyutu')}
                 kucuk
                 className="bg-zemin/70"
               />
@@ -354,12 +349,12 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
         )}
         {kip === 'yerden' && (
           <p data-yerden-not="" className="pointer-events-none w-full text-[11px] tracking-wide text-metin-solgun">
-            Ay'da hava olmadığı için gölgeler tam karanlık.
+            {t('sahne.yerdenNot')}
           </p>
         )}
-        <Secenekler secenekler={KAMERA_SECENEKLERI} deger={komut.tip === 'foto' ? 'kus' : komut.tip} onSec={kamera} etiket="Kamera" kucuk className="bg-zemin/70" />
-        <Secenekler secenekler={ABARTI_SECENEKLERI} deger={abarti} onSec={setAbarti} etiket="Düşey abartı" kucuk className="bg-zemin/70" />
-        {kutup && abarti === 1 && <span className="text-[11px] text-metin-solgun">kutupta 2× önerilir</span>}
+        <Secenekler secenekler={kameraSecenekleri} deger={komut.tip === 'foto' ? 'kus' : komut.tip} onSec={kamera} etiket={t('sahne.kamera.etiket')} kucuk className="bg-zemin/70" />
+        <Secenekler secenekler={ABARTI_SECENEKLERI} deger={abarti} onSec={setAbarti} etiket={t('sahne.abarti')} kucuk className="bg-zemin/70" />
+        {kutup && abarti === 1 && <span className="text-[11px] text-metin-solgun">{t('sahne.abartiOneri')}</span>}
       </div>
 
       {/* Sağ alt: açıklamalar */}
@@ -367,25 +362,25 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
         {neverLitVar && (
           <span className="flex items-center gap-1.5 rounded-md bg-zemin/70 px-2 py-0.5">
             <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: NEVER_LIT_RENK, opacity: 0.7 }} />
-            18 yılda hiç güneş almayan bölge
+            {t('sahne.neverLit')}
           </span>
         )}
-        {arazi?.duz && <span className="rounded-md bg-zemin/70 px-2 py-0.5 text-uyari">Arazi verisi yok: düz zemin</span>}
+        {arazi?.duz && <span className="rounded-md bg-zemin/70 px-2 py-0.5 text-uyari">{t('sahne.duz')}</span>}
         {arazi?.kaba && (
           <span data-kaba-arazi="" className="rounded-md bg-zemin/70 px-2 py-0.5 text-uyari">
-            Kaba arazi: 400 m kutup DEM'i (küçük tepeler görünmez)
+            {t('sahne.kaba')}
           </span>
         )}
         {/* ML açıklaması, katman açıklamaları ve krediler */}
         {mlAcik && (
           <div data-ml-aciklama="" className="max-w-[360px] rounded-md bg-zemin/80 px-2.5 py-1.5 text-right leading-snug">
-            {katman.foto && <p className="text-metin/85">LROC NAC fotoğrafı (ışık fotoğraftan, sahne ışığından bağımsız)</p>}
-            {(katman.krater || katman.tehlike) && <p className={`text-metin/85 ${katman.foto ? 'mt-1' : ''}`}>{mlAciklamasi(mlVeri.veri, mlVeri.kalibrasyon)}</p>}
+            {katman.foto && <p className="text-metin/85">{t('sahne.fotoAciklama')}</p>}
+            {(katman.krater || katman.tehlike) && <p className={`text-metin/85 ${katman.foto ? 'mt-1' : ''}`}>{mlAciklamasi(mlVeri.veri, mlVeri.kalibrasyon, t)}</p>}
             {katman.krater && (
               <>
-                <p className="mt-1">ML kraterleri ({kraterTumu ? 'D ≥ 10 m' : 'D ≥ 20 m'}, {kraterler.length}) · tıklayın: ayrıntı</p>
+                <p className="mt-1">{t('sahne.kraterAciklama', { esik: kraterTumu ? 'D ≥ 10 m' : 'D ≥ 20 m', sayi: kraterler.length })}</p>
                 <div className="mt-0.5 flex items-center justify-end gap-1.5" data-guven-seridi="">
-                  <span>ML güven skoru 0.2</span>
+                  <span>{t('sahne.guvenSkoru')} 0.2</span>
                   <span className="inline-block h-2.5 w-24 rounded-sm" style={{ background: GUVEN_SERIDI }} />
                   <span>1.0</span>
                 </div>
@@ -393,7 +388,7 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
             )}
             {katman.tehlike && (
               <>
-                <p className="mt-1">Tehlike: iniş ayağının krater payı g (100 m hücre)</p>
+                <p className="mt-1">{t('sahne.tehlikeAciklama')}</p>
                 <div className="mt-0.5 flex items-center justify-end gap-1.5">
                   <span>0</span>
                   <span
@@ -405,13 +400,13 @@ export default function AraziSahnesi({ anlik, f, c, onHata, tamEkran = false, hu
                   />
                   <span>≥ 0.5</span>
                 </div>
-                <p className="mt-0.5">g &lt; 0.10 neredeyse saydam · 0.10–0.30 açık turuncu · ≥ 0.30 koyu turuncu-kırmızı</p>
+                <p className="mt-0.5">{t('sahne.tehlikeOlcek')}</p>
                 <p className="mt-0.5 flex items-center justify-end gap-1.5">
                   <span
                     className="inline-block h-2.5 w-6 rounded-sm"
                     style={{ background: 'repeating-linear-gradient(135deg, rgba(200,206,214,0.95) 0 3px, rgba(120,128,140,0.35) 3px 7px)' }}
                   />
-                  unknown — shadowed, ML can&apos;t see (bilinmiyor, güvenli değil)
+                  {t('sahne.bilinmiyor')}
                 </p>
               </>
             )}

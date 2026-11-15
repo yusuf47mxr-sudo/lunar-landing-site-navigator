@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { useDil } from '../dil/index.js'
 import { useDurum } from '../durum/store.js'
 
 const sayiOku = (metin) => {
@@ -13,15 +14,15 @@ const sayiOku = (metin) => {
   return m === '' ? NaN : Number(m)
 }
 
-/** Giriş metinlerini çözer. Geçerliyse lat/lon ([0, 360)), değilse hata metinleri. */
+/** Giriş metinlerini çözer. Geçerliyse lat/lon ([0, 360)), değilse hata sözlük anahtarları (t ile çevrilir). */
 export function koordinatCoz(enlemMetin, boylamMetin) {
   const lat = sayiOku(enlemMetin)
   const hamLon = sayiOku(boylamMetin)
-  const enlemHata = Number.isFinite(lat) && lat >= -90 && lat <= 90 ? null : 'Enlem −90 ile 90 arasında olmalı.'
+  const enlemHata = Number.isFinite(lat) && lat >= -90 && lat <= 90 ? null : 'ozelKoordinat.enlemHata'
   const boylamHata =
     Number.isFinite(hamLon) && hamLon >= -180 && hamLon <= 360
       ? null
-      : 'Boylam 0…360 ya da −180…180 arasında olmalı.'
+      : 'ozelKoordinat.boylamHata'
   // Sadece gerektiğinde sar: 23.473 olduğu gibi kalsın (kayan nokta artığı olmasın)
   const lon = boylamHata ? null : hamLon < 0 ? Math.round((hamLon + 360) * 1e6) / 1e6 : hamLon === 360 ? 0 : hamLon
   return { lat: enlemHata ? null : lat, lon, enlemHata, boylamHata }
@@ -65,7 +66,8 @@ export default function OzelKoordinat({ className = '' }) {
   )
   const [enlem, setEnlem] = useState(() => baslangicMetni(ozelNokta).enlem)
   const [boylam, setBoylam] = useState(() => baslangicMetni(ozelNokta).boylam)
-  const [hata, setHata] = useState({ enlem: null, boylam: null })
+  const [hata, setHata] = useState({ enlem: null, boylam: null }) // sözlük anahtarları
+  const { t } = useDil()
 
   // Girişler depoyu izler:
   //  - Listeden bir alan seçilince (ozelNokta yok) girişler boşalır; eski
@@ -100,7 +102,7 @@ export default function OzelKoordinat({ className = '' }) {
     <form onSubmit={goster} noValidate className={className}>
       <div className="flex items-end gap-2">
         <Giris
-          etiket="Enlem (°)"
+          etiket={t('ozelKoordinat.enlem')}
           deger={enlem}
           onDegis={(v) => {
             setEnlem(v)
@@ -111,7 +113,7 @@ export default function OzelKoordinat({ className = '' }) {
           kimlik="ozel-enlem-hata"
         />
         <Giris
-          etiket="Boylam (°)"
+          etiket={t('ozelKoordinat.boylam')}
           deger={boylam}
           onDegis={(v) => {
             setBoylam(v)
@@ -126,22 +128,21 @@ export default function OzelKoordinat({ className = '' }) {
           className="shrink-0 rounded-lg border border-gunes/70 bg-gunes/10 px-4 py-2 text-sm tracking-wide text-gunes
             transition-colors hover:bg-gunes/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60"
         >
-          Göster
+          {t('ozelKoordinat.goster')}
         </button>
       </div>
       {hata.enlem && (
         <p id="ozel-enlem-hata" role="alert" className="mt-1.5 text-xs text-uyari">
-          {hata.enlem}
+          {t(hata.enlem)}
         </p>
       )}
       {hata.boylam && (
         <p id="ozel-boylam-hata" role="alert" className="mt-1.5 text-xs text-uyari">
-          {hata.boylam}
+          {t(hata.boylam)}
         </p>
       )}
       <p className="mt-2 text-xs text-metin-solgun">
-        80°G'nin güneyinde ufuk 400 m kutup arazisinden kaba olarak hesaplanır; diğer yerlerde düz kabul edilir.
-        Doğru arazi yalnızca listedeki alanlarda var.
+        {t('ozelKoordinat.not')}
       </p>
     </form>
   )

@@ -2,10 +2,6 @@
 // Node'da da çalışır. İndirme işini DisaAktar.jsx yapar.
 
 export const CSV_SUTUNLARI = ['tarih_utc', 'sun_alt', 'sun_az', 'earth_alt', 'earth_az', 'f', 'c', 'P_W']
-import { ozelNoktaNotu } from './ozelNokta.js'
-
-/** Düz ufuklu özel nokta için CSV ilk satırı (kaba ufukta ozelNoktaNotu().csv). */
-export const YAKLASIK_YORUMU = '# Arazi hesaba katılmadı'
 
 /** Zaman adımının UTC damgası: "2027-01-01T00:00:00Z" */
 const tarihUtc = (t0ms, k, dt) => new Date(t0ms + k * dt * 3600e3).toISOString().replace('.000Z', 'Z')
@@ -13,18 +9,20 @@ const tarihUtc = (t0ms, k, dt) => new Date(t0ms + k * dt * 3600e3).toISOString()
 /**
  * [bas, son) aralığını CSV metnine çevirir. Her zaman adımı bir satır.
  * Açılar 2, f 3, P 2 ondalık; c 0 ya da 1.
- * alan.yaklasik ise ilk satır yorumdur ("# Arazi hesaba katılmadı").
+ * alan.yaklasik ise ilk satır yorumdur (`not`: ozelNoktaNotu(alan, t).csv, ör.
+ * "# Terrain not included"). Sütun adları dile bağlı DEĞİL (İngilizce sabit).
  * @param {object} alan  bölüm 4.1 yapısında alan nesnesi
  * @param {Float32Array} f
  * @param {Float32Array} c
  * @param {Float32Array} P  anlık güç (W)
  * @param {number} bas  ilk indeks (dahil)
  * @param {number} son  son indeks (hariç)
+ * @param {string} [not]  yaklaşık alanda ilk satır (yorum)
  */
-export function csvUret(alan, f, c, P, bas, son) {
+export function csvUret(alan, f, c, P, bas, son, not) {
   const t0ms = Date.parse(alan.t0)
   const satirlar = []
-  if (alan.yaklasik) satirlar.push(ozelNoktaNotu(alan).csv)
+  if (alan.yaklasik && not) satirlar.push(not)
   satirlar.push(CSV_SUTUNLARI.join(','))
   const b = Math.max(0, bas)
   const s = Math.min(alan.n, son)

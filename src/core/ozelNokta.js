@@ -10,21 +10,17 @@ import { altAzDizi } from './efemeris.js'
 import { KUTUP_DEM_ENLEM } from './kutupDem.js'
 import { UFUK_YON_SAYISI } from './sabitler.js'
 
-export const OZEL_NOKTA_UYARISI =
-  'Arazi hesaba katılmadı — ufuk düz kabul edildi. Gerçek değerler farklı olabilir.'
+// Uyarı metinleri sözlükte (dil/: ozel.*). Kaba ufuk uyarısının sayıları paketin
+// ENTEGRASYON_REHBERI §5'inden: Haworth ızgarasında 14 günlük pencerede kaba hesap
+// Güneş %'sini ortalama +7.9 puan fazla buluyor, RMSE 11.7 puan.
 
 /**
- * Kaba ufuk uyarısı. Sayılar paketin ENTEGRASYON_REHBERI §5'inden: Haworth
- * ızgarasında 14 günlük pencerede kaba hesap Güneş %'sini ortalama +7.9 puan
- * fazla buluyor, RMSE 11.7 puan.
+ * Özel nokta için kısa etiket, uzun uyarı ve CSV ilk satırı (ufuk kaynağına göre).
+ * @param {(anahtar: string) => string} t  dil/ ceviri fonksiyonu
  */
-export const KABA_UFUK_UYARISI = 'Kaba tahmin: 400 m arazi; Güneş % ortalama +8 puan fazla çıkabilir (RMSE 12).'
-
-/** Özel nokta için kısa etiket ve uzun uyarı (ufuk kaynağına göre). */
-export function ozelNoktaNotu(alan) {
-  return alan?.ufukKaynagi === 'dem400'
-    ? { kisa: 'Kaba ufuk (400 m arazi)', uzun: KABA_UFUK_UYARISI, csv: '# Kaba ufuk: 400 m kutup DEM (Güneş % ort. +8 puan fazla, RMSE 12)' }
-    : { kisa: 'Arazi hesaba katılmadı', uzun: OZEL_NOKTA_UYARISI, csv: '# Arazi hesaba katılmadı' }
+export function ozelNoktaNotu(alan, t) {
+  const tur = alan?.ufukKaynagi === 'dem400' ? 'kaba' : 'duz'
+  return { kisa: t(`ozel.${tur}.kisa`), uzun: t(`ozel.${tur}.uzun`), csv: t(`ozel.${tur}.csv`) }
 }
 
 /** Bu enlemde kaba ufuk hesaplanabilir mi (kutup DEM'inin içinde). */
@@ -49,9 +45,14 @@ export function kabaUfuklar(Model, dem, lat, lon) {
 
 const DIREK_YUKSEKLIKLERI = [0, 2, 10]
 
-/** Özel noktanın görünen adı, ör. "Özel nokta (0.67°, 23.47°)". */
+/**
+ * Özel noktanın kimliği (alan.site), ör. "@ozel:0.67,23.47". Dile bağımsızdır;
+ * görünen ad dil/index.js alanAdi() ile "Özel nokta (0.67°, 23.47°)" /
+ * "Custom point (0.67°, 23.47°)" olur.
+ */
+export const OZEL_ON_EK = '@ozel:'
 export function ozelNoktaAdi(lat, lon) {
-  return `Özel nokta (${lat.toFixed(2)}°, ${lon.toFixed(2)}°)`
+  return `${OZEL_ON_EK}${lat.toFixed(2)},${lon.toFixed(2)}`
 }
 
 /**
@@ -62,8 +63,8 @@ export function ozelNoktaAdi(lat, lon) {
  * @returns bölüm 4.1 yapısında alan nesnesi (diziler Float32Array) + yaklasik: true + ufukKaynagi
  */
 export function ozelNoktaOlustur(lat, lon, efemeris, kaba = null) {
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90) throw new RangeError(`Geçersiz enlem: ${lat}`)
-  if (!Number.isFinite(lon)) throw new RangeError(`Geçersiz boylam: ${lon}`)
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) throw Object.assign(new RangeError(`Invalid latitude: ${lat}`), { kod: 'hata.gecersizEnlem', params: { deger: lat } })
+  if (!Number.isFinite(lon)) throw Object.assign(new RangeError(`Invalid longitude: ${lon}`), { kod: 'hata.gecersizBoylam', params: { deger: lon } })
   const boylam = ((lon % 360) + 360) % 360
 
   const gunes = altAzDizi(lat, boylam, efemeris.sun_sub_lat, efemeris.sun_sub_lon)

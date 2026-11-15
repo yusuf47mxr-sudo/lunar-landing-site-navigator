@@ -2,7 +2,9 @@
   {
     "site": "Nobile Rim 2",
     "kategori": "artemis",
+    "site_en": "Nobile Rim 2",
     "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "aciklama_en": "Artemis III candidate region · best point in region",
     "lat": -83.57026,
     "lon": 58.40644,
     "file": "a3_nobile_rim_2.json",
@@ -14,7 +16,9 @@
   {
     "site": "Mons Mouton",
     "kategori": "artemis",
+    "site_en": "Mons Mouton",
     "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "aciklama_en": "Artemis III candidate region · best point in region",
     "lat": -85.47775,
     "lon": 31.28605,
     "file": "a3_mons_mouton.json",
@@ -26,7 +30,9 @@
   {
     "site": "Malapert Massif",
     "kategori": "artemis",
+    "site_en": "Malapert Massif",
     "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "aciklama_en": "Artemis III candidate region · best point in region",
     "lat": -85.96708,
     "lon": 357.7749,
     "file": "a3_malapert_massif.json",
@@ -38,7 +44,9 @@
   {
     "site": "de Gerlache Rim 2",
     "kategori": "artemis",
+    "site_en": "de Gerlache Rim 2",
     "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "aciklama_en": "Artemis III candidate region · best point in region",
     "lat": -88.44309,
     "lon": 292.08307,
     "file": "a3_de_gerlache_rim_2.json",
@@ -50,7 +58,9 @@
   {
     "site": "Mons Mouton Plateau",
     "kategori": "artemis",
+    "site_en": "Mons Mouton Plateau",
     "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "aciklama_en": "Artemis III candidate region · best point in region",
     "lat": -84.56381,
     "lon": 39.41683,
     "file": "a3_mons_mouton_plateau.json",
@@ -62,7 +72,9 @@
   {
     "site": "Slater Plain",
     "kategori": "artemis",
+    "site_en": "Slater Plain",
     "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "aciklama_en": "Artemis III candidate region · best point in region",
     "lat": -87.23527,
     "lon": 127.24334,
     "file": "a3_slater_plain.json",
@@ -74,7 +86,9 @@
   {
     "site": "Peak near Cabeus B",
     "kategori": "artemis",
+    "site_en": "Peak near Cabeus B",
     "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "aciklama_en": "Artemis III candidate region · best point in region",
     "lat": -83.48365,
     "lon": 291.7351,
     "file": "a3_peak_near_cabeus_b.json",
@@ -86,7 +100,9 @@
   {
     "site": "Nobile Rim 1",
     "kategori": "artemis",
+    "site_en": "Nobile Rim 1",
     "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "aciklama_en": "Artemis III candidate region · best point in region",
     "lat": -85.00925,
     "lon": 38.0062,
     "file": "a3_nobile_rim_1.json",
@@ -98,7 +114,9 @@
   {
     "site": "Haworth",
     "kategori": "artemis",
+    "site_en": "Haworth",
     "aciklama": "Artemis III aday bölgesi · bölgedeki en iyi nokta",
+    "aciklama_en": "Artemis III candidate region · best point in region",
     "lat": -86.32223,
     "lon": 336.81826,
     "file": "a3_haworth.json",
@@ -110,7 +128,9 @@
   {
     "site": "Apollo 11",
     "kategori": "apollo",
+    "site_en": "Apollo 11",
     "aciklama": "İlk insanlı iniş, 1969",
+    "aciklama_en": "First crewed landing, 1969",
     "lat": 0.67416,
     "lon": 23.47314,
     "file": "apollo11.json",
@@ -122,7 +142,9 @@
   {
     "site": "Apollo 17",
     "kategori": "apollo",
+    "site_en": "Apollo 17",
     "aciklama": "Taurus-Littrow, 1972",
+    "aciklama_en": "Taurus-Littrow, 1972",
     "lat": 20.1911,
     "lon": 30.7723,
     "file": "apollo17.json",
@@ -134,7 +156,9 @@
   {
     "site": "Apollo 12",
     "kategori": "apollo",
+    "site_en": "Apollo 12",
     "aciklama": "Oceanus Procellarum, 1969",
+    "aciklama_en": "Oceanus Procellarum, 1969",
     "lat": -3.0128,
     "lon": 336.5781,
     "file": "apollo12.json",
@@ -146,7 +170,9 @@
   {
     "site": "Apollo 14",
     "kategori": "apollo",
+    "site_en": "Apollo 14",
     "aciklama": "Fra Mauro, 1971",
+    "aciklama_en": "Fra Mauro, 1971",
     "lat": -3.64589,
     "lon": 342.52806,
     "file": "apollo14.json",
@@ -158,7 +184,9 @@
   {
     "site": "Apollo 15",
     "kategori": "apollo",
+    "site_en": "Apollo 15",
     "aciklama": "Hadley-Apennine, 1971",
+    "aciklama_en": "Hadley-Apennine, 1971",
     "lat": 26.13239,
     "lon": 3.6333,
     "file": "apollo15.json",
@@ -170,7 +198,9 @@
   {
     "site": "Apollo 16",
     "kategori": "apollo",
+    "site_en": "Apollo 16",
     "aciklama": "Descartes, 1972",
+    "aciklama_en": "Descartes Highlands, 1972",
     "lat": -8.9734,
     "lon": 15.5011,
     "file": "apollo16.json",
@@ -182,7 +212,9 @@
   {
     "site": "IM-2 Athena (hedef)",
     "kategori": "clps",
+    "site_en": "IM-2 Athena (target)",
     "aciklama": "Mons Mouton, 2025 · hedeflenen nokta",
+    "aciklama_en": "Mons Mouton, 2025 · intended site",
     "lat": -84.78,
     "lon": 29.13,
     "file": "im2_target.json",
@@ -194,7 +226,9 @@
   {
     "site": "IM-2 Athena (iniş)",
     "kategori": "clps",
+    "site_en": "IM-2 Athena (landing)",
     "aciklama": "Mons Mouton, 2025 · gerçek iniş noktası",
+    "aciklama_en": "Mons Mouton, 2025 · actual landing site",
     "lat": -84.7906,
     "lon": 29.1957,
     "file": "im2_actual.json",
@@ -206,7 +240,9 @@
   {
     "site": "CP-22",
     "kategori": "clps",
+    "site_en": "CP-22",
     "aciklama": "Mons Mouton platosu, CLPS aday noktası",
+    "aciklama_en": "Mons Mouton plateau, CLPS candidate site",
     "lat": -84.496,
     "lon": 31.588,
     "file": "cp22_prospect.json",
@@ -218,7 +254,9 @@
   {
     "site": "IM-1 Odysseus",
     "kategori": "clps",
+    "site_en": "IM-1 Odysseus",
     "aciklama": "Malapert A yakını, 2024",
+    "aciklama_en": "Malapert A region, 2024",
     "lat": -80.13,
     "lon": 1.44,
     "file": "im1_odysseus.json",
@@ -230,7 +268,9 @@
   {
     "site": "Blue Ghost 1",
     "kategori": "clps",
+    "site_en": "Blue Ghost 1",
     "aciklama": "Mare Crisium, 2025",
+    "aciklama_en": "Mare Crisium, 2025",
     "lat": 18.562,
     "lon": 61.81,
     "file": "blueghost1.json",
@@ -242,7 +282,9 @@
   {
     "site": "Chandrayaan-3",
     "kategori": "uluslararasi",
+    "site_en": "Chandrayaan-3",
     "aciklama": "Güney kutbu yakını, Hindistan, 2023",
+    "aciklama_en": "Near the south pole, India, 2023",
     "lat": -69.3741,
     "lon": 32.32,
     "file": "chandrayaan3.json",
@@ -254,7 +296,9 @@
   {
     "site": "Chang'e 4",
     "kategori": "uluslararasi",
+    "site_en": "Chang'e 4",
     "aciklama": "Uzak yüz, Çin, 2019",
+    "aciklama_en": "Far side, China, 2019",
     "lat": -45.4561,
     "lon": 177.5885,
     "file": "change4.json",
@@ -266,7 +310,9 @@
   {
     "site": "Chang'e 6",
     "kategori": "uluslararasi",
+    "site_en": "Chang'e 6",
     "aciklama": "Uzak yüz, Çin, 2024",
+    "aciklama_en": "Far side, China, 2024",
     "lat": -41.6385,
     "lon": 206.0148,
     "file": "change6.json",
@@ -278,7 +324,9 @@
   {
     "site": "SLIM",
     "kategori": "uluslararasi",
+    "site_en": "SLIM",
     "aciklama": "Shioli krateri, Japonya, 2024",
+    "aciklama_en": "Shioli crater, Japan, 2024",
     "lat": -13.316,
     "lon": 25.251,
     "file": "slim.json",
@@ -290,7 +338,9 @@
   {
     "site": "Chang'e 3",
     "kategori": "uluslararasi",
+    "site_en": "Chang'e 3",
     "aciklama": "Mare Imbrium, Çin, 2013",
+    "aciklama_en": "Mare Imbrium, China, 2013",
     "lat": 44.1214,
     "lon": 340.4883,
     "file": "change3.json",
@@ -302,7 +352,9 @@
   {
     "site": "Chang'e 5",
     "kategori": "uluslararasi",
+    "site_en": "Chang'e 5",
     "aciklama": "Mons Rümker yakını, Çin, 2020",
+    "aciklama_en": "Near Mons Rümker, China, 2020",
     "lat": 43.0576,
     "lon": 308.0839,
     "file": "change5.json",

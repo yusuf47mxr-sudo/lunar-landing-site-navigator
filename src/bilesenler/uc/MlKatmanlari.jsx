@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CanvasTexture, CircleGeometry, Color, DataTexture, DoubleSide, Matrix4, Quaternion, RGBAFormat, RingGeometry, SRGBColorSpace, Vector3 } from 'three'
+import { hataOlustur } from '../../core/hata.js'
 import { yukseklik } from './veri.js'
 
 const tabanYol = () => {
@@ -38,7 +39,7 @@ function jsonYukle(ad) {
       ad,
       fetch(tabanYol() + ad)
         .then((y) => {
-          if (!y.ok) throw new Error(`${ad} yüklenemedi (HTTP ${y.status})`)
+          if (!y.ok) throw hataOlustur('hata.yuklenemedi', { dosya: ad, durum: y.status }, `${ad} could not be loaded (HTTP ${y.status})`)
           return y.json()
         })
         .catch((h) => {
@@ -154,6 +155,9 @@ const BOS_DOKU = (() => {
   return t
 })()
 
+// Katman shader'ı ortak kodu. katmanRenk: g → doğrusal renk: < 0.10 açık turuncu
+// (neredeyse saydam), 0.10–0.30 açık → turuncu, ≥ 0.30 koyu turuncu-kırmızı.
+// (Shader içi yorumlar dil denetimine takılmasın diye dışarıda.)
 const KATMAN_ORTAK = /* glsl */ `
 uniform sampler2D uKFoto;
 uniform float uKFotoAcik;
@@ -174,7 +178,6 @@ vec2 katmanHucre(ivec2 ij) {
   vec4 t = texelFetch(uKTehlike, ij, 0);
   return vec2(t.r, t.g);
 }
-// g → doğrusal renk: < 0.10 açık turuncu (neredeyse saydam), 0.10–0.30 açık → turuncu, ≥ 0.30 koyu turuncu-kırmızı
 vec3 katmanRenk(float g) {
   vec3 acik = vec3(1.0, 0.45, 0.16);
   vec3 orta = vec3(1.0, 0.19, 0.025);
@@ -209,11 +212,11 @@ export function useKatmanShader() {
         .replace('#include <project_vertex>', '#include <project_vertex>\nvKatmanP = (modelMatrix * vec4(transformed, 1.0)).xyz;')
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', '#include <common>\n' + KATMAN_ORTAK)
+        // Fotoğraf: sahne gölgelemesi ~%15 (arazi şekli okunsun), gerisi öz ışık
         .replace(
           '#include <map_fragment>',
           `#include <map_fragment>
           vec4 kFoto = katmanFoto();
-          // Sahne gölgelemesi ~%15 (arazi şekli okunsun), gerisi öz ışık
           diffuseColor.rgb = mix(diffuseColor.rgb, kFoto.rgb * 0.2, kFoto.a);`,
         )
         .replace(
@@ -221,6 +224,9 @@ export function useKatmanShader() {
           `#include <emissivemap_fragment>
           totalEmissiveRadiance += kFoto.rgb * 0.85 * kFoto.a;`,
         )
+        // Tehlike: hücre içinin %70'i kendi değeri; kenarda 30 m geçiş (değerler değişmez).
+        // Bilinmeyen: gri çapraz tarama, opak değil. 40 m aralık; çizgi kenarı ekran
+        // türeviyle yumuşatılır, uzakta (çizgi pikselden inceyse) düz soluk griye söner — titreşmez
         .replace(
           '#include <opaque_fragment>',
           `#include <opaque_fragment>
@@ -229,7 +235,6 @@ export function useKatmanShader() {
             float icerde = step(0.0, hc.x) * step(0.0, hc.y) * step(hc.x, 2.0 * uKYari) * step(hc.y, 2.0 * uKYari);
             vec2 c = hc / uKHucre - 0.5;
             vec2 i0 = floor(c);
-            // Hücre içinin %70'i kendi değeri; kenarda 30 m geçiş (değerler değişmez)
             vec2 w = smoothstep(0.35, 0.65, c - i0);
             ivec2 a = ivec2(i0);
             vec2 v00 = katmanHucre(a), v10 = katmanHucre(a + ivec2(1, 0));
@@ -237,8 +242,6 @@ export function useKatmanShader() {
             float bilinen = mix(mix(v00.y, v10.y, w.x), mix(v01.y, v11.y, w.x), w.y);
             float gb = mix(mix(v00.x * v00.y, v10.x * v10.y, w.x), mix(v01.x * v01.y, v11.x * v11.y, w.x), w.y);
             float g = bilinen > 0.001 ? gb / bilinen : 0.0;
-            // Bilinmeyen: gri çapraz tarama, opak değil. 40 m aralık; çizgi kenarı ekran
-            // türeviyle yumuşatılır, uzakta (çizgi pikselden inceyse) düz soluk griye söner — titreşmez
             float u = (vKatmanP.x - vKatmanP.z) / 40.0;
             float fw = fwidth(u);
             float d = abs(fract(u) - 0.5);
@@ -418,10 +421,13 @@ export function kraterIsabeti(veri, D) {
   return p ? p.precision : null
 }
 
-/** Açıklama kutusundaki ML cümlesi; sayılar ml_calibration.json'dan (kutup kümesi). */
-export function mlAciklamasi(veri, kalibrasyon) {
+/**
+ * Açıklama kutusundaki ML cümlesi; sayılar ml_calibration.json'dan (kutup kümesi).
+ * @param {(anahtar: string, params?: object) => string} t  dil/ çeviri fonksiyonu (useDil().t)
+ */
+export function mlAciklamasi(veri, kalibrasyon, t) {
   const p = kalibrasyon?.polar
   const dMin = veri?.d_min_used_m ?? 10
-  if (!p) return `ML: YOLOv8, 1 m LROC NAC, D ≥ ${dMin} m. Kalıcı gölgede görüntü yok → bilinmiyor.`
-  return `ML: YOLOv8, 1 m LROC NAC, D ≥ ${dMin} m. Bölge ortalamasında güvenilir (ML ${p.ml.toFixed(3)} / uzman ${p.labels.toFixed(3)}), tek hücrede kaba (±${p.mae.toFixed(2)}). Kalıcı gölgede görüntü yok → bilinmiyor.`
+  if (!p) return t('ml.aciklamaKisa', { dMin })
+  return t('ml.aciklama', { dMin, ml: p.ml.toFixed(3), uzman: p.labels.toFixed(3), mae: p.mae.toFixed(2) })
 }

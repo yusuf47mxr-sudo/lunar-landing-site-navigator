@@ -40,6 +40,12 @@ diğer ülkelerin iniş alanlarını içerir (26 alan). Kullanıcı kendi koordi
 da girebilir; bu durumda arazi düz kabul edilir ve sonuç "yaklaşık" diye
 işaretlenir.
 
+**İki dil (Türkçe / İngilizce):** mod seçicinin yanındaki "TR | EN" ile
+(3B tam ekranda da). Seçim tarayıcıda hatırlanır; ilk açılışta tarayıcı dili
+Türkçe ise TR, değilse EN. Tarih, süre ("3 g 7 sa" / "3 d 7 h") ve yüzde
+("%22" / "22%") dile göre biçimlenir; ondalık işaret iki dilde de nokta. CSV
+sütun adları İngilizce sabit.
+
 ### Üç mod
 
 - **Temel** — çocuklar ve meraklılar için. Tek sütun, büyük yazı: gökyüzü,
@@ -204,7 +210,9 @@ target different audiences: Basic (children and the curious), Intermediate
 (educators) and Advanced (mission planners, with engineering parameters and
 CSV export). A 3D local scene (react-three-fiber) shows the real LOLA terrain
 of the selected site with the Sun's light and shadows, a far-horizon ring,
-Earth, permanently shadowed cells, a compass, camera modes and fullscreen.
+Earth, permanently shadowed cells, a compass, camera modes and fullscreen. The interface
+is bilingual (Turkish / English, "TR | EN" switch; remembered in the browser,
+defaulting to the browser language).
 
 > **Data:** NASA NAIF SPICE (DE440, `MOON_ME_DE440_ME421`) ephemeris and
 > horizon profiles ray-traced on LRO LOLA (polar, 5–20 m) and SLDEM2015

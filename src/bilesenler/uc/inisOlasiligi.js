@@ -25,7 +25,7 @@ export function useInisOlasiligi() {
           const b = bekleyen.current.get(data.istek)
           if (!b) return
           bekleyen.current.delete(data.istek)
-          data.hata ? b.red(new Error(data.hata)) : b.coz(data.sonuc)
+          data.hata ? b.red(Object.assign(new Error(data.hata.mesaj), { kod: data.hata.kod, params: data.hata.params })) : b.coz(data.sonuc)
         }
       }
       return isci.current

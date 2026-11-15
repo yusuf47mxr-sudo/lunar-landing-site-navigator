@@ -2,7 +2,11 @@
 // ufuk çizgisi ve kısa not. three.js içermez; GokyuzuKutusu bunu Suspense
 // yedeği olarak kullanır (3B parçası inmeden önce).
 
-export default function Iskelet({ metin = '3B sahne yükleniyor…' }) {
+import { useDil } from '../../dil/index.js'
+
+export default function Iskelet({ metin: verilen }) {
+  const { t } = useDil()
+  const metin = verilen ?? t('kure.sahneYukleniyor')
   return (
     <div className="relative h-full w-full overflow-hidden bg-zemin" aria-busy="true" aria-label={metin}>
       <div className="absolute inset-x-0 top-[58%] h-px animate-pulse bg-gradient-to-r from-transparent via-metin-solgun/50 to-transparent" />

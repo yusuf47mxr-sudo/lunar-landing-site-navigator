@@ -17,8 +17,8 @@ import { useEffect, useState } from 'react'
 import { Vector3 } from 'three'
 import { useShallow } from 'zustand/react/shallow'
 import { ONERI_GUN } from '../../core/inisPencere.js'
+import { hataMetni, useDil } from '../../dil/index.js'
 import { KART_BATARYALARI, useDurum } from '../../durum/store.js'
-import { gunBicimle, tarihBicimle } from '../ZamanKaydirici.jsx'
 import { INIS_VARSAYILAN } from './inisOlasiligi.js'
 import { guvenRengi, kraterHucresi, kraterIsabeti } from './MlKatmanlari.jsx'
 
@@ -48,44 +48,18 @@ export function KartIzdusum({ nokta, kart }) {
   return null
 }
 
-/** "%53'ü", "%62'si" — yüzdenin üçüncü tekil iyelik eki. */
-function yuzdeIyelik(n) {
-  const ek = n === 100 ? 'ü' : n % 10 ? ['', 'i', 'si', 'ü', 'ü', 'i', 'sı', 'si', 'i', 'u'][n % 10] : { 1: 'u', 2: 'si', 3: 'u', 4: 'ı', 5: 'si', 6: 'ı', 7: 'i', 8: 'i', 9: 'ı', 0: 'ı' }[Math.floor(n / 10)]
-  return `%${n}'${ek}`
-}
-
-const NEDEN = {
-  ground: 'krater',
-  slope: 'eğim',
-  dark: 'uzun karanlık',
-  noEarth: 'iletişim kesintisi',
-  outside: 'ızgara dışına düşme',
-}
-
-/** %0 durumunda gerekçenin açık cümlesi. */
-const NEDEN_UZUN = {
-  dark: (b) => `Uzun karanlık: ${b} sa batarya bu pencerede yetmiyor`,
-  noEarth: () => `İletişim kesintisi: Dünya ${INIS_VARSAYILAN.bufferH} sa tampondan uzun görünmüyor`,
-  slope: () => `Eğim: çevredeki zemin ${INIS_VARSAYILAN.slopeMax}°'den dik`,
-  ground: () => 'Krater riski: çevre küçük kraterlerle dolu',
-  outside: () => 'Hedef ızgara kenarına çok yakın: iniş dışarı düşüyor',
-}
+/** Bilinen gerekçeler: ad kraterKarti.neden.<anahtar>, açık cümle kraterKarti.nedenUzun.<anahtar>. */
+const NEDENLER = ['ground', 'slope', 'dark', 'noEarth', 'outside']
 
 /** reasons + outside, büyükten küçüğe (başarısızlığa katkı). */
 function nedenler(sonuc) {
   return Object.entries({ ...sonuc.reasons, outside: sonuc.outside })
     .filter(([, p]) => p > 0.005)
     .sort((a, b) => b[1] - a[1])
-    .map(([anahtar, pay]) => ({ anahtar, ad: NEDEN[anahtar] ?? anahtar, pay }))
+    .map(([anahtar, pay]) => ({ anahtar, pay }))
 }
 
-const AY_BULUNMA = ['ta', 'ta', 'ta', 'da', 'ta', 'da', 'da', 'ta', 'de', 'de', 'da', 'ta']
-const tarih = (t) => new Date(Date.UTC(2027, 0, 1) + t * 3600e3)
-/** "26 Ocak'ta" */
-function gunde(t) {
-  const d = tarih(t)
-  return `${d.getUTCDate()} ${new Intl.DateTimeFormat('tr-TR', { month: 'long', timeZone: 'UTC' }).format(d)}'${AY_BULUNMA[d.getUTCMonth()]}`
-}
+const tarih = (saat) => new Date(Date.UTC(2027, 0, 1) + saat * 3600e3)
 
 /** Değer `ms` boyunca değişmeden kalınca döner (oynatırken işçi her saatte yeniden hesaplamasın). */
 function useGecikmeli(deger, ms) {
@@ -149,9 +123,10 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
   const isabet = kraterIsabeti(veri, cap)
   const renk = `rgb(${guvenRengi(guven).join(',')})`
 
-  const { t, tL, D, kartPencere, kartBatarya, kartPencereSec, kartBataryaSec } = useDurum(
+  const { t, b } = useDil()
+  const { zaman, tL, D, kartPencere, kartBatarya, kartPencereSec, kartBataryaSec } = useDurum(
     useShallow((s) => ({
-      t: s.t,
+      zaman: s.t,
       tL: s.tL,
       D: s.D,
       kartPencere: s.kartPencere,
@@ -161,7 +136,7 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
     })),
   )
   const tKip = kartPencere === 't14'
-  const bas = useGecikmeli(tKip ? t : tL, 200)
+  const bas = useGecikmeli(tKip ? zaman : tL, 200)
   const gun = tKip ? ONERI_GUN : D
   const pencereTasar = bas + gun * 24 > 8760
   const hedef = hucre ? { i: hucre.i, j: hucre.j } : null
@@ -174,6 +149,11 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
   const oneriAnahtar = sifir && sonuc.guncel ? `${izgara}|${bas}|${kartBatarya}|${hedef.i},${hedef.j}` : null
   const oneri = useIsciSonucu(oneriAnahtar, () => inis.oneri({ ...ortak, bas }))
   const neden = deger ? nedenler(deger) : []
+  const nedenAdi = (x) => (NEDENLER.includes(x.anahtar) ? t(`kraterKarti.neden.${x.anahtar}`) : x.anahtar)
+  const nedenUzun = (x) =>
+    NEDENLER.includes(x.anahtar)
+      ? t(`kraterKarti.nedenUzun.${x.anahtar}`, { batarya: kartBatarya, tampon: INIS_VARSAYILAN.bufferH, egim: INIS_VARSAYILAN.slopeMax })
+      : x.anahtar
 
   const oneriyeGit = (o) => useDurum.setState({ t: o.t, kartPencere: 't14', oynatiliyor: false })
 
@@ -182,18 +162,16 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
       ref={kartRef}
       data-krater-kart=""
       role="dialog"
-      aria-label="Krater bilgisi"
+      aria-label={t('kraterKarti.aria')}
       className="pointer-events-auto absolute left-0 top-0 z-20 w-[264px] rounded-lg border border-cizgi bg-zemin/95 px-3 py-2.5 backdrop-blur-sm text-xs leading-snug text-metin shadow-lg"
       style={{ visibility: 'hidden' }}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm">
-          Krater · D ≈ {cap.toFixed(1)} m
-        </p>
+        <p className="text-sm">{t('kraterKarti.baslik', { cap: cap.toFixed(1) })}</p>
         <button
           type="button"
           onClick={onKapat}
-          aria-label="Kapat (ESC)"
+          aria-label={t('kraterKarti.kapat')}
           className="-mr-1 -mt-0.5 rounded px-1 text-metin-solgun hover:text-metin focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60"
         >
           ×
@@ -201,77 +179,85 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
       </div>
 
       <p className="mt-1.5 flex items-center justify-between tabular-nums">
-        <span>ML güven skoru: %{Math.round(guven * 100)} (olasılık değil)</span>
+        <span>{t('kraterKarti.guven', { guven })}</span>
       </p>
       <div className="mt-1 h-1.5 w-full rounded-full bg-cizgi" aria-hidden="true">
         <div className="h-full rounded-full" style={{ width: `${Math.round(guven * 100)}%`, background: renk }} />
       </div>
       {isabet != null && (
         <p className="mt-1.5 text-metin-solgun">
-          Bu boyuttaki tespitlerin ~{yuzdeIyelik(Math.round(isabet * 100))} gerçek krater (kutup testi, {cap < 20 ? '10–20 m' : '≥ 20 m'})
+          {t('kraterKarti.isabet', { yuzde: Math.round(isabet * 100), aralik: cap < 20 ? '10–20 m' : '≥ 20 m' })}
         </p>
       )}
 
       <p className="mt-1.5 tabular-nums">
-        Hücre tehlikesi{' '}
-        {g === undefined ? '—' : g === null ? <span className="text-metin-solgun">bilinmiyor — gölge</span> : <>g = {g.toFixed(2)}</>}
+        {t('kraterKarti.hucreTehlikesi')}{' '}
+        {g === undefined ? '—' : g === null ? <span className="text-metin-solgun">{t('kraterKarti.bilinmiyorGolge')}</span> : <>g = {g.toFixed(2)}</>}
       </p>
 
       <div className="mt-1.5 space-y-1 border-t border-cizgi pt-1.5" data-inis-sonucu="">
         <div data-kart-pencere="">
           <KucukSecim
-            etiket="İniş penceresi"
+            etiket={t('kraterKarti.pencere.etiket')}
             secenekler={[
-              ['t14', `${ONERI_GUN} gün (t'den)`],
-              ['gorev', 'Görev penceresi (tL, D)'],
+              ['t14', t('kraterKarti.pencere.t14', { gun: ONERI_GUN })],
+              ['gorev', t('kraterKarti.pencere.gorev')],
             ]}
             deger={kartPencere}
             onSec={kartPencereSec}
           />
         </div>
         <div className="flex items-center gap-2" data-kart-batarya="">
-          <span className="text-[10px] text-metin-solgun">Batarya</span>
+          <span className="text-[10px] text-metin-solgun">{t('kraterKarti.batarya')}</span>
           <div className="flex-1">
-            <KucukSecim etiket="Batarya" secenekler={KART_BATARYALARI.map((b) => [b, `${b} sa`])} deger={kartBatarya} onSec={kartBataryaSec} />
+            <KucukSecim
+              etiket={t('kraterKarti.batarya')}
+              secenekler={KART_BATARYALARI.map((x) => [x, b.tamSaat(x)])}
+              deger={kartBatarya}
+              onSec={kartBataryaSec}
+            />
           </div>
         </div>
 
         {pencereTasar ? (
-          <p className="pt-0.5 text-metin-solgun">Pencere 2027 verisinin dışına taşıyor.</p>
+          <p className="pt-0.5 text-metin-solgun">{t('hata.pencereTasiyor')}.</p>
         ) : sonuc.hata && sonuc.guncel ? (
-          <p className="pt-0.5 text-uyari">Hesaplanamadı: {sonuc.hata.message}</p>
+          <p className="pt-0.5 text-uyari">{t('kraterKarti.hesaplanamadi', { hata: hataMetni(sonuc.hata, t) })}</p>
         ) : !deger ? (
-          <p className="pt-0.5 text-metin-solgun">Buraya inersen: başarı hesaplanıyor…</p>
+          <p className="pt-0.5 text-metin-solgun">{t('kraterKarti.hesaplaniyor')}</p>
         ) : sifir ? (
           <div className={`pt-0.5 transition-opacity ${sonuc.guncel ? '' : 'opacity-60'}`} data-sifir="">
             <p>
-              Buraya inersen: başarı <span className="tabular-nums text-uyari">%0</span>
+              {t('kraterKarti.basari')} <span className="tabular-nums text-uyari">{b.yuzdeSayi(0)}</span>
             </p>
             {neden
               .filter((x, k) => k === 0 || x.pay >= 0.5)
               .slice(0, 2)
               .map((x) => (
                 <p key={x.anahtar} className="mt-1 text-[13px] font-medium leading-tight text-uyari">
-                  {(NEDEN_UZUN[x.anahtar] ?? (() => x.ad))(kartBatarya)}
+                  {nedenUzun(x)}
                 </p>
               ))}
             <div className="mt-1.5" data-oneri="">
               {!oneri.guncel ? (
-                <p className="text-metin-solgun">Daha iyi bir tarih aranıyor…</p>
+                <p className="text-metin-solgun">{t('kraterKarti.araniyor')}</p>
               ) : oneri.hata ? null : oneri.deger ? (
                 <button
                   type="button"
                   onClick={() => oneriyeGit(oneri.deger)}
-                  title={`${tarihBicimle(tarih(oneri.deger.t))} başlangıçlı ${ONERI_GUN} gün — zamanı oraya taşı`}
+                  title={t('kraterKarti.oneriBaslik', { tarih: tarih(oneri.deger.t), gun: ONERI_GUN })}
                   className="w-full rounded-md border border-gunes/50 bg-gunes/10 px-2 py-1 text-left text-metin transition-colors hover:bg-gunes/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60"
                 >
-                  → {gunde(oneri.deger.t)} inersen: <span className="tabular-nums text-gunes">%{Math.round(100 * oneri.deger.pLow)}</span>
-                  <span className="text-metin-solgun"> ({ONERI_GUN} gün)</span>
+                  {t('kraterKarti.oneri', { tarih: tarih(oneri.deger.t) })}{' '}
+                  <span className="tabular-nums text-gunes">{b.yuzde(oneri.deger.pLow)}</span>
+                  <span className="text-metin-solgun"> ({b.gunSayisi(ONERI_GUN)})</span>
                 </button>
               ) : (
                 <p className="text-metin-solgun">
-                  2027 sonuna kadar %50'yi geçen {ONERI_GUN} günlük başlangıç yok
-                  {neden[0]?.anahtar === 'dark' && kartBatarya < KART_BATARYALARI.at(-1) ? '; daha büyük batarya dene.' : '.'}
+                  {t('kraterKarti.oneriYok', {
+                    gun: ONERI_GUN,
+                    bataryaOner: neden[0]?.anahtar === 'dark' && kartBatarya < KART_BATARYALARI.at(-1),
+                  })}
                 </p>
               )}
             </div>
@@ -279,22 +265,27 @@ export default function KraterKarti({ kartRef, krater, veri, izgara, inis, onKap
         ) : (
           <div className={`pt-0.5 transition-opacity ${sonuc.guncel ? '' : 'opacity-60'}`}>
             <p className="text-sm">
-              Buraya inersen: başarı <span className="tabular-nums text-gunes">%{(100 * deger.pLow).toFixed(1)}</span>
+              {t('kraterKarti.basari')} <span className="tabular-nums text-gunes">{b.yuzdeSayi((100 * deger.pLow).toFixed(1))}</span>
             </p>
             {neden[0] && (
               <p className="text-metin-solgun">
-                başarısızlığın çoğu: {neden[0].ad} (%{Math.round(100 * neden[0].pay)})
+                {t('kraterKarti.basarisizlik', { neden: nedenAdi(neden[0]), pay: neden[0].pay })}
               </p>
             )}
           </div>
         )}
         <p className="text-[10px] text-metin-solgun/80">
-          Hedef bu 100 m hücre; {tKip ? tarihBicimle(tarih(bas)) : gunBicimle(tarih(bas))} + {gun} gün, σ {INIS_VARSAYILAN.sigmaM} m, eğim ≤{' '}
-          {INIS_VARSAYILAN.slopeMax}°, tampon {INIS_VARSAYILAN.bufferH} sa, ML krater riski dahil.
+          {t('kraterKarti.dipnot', {
+            bas: tKip ? b.tarih(tarih(bas)) : b.gun(tarih(bas)),
+            gun,
+            sigma: INIS_VARSAYILAN.sigmaM,
+            egim: INIS_VARSAYILAN.slopeMax,
+            tampon: INIS_VARSAYILAN.bufferH,
+          })}
         </p>
       </div>
 
-      <p className="mt-1.5 text-[10px] text-metin-solgun/80">Güven skoru olasılık değildir; model kalibre edilmedi.</p>
+      <p className="mt-1.5 text-[10px] text-metin-solgun/80">{t('kraterKarti.uyari')}</p>
     </div>
   )
 }

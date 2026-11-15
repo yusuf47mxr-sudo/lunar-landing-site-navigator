@@ -13,8 +13,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Quaternion, Vector3 } from 'three'
 import { useShallow } from 'zustand/react/shallow'
-import { yuzdeBicimle } from '../../core/hesap.js'
 import { INIS_ADIM_SAAT } from '../../core/sabitler.js'
+import { useDil } from '../../dil/index.js'
 import { useBolgeler, useDurum, useEfemeris, useOzet } from '../../durum/store.js'
 import { useAyDokulari } from './ayDokulari.js'
 import { HataSiniri } from './HataSiniri.jsx'
@@ -31,12 +31,13 @@ const UCUS_SURE = 2.0 // sn, işarete tıklayınca yaklaşma
 const DONUS_SURE = 1.6 // sn, yerel sahneden geri
 const DONME_SURE = 1.2 // sn, listeden başka alan seçilince
 
+// Kategori → işaret şekli. Adlar sözlükten: t(`kategori.${k}`) (Artemis: kure.artemisIII).
 export const SEKILLER = {
-  artemis: { ad: 'Artemis III', yol: <circle cx="6" cy="6" r="4.2" /> },
-  clps: { ad: 'CLPS', yol: <rect x="2" y="2" width="8" height="8" rx="0.6" /> },
-  apollo: { ad: 'Apollo', yol: <path d="M6 1.4 10.8 10H1.2Z" /> },
-  uluslararasi: { ad: 'Uluslararası', yol: <path d="M6 0.8 11.2 6 6 11.2 0.8 6Z" /> },
-  ozel: { ad: 'Özel nokta', yol: <path d="M6 1v10M1 6h10" strokeWidth="2" stroke="currentColor" /> },
+  artemis: { yol: <circle cx="6" cy="6" r="4.2" /> },
+  clps: { yol: <rect x="2" y="2" width="8" height="8" rx="0.6" /> },
+  apollo: { yol: <path d="M6 1.4 10.8 10H1.2Z" /> },
+  uluslararasi: { yol: <path d="M6 0.8 11.2 6 6 11.2 0.8 6Z" /> },
+  ozel: { yol: <path d="M6 1v10M1 6h10" strokeWidth="2" stroke="currentColor" /> },
 }
 
 const GOLGE = '[text-shadow:0_1px_3px_rgba(0,0,0,0.95),0_0_6px_rgba(0,0,0,0.8)]'
@@ -278,6 +279,7 @@ function IsaretIzdusumu({ noktalar, ogeler, seciliId }) {
  */
 export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, onHata }) {
   const { bolgeler } = useBolgeler()
+  const { t, b, ad, aciklama } = useDil()
   const { ozet } = useOzet()
   const { efemeris } = useEfemeris(true)
   const p = useDurum(
@@ -290,32 +292,32 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
 
   // Seçili an için Güneş ve Dünya yönü (alt-noktalardan). t depodan: alan verisi
   // yüklenirken anlik.t geçici olarak 0 olur, ışık sıçramasın.
-  const t = Math.max(0, Math.min((efemeris?.n ?? 1) - 1, Math.round(p.t)))
+  const an = Math.max(0, Math.min((efemeris?.n ?? 1) - 1, Math.round(p.t)))
   const gunesYon = useMemo(
-    () => (efemeris ? enlemBoylamVektoru(efemeris.sun_sub_lat[t], efemeris.sun_sub_lon[t]) : new Vector3(1, 0, 0)),
-    [efemeris, t],
+    () => (efemeris ? enlemBoylamVektoru(efemeris.sun_sub_lat[an], efemeris.sun_sub_lon[an]) : new Vector3(1, 0, 0)),
+    [efemeris, an],
   )
   const dunyaYon = useMemo(
-    () => (efemeris ? enlemBoylamVektoru(efemeris.earth_sub_lat[t], efemeris.earth_sub_lon[t]) : new Vector3(1, 0, 0)),
-    [efemeris, t],
+    () => (efemeris ? enlemBoylamVektoru(efemeris.earth_sub_lat[an], efemeris.earth_sub_lon[an]) : new Vector3(1, 0, 0)),
+    [efemeris, an],
   )
   const dunyaRef = useRef()
 
   // İşaretler: 26 alan (+ özel nokta)
   const noktalar = useMemo(() => {
     if (!bolgeler) return []
-    const liste = bolgeler.map((b) => ({
-      id: b.site,
-      site: b.site,
-      aciklama: b.aciklama,
-      kategori: b.kategori,
-      enlem: b.lat,
-      boylam: b.lon,
-      vek: enlemBoylamVektoru(b.lat, b.lon).multiplyScalar(ISARET_YARICAP),
+    const liste = bolgeler.map((k) => ({
+      id: k.site,
+      site: k.site,
+      kayit: k,
+      kategori: k.kategori,
+      enlem: k.lat,
+      boylam: k.lon,
+      vek: enlemBoylamVektoru(k.lat, k.lon).multiplyScalar(ISARET_YARICAP),
     }))
     if (p.ozelNokta) {
       const { lat, lon } = p.ozelNokta
-      liste.push({ id: '__ozel', site: null, aciklama: 'Özel koordinat (arazi düz kabul edilir)', kategori: 'ozel', enlem: lat, boylam: lon, vek: enlemBoylamVektoru(lat, lon).multiplyScalar(ISARET_YARICAP) })
+      liste.push({ id: '__ozel', site: null, kayit: null, kategori: 'ozel', enlem: lat, boylam: lon, vek: enlemBoylamVektoru(lat, lon).multiplyScalar(ISARET_YARICAP) })
     }
     return liste
   }, [bolgeler, p.ozelNokta])
@@ -328,7 +330,7 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
     const h = ozet?.sites?.[site]?.[String(p.hm)]?.[String(p.D)]
     const i = Math.round(p.tL / INIS_ADIM_SAAT)
     if (!h || h.f_bar[i] == null) return null
-    return `Güneş ${yuzdeBicimle(h.f_bar[i])} · Dünya ${yuzdeBicimle(h.c_bar[i])}`
+    return `${t('ortak.gunes')} ${b.yuzde(h.f_bar[i])} · ${t('ortak.dunya')} ${b.yuzde(h.c_bar[i])}`
   }
 
   const ucusNoktasi = ucus ? noktalar.find((n) => n.id === ucus.site) : null
@@ -349,7 +351,7 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
   return (
     <div className="relative h-full w-full overflow-hidden bg-zemin" data-ay-kuresi="">
       {!hazir ? (
-        <Iskelet metin={dokular.hata ? 'Ay dokusu yüklenemedi' : 'Ay yükleniyor…'} />
+        <Iskelet metin={t(dokular.hata ? 'kure.dokuYuklenemedi' : 'kure.yukleniyor')} />
       ) : (
         <HataSiniri onHata={onHata}>
           <Canvas
@@ -376,6 +378,7 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
           {noktalar.map((n) => {
             const secil = n.id === seciliId
             const o = n.site ? olcut(n.site) : null
+            const adi = n.site ? ad(n.site) : t('ozel.adKisa')
             return (
               <div
                 key={n.id}
@@ -389,7 +392,7 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
               >
                 <button
                   type="button"
-                  aria-label={`${n.site ?? 'Özel nokta'}: yerel sahneye in`}
+                  aria-label={t('kure.inisAria', { ad: adi })}
                   onClick={() => n.site && onUcus?.(n.site)}
                   className={`pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full p-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60 ${
                     secil ? 'text-gunes' : 'text-metin/75 hover:text-metin'
@@ -406,18 +409,18 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
                   }`}
                   style={{ opacity: 0 }}
                 >
-                  {n.site ?? 'Özel nokta'}
+                  {adi}
                 </span>
                 {/* Üzerine gelince: ad, açıklama, görev ölçütleri */}
                 <div className="pointer-events-none absolute left-3 top-3 z-10 hidden w-max max-w-[240px] rounded-lg border border-cizgi bg-zemin/90 px-3 py-2 text-xs shadow-lg group-hover:block">
-                  <p className="text-sm text-metin">{n.site ?? 'Özel nokta'}</p>
-                  <p className="text-metin-solgun">{n.aciklama}</p>
+                  <p className="text-sm text-metin">{adi}</p>
+                  <p className="text-metin-solgun">{n.kayit ? aciklama(n.kayit) : t('kure.ozelAciklama')}</p>
                   {o && (
                     <p className="mt-1 tabular-nums text-metin">
                       {o}
                       <span className="text-metin-solgun">
                         {' '}
-                        · {p.D} günlük görev{p.epsilon !== 2 ? ' (ε = 2°)' : ''}
+                        · {t('kure.gorev', { gun: p.D })}{p.epsilon !== 2 ? ' (ε = 2°)' : ''}
                       </span>
                     </p>
                   )}
@@ -437,15 +440,15 @@ export default function AyKuresi({ tamEkran, hud, donus, ucus, onUcus, onInis, o
                 <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 text-metin/75" fill="currentColor" aria-hidden="true">
                   {SEKILLER[k].yol}
                 </svg>
-                {SEKILLER[k].ad}
+                {k === 'artemis' ? t('kure.artemisIII') : t(`kategori.${k}`)}
               </span>
             ))}
           </div>
           <p className={`pointer-events-none absolute bottom-3 right-3 z-10 text-[10px] text-metin-solgun/80 ${tamEkran ? 'bottom-[7.5rem]' : ''} ${hud}`}>
-            Ay dokusu: NASA&apos;s Scientific Visualization Studio
+            {t('kure.kredi')}
           </p>
           <p className={`pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-[11px] tracking-wide text-metin-solgun ${hud}`}>
-            Bir alana tıklayın: yerel sahneye inilir
+            {t('kure.ipucu')}
           </p>
         </>
       )}

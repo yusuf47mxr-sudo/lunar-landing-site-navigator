@@ -6,6 +6,7 @@ import { useMemo, useRef, useState } from 'react'
 import { geoStereographic } from 'd3-geo'
 import { useShallow } from 'zustand/react/shallow'
 import { KUTUP_SINIRI } from '../core/sabitler.js'
+import { useDil } from '../dil/index.js'
 import { useBolgeler, useDurum } from '../durum/store.js'
 
 const BOYUT = 340 // viewBox kenarı; SVG sütun genişliğine ölçeklenir
@@ -23,16 +24,18 @@ const projeksiyon = geoStereographic()
 const halkaR = (enlem) => ORTA - projeksiyon([0, enlem])[1]
 const HALKALAR = [-80, -85].map((enlem) => ({ enlem, r: halkaR(enlem) }))
 const MERIDYENLER = Array.from({ length: 12 }, (_, k) => projeksiyon([k * 30, -KUTUP_SINIRI]))
+// metin: t → gösterilen yazı (yön harfleri dile göre: 90°D / 90°E)
 const YON_ETIKETLERI = [
-  { metin: '0° · Dünya yönü', x: ORTA, y: ORTA - YARICAP - 10, hiza: 'middle' },
-  { metin: '90°D', x: ORTA + YARICAP + 6, y: ORTA, hiza: 'start' },
-  { metin: '180°', x: ORTA, y: ORTA + YARICAP + 11, hiza: 'middle' },
-  { metin: '90°B', x: ORTA - YARICAP - 6, y: ORTA, hiza: 'end' },
+  { anahtar: 'kuzey', metin: (t) => t('kutupHaritasi.dunyaYonu'), x: ORTA, y: ORTA - YARICAP - 10, hiza: 'middle' },
+  { anahtar: 'dogu', metin: (t) => `90°${t('ortak.yonler.D')}`, x: ORTA + YARICAP + 6, y: ORTA, hiza: 'start' },
+  { anahtar: 'guney', metin: () => '180°', x: ORTA, y: ORTA + YARICAP + 11, hiza: 'middle' },
+  { anahtar: 'bati', metin: (t) => `90°${t('ortak.yonler.B')}`, x: ORTA - YARICAP - 6, y: ORTA, hiza: 'end' },
 ]
 
 const iki = (v) => Math.round(v * 100) / 100
 
 export default function KutupHaritasi({ className = '' }) {
+  const { t, ad } = useDil()
   const { bolgeler } = useBolgeler()
   const { seciliAlan, ozelNokta, alanSec, ozelNoktaSec } = useDurum(
     useShallow((s) => ({
@@ -101,8 +104,8 @@ export default function KutupHaritasi({ className = '' }) {
     seciliEnlem == null || seciliEnlem <= -KUTUP_SINIRI
       ? null
       : seciliEnlem >= KUTUP_SINIRI
-        ? 'Seçili alan kuzey kutup bölgesinde — bu harita güneyi gösterir'
-        : 'Seçili alan kutup bölgesinde değil'
+        ? t('kutupHaritasi.kuzeyde')
+        : t('kutupHaritasi.kutupDisi')
 
   const seciliNokta = ozelNokta ? null : noktalar.find((n) => n.site === seciliAlan)
   const uzerindeNokta = noktalar.find((n) => n.site === uzerinde)
@@ -119,7 +122,7 @@ export default function KutupHaritasi({ className = '' }) {
           ref={svgRef}
           viewBox={`0 0 ${BOYUT} ${BOYUT}`}
           role="img"
-          aria-label="Güney kutbu haritası, 75° güney enlemine kadar. Alan seçmek için noktaya, özel nokta için boş bir yere tıklayın."
+          aria-label={t('kutupHaritasi.aria', { enlem: KUTUP_SINIRI })}
           className="block aspect-square w-full select-none"
           style={{ cursor: uzerinde ? 'pointer' : icinde ? 'crosshair' : 'default' }}
           onPointerMove={fareOynadi}
@@ -138,8 +141,8 @@ export default function KutupHaritasi({ className = '' }) {
           </g>
           <g fill="var(--metin-solgun)" fontSize="10" style={{ pointerEvents: 'none' }}>
             {YON_ETIKETLERI.map((e) => (
-              <text key={e.metin} x={e.x} y={e.y} textAnchor={e.hiza} dominantBaseline="middle">
-                {e.metin}
+              <text key={e.anahtar} x={e.x} y={e.y} textAnchor={e.hiza} dominantBaseline="middle">
+                {e.metin(t)}
               </text>
             ))}
             {/* Enlem halkalarının adları, 135° meridyeni boyunca */}
@@ -147,7 +150,7 @@ export default function KutupHaritasi({ className = '' }) {
               const [x, y] = projeksiyon([135, h.enlem])
               return (
                 <text key={h.enlem} x={x + 3} y={y - 4} fontSize="9" opacity="0.8">
-                  {-h.enlem}°G
+                  {-h.enlem}°{t('ortak.yonler.G')}
                 </text>
               )
             })}
@@ -201,7 +204,7 @@ export default function KutupHaritasi({ className = '' }) {
               transform: 'translate(-50%, calc(-100% - 10px))',
             }}
           >
-            {uzerindeNokta.site}
+            {ad(uzerindeNokta.site)}
           </span>
         )}
       </div>

@@ -15,7 +15,7 @@ import { memo, useMemo, useState } from 'react'
 import { ozelNoktaNotu } from '../core/ozelNokta.js'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useShallow } from 'zustand/react/shallow'
-import { geriSayim, olcutler, panoramaMerkezi, tamSaatBicimle, yuzdeBicimle } from '../core/hesap.js'
+import { geriSayim, olcutler, panoramaMerkezi } from '../core/hesap.js'
 import { INIS_ADIM_SAAT, INIS_SAYISI, KUTUP_SINIRI } from '../core/sabitler.js'
 import {
   cDizisi,
@@ -26,6 +26,7 @@ import {
   useDurum,
   useSeciliAlanVerisi,
 } from '../durum/store.js'
+import { useDil } from '../dil/index.js'
 import AkanSayi from './AkanSayi.jsx'
 import { KATEGORILER } from './AlanListesi.jsx'
 import { AkanSure, geriSayimSatirlari } from './GeriSayim.jsx'
@@ -34,10 +35,7 @@ import { IZ_SAAT, izKes } from './GokyuzuKutusu.jsx'
 import { inisTarihleri } from './ParametrePaneli.jsx'
 import Secenekler from './Secenekler.jsx'
 
-const SEKMELER = [
-  { deger: 'alan', etiket: 'Alanları karşılaştır' },
-  { deger: 'tarih', etiket: 'Tarihleri karşılaştır' },
-]
+const SEKMELER = ['alan', 'tarih']
 const TARIH_ARALIGI_HAFTA = 13 // varsayılan ikinci tarih: bir çeyrek sonrası
 const BELIRGIN_FARK = 0.05 // puan farkı bunun altındaysa sonuç cümlesi taraf tutmaz
 // Geri sayım ve ölçüt satırları: bütün sütunlarda aynı yükseklik (yan yana okunur)
@@ -49,92 +47,39 @@ const SUTUN_SINIFI = {
 }
 
 const puanBicimle = (p) => p.toFixed(2).replace('-', '−')
-const kisaTarih = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', timeZone: 'UTC' })
-
-// --- Türkçe ekler ----------------------------------------------------------
-// Yönelme: "Haworth'a", "Apollo 11'e", "%82'ye". Bulunma: "Haworth'ta", "Apollo 11'de".
-
-const UNLU = /[aeıioöuü]/g
-// Sayının okunuşuna göre ek: [sıfır … dokuz], [on … doksan], yüz
-const YONELME = {
-  rakam: ['a', 'e', 'ye', 'e', 'e', 'e', 'ya', 'ye', 'e', 'a'],
-  onluk: ['', 'a', 'ye', 'a', 'a', 'ye', 'a', 'e', 'e', 'a'],
-  yuz: 'e',
-}
-const BULUNMA = {
-  rakam: ['da', 'de', 'de', 'te', 'te', 'te', 'da', 'de', 'de', 'da'],
-  onluk: ['', 'da', 'de', 'da', 'ta', 'de', 'ta', 'te', 'de', 'da'],
-  yuz: 'de',
-}
-
-function sayiEki(n, ek = YONELME) {
-  const v = Math.abs(Math.round(n))
-  if (v % 10 || v === 0) return ek.rakam[v % 10]
-  const onluk = Math.floor(v / 10) % 10
-  return onluk ? ek.onluk[onluk] : ek.yuz
-}
-
-/** Adın son sözcüğü: sayıysa { sayi }, değilse ses bilgisi { kalin, unluSon, sertSon }. */
-function sonSozcuk(ad) {
-  // Sondaki noktalama atlanır: "IM-2 Athena (iniş)" → "iniş"
-  const son = ad.trim().replace(/[^\p{L}\d]+$/u, '').split(/[\s-]+/).pop()
-  if (/^\d+$/.test(son)) return { sayi: Number(son) }
-  const k = son.toLowerCase()
-  const unluler = k.match(UNLU)
-  if (!unluler) return { kalin: false, unluSon: k.length === 1, sertSon: false } // tek harf: "B" → "be"
-  return {
-    kalin: 'aıou'.includes(unluler[unluler.length - 1]),
-    unluSon: 'aeıioöuü'.includes(k[k.length - 1]),
-    sertSon: 'fstkçşhp'.includes(k[k.length - 1]),
-  }
-}
-
-/** Yönelme eki: "Haworth" → "a", "Rim 2" → "ye", "Athena" → "ya". */
-function adEki(ad) {
-  const s = sonSozcuk(ad)
-  if (s.sayi !== undefined) return sayiEki(s.sayi)
-  return (s.unluSon ? 'y' : '') + (s.kalin ? 'a' : 'e')
-}
-
-/** Bulunma eki: "Haworth" → "ta", "Malapert Massif" → "te", "Rim 2" → "de". */
-function bulunmaEki(ad) {
-  const s = sonSozcuk(ad)
-  if (s.sayi !== undefined) return sayiEki(s.sayi, BULUNMA)
-  return (s.sertSon ? 't' : 'd') + (s.kalin ? 'a' : 'e')
-}
-
-const yuzdeYonelme = (v) => `${yuzdeBicimle(v)}'${sayiEki(Math.round(v * 100))}`
-const basHarfBuyuk = (m) => m.charAt(0).toLocaleUpperCase('tr') + m.slice(1)
 
 // --- Sonuç cümlesi ve ölçüt satırları --------------------------------------
 
 // Ölçüt satırları. yuvarla: gösterilen hassasiyet (kıyas buna göre yapılır,
 // ekranda aynı görünen iki değerden biri "en iyi" diye boyanmasın).
+// bicim: useDil().b içindeki biçimlendiricinin adı ya da 'puan'.
 const OLCUT_SATIRLARI = [
-  { anahtar: 'fBar', etiket: 'Aydınlanma', bicim: yuzdeBicimle, yuvarla: (v) => Math.round(v * 100), yuksekIyi: true },
-  { anahtar: 'cBar', etiket: 'İletişim', bicim: yuzdeBicimle, yuvarla: (v) => Math.round(v * 100), yuksekIyi: true },
-  { anahtar: 'tauMax', etiket: 'En uzun karanlık', bicim: tamSaatBicimle, yuvarla: Math.round, yuksekIyi: false },
-  { anahtar: 'sigmaMax', etiket: 'En uzun iletişim kesintisi', bicim: tamSaatBicimle, yuvarla: Math.round, yuksekIyi: false },
-  { anahtar: 'puan', etiket: 'Puan', bicim: puanBicimle, yuvarla: (v) => Math.round(v * 100), yuksekIyi: true },
+  { anahtar: 'fBar', bicim: 'yuzde', yuvarla: (v) => Math.round(v * 100), yuksekIyi: true },
+  { anahtar: 'cBar', bicim: 'yuzde', yuvarla: (v) => Math.round(v * 100), yuksekIyi: true },
+  { anahtar: 'tauMax', bicim: 'tamSaat', yuvarla: Math.round, yuksekIyi: false },
+  { anahtar: 'sigmaMax', bicim: 'tamSaat', yuvarla: Math.round, yuksekIyi: false },
+  { anahtar: 'puan', bicim: 'puan', yuvarla: (v) => Math.round(v * 100), yuksekIyi: true },
 ]
 
 /**
  * Puanı en yüksek sütunu, sıradaki en iyi seçenekle kıyaslar ve puan farkına
  * en çok katkı yapan ölçütü tek cümleyle söyler.
- * @param sutunlar [{ ozne, tamlayan, bulunma, olcut }]  ozne: "Malapert Massif" / "2 Temmuz inişi",
- *                 tamlayan: "Haworth'a" / "1 Ocak inişine", bulunma: "Haworth'ta" / "1 Ocak inişinde"
+ * @param sutunlar [{ adlar, olcut }]  adlar: { tur: 'alan'|'tarih', ad, ozel, gun } — cümledeki
+ *                 özne / tamlayan / bulunma biçimlerini sözlük üretir (karsilastirma.ozne vb.)
+ * @param t        useDil().t
  */
-function sonucCumlesi(sutunlar, D, { w1, w2, w3 }, kip) {
+function sonucCumlesi(sutunlar, D, { w1, w2, w3 }, kip, t) {
   if (sutunlar.length < 2) {
-    return kip === 'alan' ? 'Karşılaştırmak için bir alan daha ekleyin.' : 'Karşılaştırmak için ikinci bir tarih seçin.'
+    return t(kip === 'alan' ? 'karsilastirma.cumle.alanEkle' : 'karsilastirma.cumle.tarihSec')
   }
   const gecerli = sutunlar.filter((s) => s.olcut)
-  if (gecerli.length < 2) return 'Görev veri aralığının dışına taşıyor; karşılaştırma yapılamıyor.'
+  if (gecerli.length < 2) return t('karsilastirma.cumle.tasiyor')
   const sirali = [...gecerli].sort((a, b) => b.olcut.puan - a.olcut.puan)
   const [iyi, diger] = sirali
   const a = iyi.olcut
   const b = diger.olcut
-  if (a.puan - b.puan < BELIRGIN_FARK) return 'Seçenekler arasında belirgin fark yok.'
+  const farkYok = t('karsilastirma.cumle.farkYok')
+  if (a.puan - b.puan < BELIRGIN_FARK) return farkYok
 
   // Puan farkının bileşenleri (5.6'daki puanın terimleri)
   const katkilar = [
@@ -143,24 +88,21 @@ function sonucCumlesi(sutunlar, D, { w1, w2, w3 }, kip) {
     { tur: 'karanlik', deger: (w3 * (b.tauMax - a.tauMax)) / (D * 24) },
   ].sort((x, y) => y.deger - x.deger)
   const enBuyuk = katkilar[0]
-  if (!(enBuyuk.deger > 0)) return 'Seçenekler arasında belirgin fark yok.'
+  if (!(enBuyuk.deger > 0)) return farkYok
 
-  const gore = `${diger.tamlayan} göre`
+  const adlar = { iyi: iyi.adlar, diger: diger.adlar }
   // Kazananın değeri 0 ise "…saatten 0 saate indiriyor" yerine doğrudan söyle
-  const hicYok = (durum, olcutAdi, saat) =>
-    `${basHarfBuyuk(iyi.bulunma)} görev boyunca ${durum} (${diger.bulunma} en uzun ${olcutAdi} ${Math.round(saat)} saat).`
   if (enBuyuk.tur === 'karanlik') {
-    if (Math.round(a.tauMax) === 0) return hicYok('hiç karanlık yaşanmıyor', 'karanlık', b.tauMax)
-    return `${iyi.ozne}, ${gore} en uzun karanlığı ${Math.round(b.tauMax)} saatten ${Math.round(a.tauMax)} saate indiriyor.`
+    if (Math.round(a.tauMax) === 0) return t('karsilastirma.cumle.hicKaranlik', { ...adlar, saat: Math.round(b.tauMax) })
+    return t('karsilastirma.cumle.karanlik', { ...adlar, once: Math.round(b.tauMax), sonra: Math.round(a.tauMax) })
   }
   if (enBuyuk.tur === 'iletisim' && Math.round(a.sigmaMax) === 0 && Math.round(b.sigmaMax) > 0) {
-    return hicYok('hiç iletişim kesintisi yok', 'iletişim kesintisi', b.sigmaMax)
+    return t('karsilastirma.cumle.hicKesinti', { ...adlar, saat: Math.round(b.sigmaMax) })
   }
-  const [x, y, fiil] =
-    enBuyuk.tur === 'gunes' ? [a.fBar, b.fBar, 'daha fazla güneş alıyor'] : [a.cBar, b.cBar, 'daha fazla iletişim süresi sağlıyor']
+  const [x, y] = enBuyuk.tur === 'gunes' ? [a.fBar, b.fBar] : [a.cBar, b.cBar]
   const fark = Math.round(x * 100) - Math.round(y * 100)
-  if (fark <= 0) return 'Seçenekler arasında belirgin fark yok.'
-  return `${iyi.ozne}, ${D} günlük görevde ${gore} ${fark} puan ${fiil} (${yuzdeYonelme(x)} karşı ${yuzdeBicimle(y)}).`
+  if (fark <= 0) return farkYok
+  return t(`karsilastirma.cumle.${enBuyuk.tur}`, { ...adlar, D, fark, x, y })
 }
 
 /** Bir satırdaki değerlerin sınıfı: en iyi --gunes, en kötü solgun. Hepsi aynıysa vurgu yok. */
@@ -186,12 +128,13 @@ function hucreSinifi(satir, degerler, i) {
  */
 const SutunAni = memo(function SutunAni({ alan, horizon, f, c, epsilon, kayma }) {
   const t = useDurum((s) => s.t)
+  const { t: ceviri } = useDil()
   const i = Math.min(Math.max(0, Math.round(t) + kayma), alan.n - 1)
   const kutup = Math.abs(alan.lat) >= KUTUP_SINIRI
   const merkezAz = useMemo(() => panoramaMerkezi(alan.earth_az, alan.earth_alt), [alan])
   const sunTrail = useMemo(() => izKes(alan.sun_az, alan.sun_alt, i, IZ_SAAT, alan.dt_hours), [alan, i])
   const earthTrail = useMemo(() => izKes(alan.earth_az, alan.earth_alt, i, IZ_SAAT, alan.dt_hours), [alan, i])
-  const satirlar = useMemo(() => geriSayimSatirlari(geriSayim(f, c, i, alan.dt_hours)), [f, c, i, alan])
+  const satirlar = useMemo(() => geriSayimSatirlari(geriSayim(f, c, i, alan.dt_hours), ceviri), [f, c, i, alan, ceviri])
 
   return (
     <>
@@ -219,7 +162,7 @@ const SutunAni = memo(function SutunAni({ alan, horizon, f, c, epsilon, kayma })
                 {k === 0 ? '☀' : '📡'}
               </span>
               {/* Geçiş yoksa değer uzun bir cümledir; dar sütunda etiket kısalır */}
-              {s.saat === null ? (k === 0 ? 'Güneş' : 'Dünya') : s.onEk}
+              {s.saat === null ? ceviri(k === 0 ? 'ortak.gunes' : 'ortak.dunya') : s.onEk}
             </dt>
             <dd className="shrink-0 whitespace-nowrap text-right text-metin">
               {s.saat === null ? <span className="text-metin-solgun">{s.yoksa}</span> : <AkanSure saat={s.saat} tur={s.tur} />}
@@ -233,15 +176,17 @@ const SutunAni = memo(function SutunAni({ alan, horizon, f, c, epsilon, kayma })
 
 /** "Görevin 4. günü" — bütün tarih sütunlarında aynıdır (t − tL). */
 function GorevGunu({ dt }) {
+  const { t } = useDil()
   const fark = useDurum((s) => Math.floor(((Math.round(s.t) - s.tL) * dt) / 24))
   return (
     <p className="text-xs tabular-nums text-metin-solgun">
-      {fark >= 0 ? `Görevin ${fark + 1}. günü` : `İnişe ${-fark} gün var`}
+      {fark >= 0 ? t('karsilastirma.gorevGunu', { n: fark + 1 }) : t('karsilastirma.inisKalan', { n: -fark })}
     </p>
   )
 }
 
 function AlanEkle({ bolgeler, gizli, onEkle }) {
+  const { t, ad } = useDil()
   const gruplar = KATEGORILER.map((k) => ({
     ...k,
     alanlar: bolgeler.filter((b) => b.kategori === k.anahtar && !gizli.includes(b.site)),
@@ -249,19 +194,19 @@ function AlanEkle({ bolgeler, gizli, onEkle }) {
   return (
     <div className="grid min-h-[120px] place-items-center rounded-xl border border-dashed border-cizgi p-4">
       <select
-        aria-label="Karşılaştırmaya alan ekle"
+        aria-label={t('karsilastirma.alanEkleAria')}
         value=""
         onChange={(e) => e.target.value && onEkle(e.target.value)}
         style={{ colorScheme: 'dark' }}
         className="max-w-full rounded-lg border border-gunes/70 bg-zemin px-3 py-2 text-sm text-gunes
           focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60"
       >
-        <option value="">+ Alan ekle</option>
+        <option value="">{t('karsilastirma.alanEkle')}</option>
         {gruplar.map((g) => (
-          <optgroup key={g.anahtar} label={g.baslik}>
+          <optgroup key={g.anahtar} label={t(`kategori.${g.anahtar}`)}>
             {g.alanlar.map((b) => (
               <option key={b.site} value={b.site}>
-                {b.site}
+                {ad(b.site)}
               </option>
             ))}
           </optgroup>
@@ -293,6 +238,7 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
     })),
   )
   const { bolgeler } = useBolgeler()
+  const { t, b, ad, aciklama } = useDil()
   const [kip, setKip] = useState('alan')
   // Tarih kipinde ek sütunların iniş tarihi (dizi indeksi); null → varsayılan
   const [ekTarihler, setEkTarihler] = useState([null, null])
@@ -306,7 +252,7 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
   const ek1 = useAlanVerisi(kip === 'alan' ? (ekAdlar[1] ?? null) : null)
 
   const dt = secili.alan?.dt_hours ?? 1
-  const tarihler = useMemo(() => inisTarihleri(secili.alan?.t0, dt), [secili.alan?.t0, dt])
+  const tarihler = useMemo(() => inisTarihleri(secili.alan?.t0, dt, b), [secili.alan?.t0, dt, b])
   const n = secili.alan?.n ?? 0
 
   // Tarih kipinin sütun tarihleri: [tL, tL + 13 hafta, tL + 26 hafta…];
@@ -337,22 +283,12 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
     const f = alan && horizon ? fDizisi(alan, horizon) : null
     const c = alan && horizon ? cDizisi(alan, horizon, p.epsilon) : null
     const olcut = f && c ? olcutler(f, c, null, s.tL, p.D, alan.dt_hours, p.w1, p.w2, p.w3) : null
-    let ozne
-    let tamlayan
-    let bulunma
-    if (kip === 'alan') {
-      const ad = alan?.yaklasik ? 'Özel nokta' : (alan?.site ?? s.site ?? '')
-      ozne = ad
-      // "özel nokta" cins ad: kesme işareti yok
-      tamlayan = alan?.yaklasik ? 'özel noktaya' : `${ad}'${adEki(ad || 'a')}`
-      bulunma = alan?.yaklasik ? 'özel noktada' : `${ad}'${bulunmaEki(ad || 'a')}`
-    } else {
-      const gun = alan ? kisaTarih.format(new Date(Date.parse(alan.t0) + s.tL * alan.dt_hours * 3600e3)) : ''
-      ozne = `${gun} inişi`
-      tamlayan = `${gun} inişine`
-      bulunma = `${gun} inişinde`
-    }
-    return { ...s, alan, horizon, f, c, olcut, ozne, tamlayan, bulunma, hazir: !!(alan && f && c) }
+    // Cümledeki adlar (özne / tamlayan / bulunma biçimlerini sözlük üretir)
+    const adlar =
+      kip === 'alan'
+        ? { tur: 'alan', ad: ad(alan?.site ?? s.site ?? '') ?? '', ozel: !!alan?.yaklasik }
+        : { tur: 'tarih', gun: alan ? b.gunAy(new Date(Date.parse(alan.t0) + s.tL * alan.dt_hours * 3600e3)) : '' }
+    return { ...s, alan, horizon, f, c, olcut, adlar, ozne: t('karsilastirma.ozne', adlar), hazir: !!(alan && f && c) }
   })
 
   // Ölçüt satırlarının sütunlar arası kıyası (en iyi / en kötü renklendirme)
@@ -362,7 +298,7 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
   }))
 
   const hepsiHazir = sutunlar.every((s) => s.hazir)
-  const cumle = hepsiHazir ? sonucCumlesi(sutunlar, p.D, p, kip) : ' '
+  const cumle = hepsiHazir ? sonucCumlesi(sutunlar, p.D, p, kip, t) : ' '
   const eklenebilir = kip === 'alan' && sutunlar.length < maks && !!bolgeler
   const gizli = [...ekAdlar, ...(ozel || !secili.alan ? [] : [secili.alan.site])]
   const izgara = `grid grid-cols-1 gap-4 ${SUTUN_SINIFI[Math.min(3, sutunlar.length + (eklenebilir ? 1 : 0))]}`
@@ -370,8 +306,14 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
   return (
     <div className={className}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-        <h2 className="text-[11px] uppercase tracking-[0.18em] text-metin-solgun">Karşılaştırma</h2>
-        <Secenekler secenekler={SEKMELER} deger={kip} onSec={setKip} etiket="Karşılaştırma türü" kucuk />
+        <h2 className="text-[11px] uppercase tracking-[0.18em] text-metin-solgun">{t('karsilastirma.baslik')}</h2>
+        <Secenekler
+          secenekler={SEKMELER.map((deger) => ({ deger, etiket: t(`karsilastirma.sekme.${deger}`) }))}
+          deger={kip}
+          onSec={setKip}
+          etiket={t('karsilastirma.turEtiket')}
+          kucuk
+        />
       </div>
 
       {/* Tek cümlelik sonuç */}
@@ -398,21 +340,21 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
               <div className="min-w-0 flex-1">
                 {kip === 'alan' ? (
                   <>
-                    <h3 className="truncate font-light tracking-wide text-metin">{s.alan?.site ?? s.site ?? ' '}</h3>
+                    <h3 className="truncate font-light tracking-wide text-metin">{ad(s.alan?.site ?? s.site) ?? ' '}</h3>
                     {s.alan?.yaklasik ? (
                       <span className="mt-1 inline-block rounded border border-uyari/60 px-1.5 py-0.5 text-[11px] text-uyari">
-                        Arazi hesaba katılmadı
+                        {ozelNoktaNotu(s.alan, t).kisa}
                       </span>
                     ) : (
                       <p className="truncate text-xs text-metin-solgun">
-                        {bolgeler?.find((b) => b.site === s.alan?.site)?.aciklama ?? ' '}
+                        {aciklama(bolgeler?.find((k) => k.site === s.alan?.site)) ?? ' '}
                       </p>
                     )}
                   </>
                 ) : (
                   <>
                     <select
-                      aria-label={`${s.tarihSirasi + 1}. iniş tarihi`}
+                      aria-label={t('karsilastirma.tarihAria', { sira: s.tarihSirasi + 1 })}
                       value={s.tL}
                       disabled={tarihler.length === 0}
                       onChange={(e) => {
@@ -426,13 +368,13 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
                     >
                       {tarihler.map((o) => (
                         <option key={o.tL} value={o.tL}>
-                          {o.etiket} inişi
+                          {t('karsilastirma.inisSecenek', { gun: o.etiket })}
                         </option>
                       ))}
                     </select>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2">
                       <GorevGunu dt={dt} />
-                      {s.alan?.yaklasik && <span className="text-[11px] text-uyari">{ozelNoktaNotu(s.alan).kisa}</span>}
+                      {s.alan?.yaklasik && <span className="text-[11px] text-uyari">{ozelNoktaNotu(s.alan, t).kisa}</span>}
                     </div>
                   </>
                 )}
@@ -441,8 +383,8 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
                 <button
                   type="button"
                   onClick={() => p.karsilastirmaCikar(s.site)}
-                  aria-label={`${s.site} alanını karşılaştırmadan kaldır`}
-                  title="Kaldır"
+                  aria-label={t('karsilastirma.kaldirAria', { ad: ad(s.site) })}
+                  title={t('karsilastirma.kaldir')}
                   className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-metin-solgun transition-colors
                     hover:bg-yuzey-acik hover:text-metin focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60"
                 >
@@ -459,7 +401,7 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
                     s.veri.hata ? 'text-uyari' : 'text-metin-solgun'
                   }`}
                 >
-                  {s.veri.hata ? 'Veri yüklenemedi.' : 'Yükleniyor…'}
+                  {t(s.veri.hata ? 'karsilastirma.yuklenemedi' : 'uygulama.yukleniyor')}
                 </p>
                 {/* Geri sayım satırlarının yeri: ölçütler öbür sütunlarla hizalı kalsın */}
                 <div className="mt-3 h-14" aria-hidden="true" />
@@ -467,16 +409,16 @@ export default function Karsilastirma({ maks = 2, className = '' }) {
             )}
 
             {/* Görev aralığı ölçütleri — geri sayım satırlarının devamı */}
-            <section aria-label={`${s.ozne}: ${p.D} günlük görev ölçütleri`} className="mt-1 border-t border-cizgi/60 pt-1 text-sm">
-              <h4 className="flex h-7 items-center text-xs font-normal text-metin-solgun/80">{p.D} günlük görev</h4>
+            <section aria-label={t('karsilastirma.olcutAria', { ozne: s.ozne, D: p.D })} className="mt-1 border-t border-cizgi/60 pt-1 text-sm">
+              <h4 className="flex h-7 items-center text-xs font-normal text-metin-solgun/80">{t('karsilastirma.gorevBaslik', { D: p.D })}</h4>
               <dl>
                 {olcutSatirlari.map(({ satir, degerler }) => (
                   <div key={satir.anahtar} className={`${SATIR} border-t border-cizgi/40`}>
-                    <dt className="min-w-0 truncate text-metin-solgun" title={satir.etiket}>
-                      {satir.etiket}
+                    <dt className="min-w-0 truncate text-metin-solgun" title={t(`karsilastirma.olcut.${satir.anahtar}`)}>
+                      {t(`karsilastirma.olcut.${satir.anahtar}`)}
                     </dt>
                     <dd className={`shrink-0 tabular-nums transition-colors duration-300 ${hucreSinifi(satir, degerler, i)}`}>
-                      {degerler[i] == null ? '—' : <AkanSayi deger={degerler[i]} bicim={satir.bicim} />}
+                      {degerler[i] == null ? '—' : <AkanSayi deger={degerler[i]} bicim={satir.bicim === 'puan' ? puanBicimle : b[satir.bicim]} />}
                     </dd>
                   </div>
                 ))}

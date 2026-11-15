@@ -10,6 +10,8 @@
 // kürede kamera o alana döner (seviyeler kendi içinde halleder).
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { hataOlustur } from '../../core/hata.js'
+import { useDil } from '../../dil/index.js'
 import { useDurum } from '../../durum/store.js'
 import AraziSahnesi from './AraziSahnesi.jsx'
 import AyKuresi from './AyKuresi.jsx'
@@ -33,15 +35,15 @@ function BuyutSimgesi({ acik }) {
 /**
  * @param {object} props.anlik   useAnlikDurum() çıktısı
  * @param {number} props.f  @param {0|1} props.c
- * @param {string} [props.aciklama]  alanın kısa açıklaması (tam ekran katmanı)
  * @param {(hata: Error) => void} props.onHata
  */
-export default function UcBoyut({ anlik, f, c, aciklama, onHata }) {
+export default function UcBoyut({ anlik, f, c, onHata }) {
   const [seviye, setSeviye] = useState('kure') // 'kure' | 'yerel'
   const [donus, setDonus] = useState(false) // küre yerelden geri dönerek mi açıldı
   const [perde, setPerde] = useState(false)
   const [ucus, setUcus] = useState(null) // { site, sira } — küre üzerinde yaklaşma isteği
   const alanSec = useDurum((s) => s.alanSec)
+  const { t, ad } = useDil()
   const zamanlayici = useRef(0)
 
   const kapsayici = useRef(null)
@@ -50,7 +52,7 @@ export default function UcBoyut({ anlik, f, c, aciklama, onHata }) {
   const hud = `transition-opacity duration-500 ${!tamEkran || katman ? 'opacity-100' : 'pointer-events-none opacity-0'}`
 
   useEffect(() => {
-    if (!webglVar()) onHata?.(new Error('WebGL yok'))
+    if (!webglVar()) onHata?.(hataOlustur('ucBoyut.hata.webglYok', {}, 'WebGL not available'))
   }, [onHata])
   useEffect(() => () => clearTimeout(zamanlayici.current), [])
 
@@ -78,7 +80,7 @@ export default function UcBoyut({ anlik, f, c, aciklama, onHata }) {
   const geri = useCallback(() => perdeyle('kure', true), [perdeyle])
 
   const seciliAlan = useDurum((s) => s.seciliAlan)
-  const alanAdi = anlik.alan?.site ?? (anlik.yaklasik ? '' : seciliAlan)
+  const alanAdi = ad(anlik.alan?.site ?? (anlik.yaklasik ? '' : seciliAlan))
   const ozel = anlik.yaklasik
 
   return (
@@ -105,16 +107,16 @@ export default function UcBoyut({ anlik, f, c, aciklama, onHata }) {
 
       {/* Gezinti çubuğu: Ay › alan */}
       <nav
-        aria-label="3B gezinti"
+        aria-label={t('ucBoyut.gezinti')}
         data-gezinti=""
         className={`absolute left-3 top-3 z-30 flex items-center gap-1.5 rounded-md border border-cizgi bg-zemin/70 px-2.5 py-1 text-xs tracking-wide ${hud}`}
       >
         {seviye === 'yerel' ? (
           <button type="button" onClick={geri} className="text-iletisim hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60">
-            Ay
+            {t('ortak.ay')}
           </button>
         ) : (
-          <span className="text-metin">Ay</span>
+          <span className="text-metin">{t('ortak.ay')}</span>
         )}
         <span className="text-metin-solgun" aria-hidden="true">
           ›
@@ -123,7 +125,7 @@ export default function UcBoyut({ anlik, f, c, aciklama, onHata }) {
           <button
             type="button"
             onClick={() => ucusBaslat(null)}
-            title="Yerel sahneye in"
+            title={t('ucBoyut.inis')}
             className="text-iletisim hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60"
           >
             {alanAdi}
@@ -137,8 +139,8 @@ export default function UcBoyut({ anlik, f, c, aciklama, onHata }) {
       <button
         type="button"
         onClick={degistir}
-        aria-label={tamEkran ? 'Tam ekrandan çık (ESC)' : 'Tam ekran (F)'}
-        title={tamEkran ? 'Tam ekrandan çık (ESC)' : 'Tam ekran (F)'}
+        aria-label={t(tamEkran ? 'ucBoyut.tamEkranCik' : 'ucBoyut.tamEkran')}
+        title={t(tamEkran ? 'ucBoyut.tamEkranCik' : 'ucBoyut.tamEkran')}
         className={`absolute right-3 top-3 z-30 grid h-8 w-8 place-items-center rounded-md border border-cizgi bg-zemin/70 text-metin-solgun
           hover:text-metin focus:outline-none focus-visible:ring-2 focus-visible:ring-iletisim/60 ${hud}`}
       >
@@ -153,7 +155,7 @@ export default function UcBoyut({ anlik, f, c, aciklama, onHata }) {
         style={{ transitionDuration: `${PERDE_MS}ms` }}
       />
 
-      {tamEkran && <TamEkranKatmani gorunur={katman} aciklama={aciklama} />}
+      {tamEkran && <TamEkranKatmani gorunur={katman} />}
     </div>
   )
 }

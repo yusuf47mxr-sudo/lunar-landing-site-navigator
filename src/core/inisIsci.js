@@ -9,6 +9,7 @@
 //   { tip: 'hazirla', izgara }  bütün düğümleri arka planda, merkezden dışa doğru,
 //                               küçük dilimlerle hesaplar (istekler araya girer)
 
+import { hataOlustur } from './hata.js'
 import Model from './planbModel.js'
 import { dugumSaatlik, komsuDugumler, oneriBul, pencereOlasiligi } from './inisPencere.js'
 
@@ -22,7 +23,7 @@ let efemerisSozu = null
 const efemeris = () =>
   (efemerisSozu ??= fetch(TABAN + 'efemeris_2027.json')
     .then((y) => {
-      if (!y.ok) throw new Error(`efemeris_2027.json yüklenemedi (HTTP ${y.status})`)
+      if (!y.ok) throw hataOlustur('hata.yuklenemedi', { dosya: 'efemeris_2027.json', durum: y.status }, `efemeris_2027.json could not be loaded (HTTP ${y.status})`)
       return y.json()
     })
     .then((j) => Model.loadEphem(j)))
@@ -86,11 +87,11 @@ self.onmessage = async ({ data: m }) => {
       sonuc = oneriBul(Model, eph, G, ks, saatlik, m.bas, opt)
     } else {
       const i1 = m.bas + m.gun * 24
-      if (m.bas < 0 || i1 > eph.n) throw new Error('Pencere 2027 verisinin dışına taşıyor')
+      if (m.bas < 0 || i1 > eph.n) throw hataOlustur('hata.pencereTasiyor', {}, 'Window extends beyond the 2027 data')
       sonuc = pencereOlasiligi(Model, G, ks, saatlik, m.bas, i1, opt)
     }
     self.postMessage({ istek: m.istek, sonuc })
   } catch (h) {
-    self.postMessage({ istek: m.istek, hata: String(h?.message ?? h) })
+    self.postMessage({ istek: m.istek, hata: { mesaj: String(h?.message ?? h), kod: h?.kod, params: h?.params } })
   }
 }

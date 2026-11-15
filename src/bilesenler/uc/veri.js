@@ -8,6 +8,7 @@
 // Sahne eksenleri (three.js, Y yukarı): +x doğu, −z kuzey, +y yukarı. Birim metre.
 
 import { useEffect, useState } from 'react'
+import { hataOlustur } from '../../core/hata.js'
 import { kutupDemYukle } from '../../core/kutupDem.js'
 
 const tabanYol = () => {
@@ -22,7 +23,7 @@ export function araziYukle(dosya) {
   if (!sozler.has(dosya)) {
     const soz = fetch(tabanYol() + dosya)
       .then((y) => {
-        if (!y.ok) throw new Error(`3B arazi yüklenemedi (HTTP ${y.status})`)
+        if (!y.ok) throw hataOlustur('sahne.araziYuklenemedi', { durum: y.status }, `3D terrain could not be loaded (HTTP ${y.status})`)
         return y.json()
       })
       .then(araziHazirla)

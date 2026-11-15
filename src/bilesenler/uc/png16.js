@@ -4,6 +4,8 @@
 // denizlerde kontur çizgileri oluşur. Bu yüzden ham örnekler okunur.
 // Açma: DecompressionStream('deflate') — PNG IDAT verisi zlib akışıdır.
 
+import { hataOlustur } from '../../core/hata.js'
+
 const IMZA = [137, 80, 78, 71, 13, 10, 26, 10]
 
 async function zlibAc(veri) {
@@ -26,7 +28,7 @@ function paeth(a, b, c) {
  */
 export async function png16Coz(tampon) {
   const b = new Uint8Array(tampon)
-  for (let i = 0; i < 8; i++) if (b[i] !== IMZA[i]) throw new Error('PNG değil')
+  for (let i = 0; i < 8; i++) if (b[i] !== IMZA[i]) throw hataOlustur('kure.hata.pngDegil', {}, 'Not a PNG')
   const dv = new DataView(tampon)
   let genislik = 0
   let yukseklik = 0
@@ -40,7 +42,7 @@ export async function png16Coz(tampon) {
       genislik = dv.getUint32(bas)
       yukseklik = dv.getUint32(bas + 4)
       const [derinlik, renk, , , tarama] = [b[bas + 8], b[bas + 9], b[bas + 10], b[bas + 11], b[bas + 12]]
-      if (derinlik !== 16 || renk !== 0 || tarama !== 0) throw new Error('Yalnız 16 bit gri, taramasız PNG desteklenir')
+      if (derinlik !== 16 || renk !== 0 || tarama !== 0) throw hataOlustur('kure.hata.pngBicim', {}, 'Only 16-bit grayscale, non-interlaced PNG is supported')
     } else if (tur === 'IDAT') {
       parcalar.push(b.subarray(bas, bas + uzunluk))
       toplam += uzunluk
@@ -57,7 +59,7 @@ export async function png16Coz(tampon) {
 
   const bpp = 2 // piksel başına bayt
   const satir = genislik * bpp
-  if (ham.length < (satir + 1) * yukseklik) throw new Error('PNG verisi eksik')
+  if (ham.length < (satir + 1) * yukseklik) throw hataOlustur('kure.hata.pngEksik', {}, 'PNG data incomplete')
   const cikti = new Uint8Array(satir * yukseklik)
   for (let y = 0; y < yukseklik; y++) {
     const filtre = ham[y * (satir + 1)]
@@ -76,7 +78,7 @@ export async function png16Coz(tampon) {
         case 2: v = r + u; break
         case 3: v = r + ((a + u) >> 1); break
         case 4: v = r + paeth(a, u, c); break
-        default: throw new Error(`Bilinmeyen PNG filtresi ${filtre}`)
+        default: throw hataOlustur('kure.hata.pngFiltre', { filtre }, `Unknown PNG filter ${filtre}`)
       }
       cikti[hedef + x] = v & 255
     }

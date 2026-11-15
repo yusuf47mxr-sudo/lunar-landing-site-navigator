@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect } from 'react'
+import { useDil } from './dil/index.js'
 import { useDurum } from './durum/store.js'
 
 // Sayfa store.mod'a göre seçilir; mod ModDegistirici ile değişir.
@@ -23,9 +24,10 @@ const bostayken = (fn) =>
   typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(fn, { timeout: 3000 }) : setTimeout(fn, 1500)
 
 function Yukleniyor() {
+  const { t } = useDil()
   return (
     <div className="grid min-h-screen place-items-center bg-zemin text-sm tracking-wide text-metin-solgun" aria-busy="true">
-      Yükleniyor…
+      {t('uygulama.yukleniyor')}
     </div>
   )
 }
@@ -34,6 +36,13 @@ export default function App() {
   const mod = useDurum((s) => s.mod)
   const anahtar = mod in YUKLEYICILER ? mod : 'temel'
   const Sayfa = HAZIR[anahtar] ?? SAYFALAR[anahtar]
+  const { dil, t } = useDil()
+
+  // Sayfa başlığı ve <html lang> dile göre
+  useEffect(() => {
+    document.documentElement.lang = dil
+    document.title = t('uygulama.baslik')
+  }, [dil, t])
 
   useEffect(() => {
     bostayken(() =>

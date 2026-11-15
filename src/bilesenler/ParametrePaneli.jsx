@@ -14,15 +14,11 @@ import AlanListesi from './AlanListesi.jsx'
 import KutupHaritasi from './KutupHaritasi.jsx'
 import OzelKoordinat from './OzelKoordinat.jsx'
 import Secenekler from './Secenekler.jsx'
-import { gunBicimle } from './ZamanKaydirici.jsx'
+import { useDil } from '../dil/index.js'
 
-const SURE_SECENEKLERI = GOREV_SURELERI.map((d) => ({ deger: d, etiket: `${d} gün` }))
 const DIREK_SECENEKLERI = DIREK_YUKSEKLIKLERI.map((h) => ({ deger: h, etiket: `${h} m` }))
-const YONELIM_SECENEKLERI = [
-  { deger: 'izleyen', etiket: 'İzleyen' },
-  { deger: 'dikey', etiket: 'Dikey' },
-  { deger: 'yatay', etiket: 'Yatay' },
-]
+// Etiketler render'da: t(`parametre.yonelim.${deger}`)
+const YONELIMLER = ['izleyen', 'dikey', 'yatay']
 
 // Bölümlerin parametreleri (rozet sayımı ve "Varsayılana dön" için)
 const GOREV_PARAMETRELERI = ['tL', 'D', 'hm']
@@ -36,14 +32,15 @@ const farkliSayisi = (p, adlar) => adlar.filter((ad) => !ayni(p[ad], VARSAYILAN[
 
 /**
  * Haftalık iniş tarihleri: t0'dan başlar, ozet.json'daki ızgarayla aynıdır.
+ * @param b  useDil().b (etiket: b.gun → "26 Ocak 2027" / "Jan 26, 2027")
  * @returns {Array<{tL: number, etiket: string}>}  tL zaman dizisindeki indeks
  */
-export function inisTarihleri(t0, dt = 1) {
+export function inisTarihleri(t0, dt, b) {
   if (!t0) return []
   const t0ms = Date.parse(t0)
   return Array.from({ length: INIS_SAYISI }, (_, k) => ({
     tL: Math.round((k * INIS_ADIM_SAAT) / dt),
-    etiket: gunBicimle(new Date(t0ms + k * INIS_ADIM_SAAT * 3600e3)),
+    etiket: b.gun(new Date(t0ms + k * INIS_ADIM_SAAT * 3600e3)),
   }))
 }
 
@@ -89,6 +86,7 @@ function Kaydirici({ etiket, ad, deger, min, max, adim, bicim, onDegis }) {
  * Odak çıkınca metin depodaki değere döner.
  */
 function AlanGirisi({ deger, onDegis }) {
+  const { t } = useDil()
   const [metin, setMetin] = useState(String(deger))
   const [odakta, setOdakta] = useState(false)
   // Depo başka yerden değişirse (Varsayılana dön) kutu onu göstersin
@@ -100,12 +98,12 @@ function AlanGirisi({ deger, onDegis }) {
   const gecerli = metin.trim() !== '' && Number.isFinite(sayi) && sayi >= S_SINIR.min && sayi <= S_SINIR.max
 
   return (
-    <Satir etiket="Panel alanı S" deger={`${deger} m²`} degisti={!ayni(deger, VARSAYILAN.S)}>
+    <Satir etiket={t('parametre.panelAlani')} deger={`${deger} m²`} degisti={!ayni(deger, VARSAYILAN.S)}>
       <div className="flex items-center gap-2">
         <input
           type="number"
           inputMode="decimal"
-          aria-label="Panel alanı (m²)"
+          aria-label={t('parametre.panelAlaniAria')}
           aria-invalid={gecerli ? undefined : 'true'}
           min={S_SINIR.min}
           max={S_SINIR.max}
@@ -128,7 +126,7 @@ function AlanGirisi({ deger, onDegis }) {
       </div>
       {!gecerli && (
         <p role="alert" className="mt-1 text-xs text-uyari">
-          {S_SINIR.min} ile {S_SINIR.max} m² arasında olmalı.
+          {t('parametre.alanAralik', { min: S_SINIR.min, max: S_SINIR.max })}
         </p>
       )}
     </Satir>
@@ -137,6 +135,7 @@ function AlanGirisi({ deger, onDegis }) {
 
 /** Katlanabilir bölüm. farkli > 0 ise başlıkta rozet ve "Varsayılana dön". */
 function Bolum({ baslik, farkli = 0, onSifirla = null, acikBaslar = true, children }) {
+  const { t } = useDil()
   const [acik, setAcik] = useState(acikBaslar)
   const kimlik = useId()
   return (
@@ -160,8 +159,8 @@ function Bolum({ baslik, farkli = 0, onSifirla = null, acikBaslar = true, childr
           <span className="truncate">{baslik}</span>
           {farkli > 0 && (
             <span
-              title={`${farkli} parametre varsayılandan farklı`}
-              aria-label={`${farkli} parametre varsayılandan farklı`}
+              title={t('parametre.farkli', { n: farkli })}
+              aria-label={t('parametre.farkli', { n: farkli })}
               className="grid h-4 min-w-4 place-items-center rounded-full bg-gunes/20 px-1 text-[10px] tabular-nums tracking-normal text-gunes"
             >
               {farkli}
@@ -174,7 +173,7 @@ function Bolum({ baslik, farkli = 0, onSifirla = null, acikBaslar = true, childr
             onClick={onSifirla}
             className="shrink-0 text-xs text-iletisim underline-offset-2 hover:underline focus:outline-none focus-visible:underline"
           >
-            Varsayılana dön
+            {t('parametre.varsayilanaDon')}
           </button>
         )}
       </div>
@@ -199,11 +198,13 @@ function Bolum({ baslik, farkli = 0, onSifirla = null, acikBaslar = true, childr
 
 /** İniş tarihi, görev süresi, direk yüksekliği — iki kapsamda da aynı satırlar (kucuk: dar sütun). */
 function GorevSatirlari({ p, tarihler, kucuk = false }) {
+  const { t, b } = useDil()
+  const sureSecenekleri = GOREV_SURELERI.map((d) => ({ deger: d, etiket: b.gunSayisi(d) }))
   return (
     <>
-      <Satir etiket="İniş tarihi">
+      <Satir etiket={t('parametre.inisTarihi')}>
         <select
-          aria-label="İniş tarihi"
+          aria-label={t('parametre.inisTarihi')}
           value={p.tL}
           disabled={tarihler.length === 0}
           onChange={(e) => p.inisSec(Number(e.target.value))}
@@ -218,23 +219,30 @@ function GorevSatirlari({ p, tarihler, kucuk = false }) {
           ))}
         </select>
       </Satir>
-      <Satir etiket="Görev süresi">
-        <Secenekler secenekler={SURE_SECENEKLERI} deger={p.D} onSec={p.DAyarla} etiket="Görev süresi" esnek kucuk={kucuk} />
+      <Satir etiket={t('parametre.gorevSuresi')}>
+        <Secenekler secenekler={sureSecenekleri} deger={p.D} onSec={p.DAyarla} etiket={t('parametre.gorevSuresi')} esnek kucuk={kucuk} />
       </Satir>
-      <Satir etiket="Direk yüksekliği">
-        <Secenekler secenekler={DIREK_SECENEKLERI} deger={p.hm} onSec={p.hmAyarla} etiket="Direk yüksekliği" esnek kucuk={kucuk} />
+      <Satir etiket={t('parametre.direkYuksekligi')}>
+        <Secenekler
+          secenekler={DIREK_SECENEKLERI}
+          deger={p.hm}
+          onSec={p.hmAyarla}
+          etiket={t('parametre.direkYuksekligi')}
+          esnek
+          kucuk={kucuk}
+        />
       </Satir>
     </>
   )
 }
 
 const dereceBicim = (v) => `${v.toFixed(1)}°`
-const verimBicim = (v) => `%${Math.round(v * 100)}`
 const agirlikBicim = (v) => v.toFixed(1)
 
 /** @param {'gorev'|'tam'} [props.kapsam] */
 export default function ParametrePaneli({ kapsam = 'gorev', className = '' }) {
   const { alan } = useSeciliAlanVerisi()
+  const { t, b } = useDil()
   const p = useDurum(
     useShallow((s) => ({
       tL: s.tL,
@@ -258,7 +266,7 @@ export default function ParametrePaneli({ kapsam = 'gorev', className = '' }) {
 
   const t0 = alan?.t0
   const dt = alan?.dt_hours ?? 1
-  const tarihler = useMemo(() => inisTarihleri(t0, dt), [t0, dt])
+  const tarihler = useMemo(() => inisTarihleri(t0, dt, b), [t0, dt, b])
 
   if (kapsam !== 'tam') {
     return (
@@ -270,17 +278,17 @@ export default function ParametrePaneli({ kapsam = 'gorev', className = '' }) {
 
   return (
     <div className={className}>
-      <Bolum baslik="Konum">
+      <Bolum baslik={t('parametre.bolum.konum')}>
         <AlanListesi yerlesim="dikey" />
         <OzelKoordinat />
       </Bolum>
 
-      <Bolum baslik="Kutup haritası" acikBaslar={false}>
+      <Bolum baslik={t('parametre.bolum.harita')} acikBaslar={false}>
         <KutupHaritasi />
       </Bolum>
 
       <Bolum
-        baslik="Görev"
+        baslik={t('parametre.bolum.gorev')}
         farkli={farkliSayisi(p, GOREV_PARAMETRELERI)}
         onSifirla={() => p.varsayilanaDon(GOREV_PARAMETRELERI)}
       >
@@ -288,12 +296,12 @@ export default function ParametrePaneli({ kapsam = 'gorev', className = '' }) {
       </Bolum>
 
       <Bolum
-        baslik="Donanım"
+        baslik={t('parametre.bolum.donanim')}
         farkli={farkliSayisi(p, DONANIM_PARAMETRELERI)}
         onSifirla={() => p.varsayilanaDon(DONANIM_PARAMETRELERI)}
       >
         <Kaydirici
-          etiket="İletişim güvenlik payı ε"
+          etiket={t('parametre.epsilon')}
           ad="epsilon"
           deger={p.epsilon}
           min={0}
@@ -304,25 +312,25 @@ export default function ParametrePaneli({ kapsam = 'gorev', className = '' }) {
         />
         <AlanGirisi deger={p.S} onDegis={p.parametreAyarla} />
         <Kaydirici
-          etiket="Panel verimi η"
+          etiket={t('parametre.panelVerimi')}
           ad="eta"
           deger={p.eta}
           min={0.1}
           max={0.45}
           adim={0.01}
-          bicim={verimBicim}
+          bicim={b.yuzde}
           onDegis={p.parametreAyarla}
         />
         <Satir
-          etiket="Panel yönelimi"
-          deger={YONELIM_SECENEKLERI.find((y) => y.deger === p.yonelim)?.etiket ?? ''}
+          etiket={t('parametre.panelYonelimi')}
+          deger={YONELIMLER.includes(p.yonelim) ? t(`parametre.yonelim.${p.yonelim}`) : ''}
           degisti={p.yonelim !== VARSAYILAN.yonelim}
         >
           <Secenekler
-            secenekler={YONELIM_SECENEKLERI}
+            secenekler={YONELIMLER.map((deger) => ({ deger, etiket: t(`parametre.yonelim.${deger}`) }))}
             deger={p.yonelim}
             onSec={p.yonelimAyarla}
-            etiket="Panel yönelimi"
+            etiket={t('parametre.panelYonelimi')}
             esnek
             kucuk
           />
@@ -330,14 +338,14 @@ export default function ParametrePaneli({ kapsam = 'gorev', className = '' }) {
       </Bolum>
 
       <Bolum
-        baslik="Puanlama"
+        baslik={t('parametre.bolum.puanlama')}
         farkli={farkliSayisi(p, PUAN_PARAMETRELERI)}
         onSifirla={() => p.varsayilanaDon(PUAN_PARAMETRELERI)}
       >
-        <Kaydirici etiket="w1 · Aydınlanma" ad="w1" deger={p.w1} min={0} max={2} adim={0.1} bicim={agirlikBicim} onDegis={p.parametreAyarla} />
-        <Kaydirici etiket="w2 · İletişim" ad="w2" deger={p.w2} min={0} max={2} adim={0.1} bicim={agirlikBicim} onDegis={p.parametreAyarla} />
-        <Kaydirici etiket="w3 · Karanlık cezası" ad="w3" deger={p.w3} min={0} max={2} adim={0.1} bicim={agirlikBicim} onDegis={p.parametreAyarla} />
-        <p className="text-xs tabular-nums text-metin-solgun/80">puan = w1·aydınlanma + w2·iletişim − w3·(en uzun karanlık ÷ görev süresi)</p>
+        <Kaydirici etiket={t('parametre.w1')} ad="w1" deger={p.w1} min={0} max={2} adim={0.1} bicim={agirlikBicim} onDegis={p.parametreAyarla} />
+        <Kaydirici etiket={t('parametre.w2')} ad="w2" deger={p.w2} min={0} max={2} adim={0.1} bicim={agirlikBicim} onDegis={p.parametreAyarla} />
+        <Kaydirici etiket={t('parametre.w3')} ad="w3" deger={p.w3} min={0} max={2} adim={0.1} bicim={agirlikBicim} onDegis={p.parametreAyarla} />
+        <p className="text-xs tabular-nums text-metin-solgun/80">{t('parametre.formul')}</p>
       </Bolum>
     </div>
   )
